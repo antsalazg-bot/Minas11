@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<style>body{font-family:monospace;padding:2rem;background:#f5f5f5;}pre{background:#fff;padding:1rem;border:1px solid #ddd;overflow-x:auto;font-size:.72rem;}h2{margin-top:1.5rem;}</style>
+</head>
+<body>
+<h1>Debug v2</h1>
+<h2>Enero 2025 — todas las filas con egreso > 0</h2>
+<pre id="egr"></pre>
+<h2>Totales calculados Enero 2025</h2>
+<pre id="tot"></pre>
+<h2>Egresos x Categoria — primeras 8 filas</h2>
+<pre id="ecat"></pre>
+<script>
+const SHEET_ID = '1BmKygJycO6wTF409i0stnVg3GX26apWGgQ-byPbRlnA';
+const BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=`;
+async function fetchSheet(name) {
+  const res = await fetch(BASE + encodeURIComponent(name));
+  const txt = await res.text();
+  return JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/)[1]);
+}
+async function run() {
+  const jan = await fetchSheet('Enero 2025');
+  const allRows = jan.table.rows.map(r => r.c.map(c => c ? c.v : null));
+  
+  // Show rows where col4 (egreso) is a number > 0
+  const egrRows = allRows.map((row,i) => ({i, row}))
+    .filter(({row}) => typeof row[4] === 'number' && row[4] > 0);
+  document.getElementById('egr').textContent = egrRows.map(({i,row}) => 
+    `Row ${i}: [${row.slice(0,8).map(v=>JSON.stringify(v)).join(', ')}]`
+  ).join('\n');
+
+  // Calculate totals
+  let tIng=0, tEgr=0;
+  allRows.forEach((row,i) => {
+    if(i===0||i===1) return;
+    if(!row[0]||row[0]==='FECHA') return;
+    const ing = typeof row[3]==='number' ? row[3] : 0;
+    const egr = typeof row[4]==='number' ? row[4] : 0;
+    tIng+=ing; tEgr+=egr;
+  });
+  document.getElementById('tot').textContent = `Ingresos: $${tIng.toLocaleString()}\nEgresos: $${tEgr.toLocaleString()}\nTotal rows: ${allRows.length}`;
+
+  // Egresos x Categoria
+  const ecat = await fetchSheet('Egresos x Categoria');
+  const ecatRows = ecat.table.rows.slice(0,8).map((row,i) => {
+    const vals = row.c.map(c => c ? c.v : null);
+    return `Row ${i}: ${JSON.stringify(vals.slice(0,5))}`;
+  }).join('\n');
+  document.getElementById('ecat').textContent = ecatRows;
+}
+run().catch(e => document.getElementById('egr').textContent = 'ERROR: '+e);
+</script>
+</body>
+</html>
