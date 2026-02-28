@@ -1,4 +1,4 @@
-const CACHE = 'minas11-v1';
+const CACHE = 'minas11-v3';
 const ASSETS = [
   '/Minas11/portal.html',
   '/Minas11/admin.html'
