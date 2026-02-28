@@ -518,10 +518,14 @@ function closeSidebar(){
   document.getElementById('sidebar-overlay').classList.remove('open');
 }
 function doLogin(){
-  const u=document.getElementById('i-user').value.trim();
-  const p=document.getElementById('i-pass').value.trim();
+  const u=(document.getElementById('i-user').value||'').trim().toLowerCase();
+  const p=(document.getElementById('i-pass').value||'').trim();
   const err=document.getElementById('lerr'), btn=document.getElementById('login-btn'), bar=document.getElementById('lbar');
-  if(u===ADMIN_USER&&p===ADMIN_PASS){
+  const validUser=ADMIN_USER.toLowerCase();
+  const validPass=ADMIN_PASS;
+  document.getElementById('lerr').textContent=`u="${u}" p="${p}" ok=${u===validUser&&p===validPass}`;
+  document.getElementById('lerr').style.display='block';
+  if(u===validUser&&p===validPass){
     err.style.display='none'; btn.disabled=true; btn.textContent='Cargando datos…'; bar.style.display='block';
     loadAll().then(()=>{
       document.getElementById('login-screen').style.display='none';
