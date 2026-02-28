@@ -345,7 +345,12 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
       <p>Acceso restringido</p>
     </div>
     <div class="fgrp"><label>Usuario</label><input id="i-user" type="text" placeholder="admin" autocomplete="off"/></div>
-    <div class="fgrp"><label>Contraseña</label><input id="i-pass" type="password" placeholder="••••••••"/></div>
+    <div class="fgrp"><label>Contraseña</label>
+      <div style="position:relative;display:flex;align-items:center;">
+        <input id="i-pass" type="password" placeholder="••••••••" style="padding-right:2.5rem;width:100%;"/>
+        <button type="button" onclick="togglePass('i-pass','eye-admin')" style="position:absolute;right:.6rem;background:none;border:none;cursor:pointer;font-size:1.1rem;color:rgba(255,255,255,.5);padding:0;line-height:1;" id="eye-admin">👁</button>
+      </div>
+    </div>
     <button class="lbtn" id="login-btn" onclick="doLogin()">Ingresar</button>
     <div class="lbar" id="lbar"></div>
     <div class="lerr" id="lerr">Usuario o contraseña incorrectos</div>
@@ -545,6 +550,13 @@ let DATA=null, charts={}, selDept=null;
 // ═══════════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════════
+function togglePass(inputId, btnId){
+  const inp = document.getElementById(inputId);
+  const btn = document.getElementById(btnId);
+  if(inp.type === 'password'){ inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
 function toggleSidebar(){
   document.querySelector('.sidebar').classList.toggle('open');
   document.getElementById('sidebar-overlay').classList.toggle('open');
@@ -562,6 +574,7 @@ function doLogin(){
   document.getElementById('lerr').textContent=`u="${u}" p="${p}" ok=${u===validUser&&p===validPass}`;
   document.getElementById('lerr').style.display='block';
   if(u===validUser&&p===validPass){
+    try{ localStorage.setItem('minas11_admin','1'); localStorage.setItem('minas11_admin_pass', p); }catch(e){}
     err.style.display='none'; btn.disabled=true; btn.textContent='Cargando datos…'; bar.style.display='block';
     loadAll().then(()=>{
       document.getElementById('login-screen').style.display='none';
@@ -575,7 +588,21 @@ function doLogin(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
+// Auto-login if session saved
+(function autoLoginAdmin(){
+  try{
+    const saved = localStorage.getItem('minas11_admin');
+    const savedPass = localStorage.getItem('minas11_admin_pass');
+    if(saved==='1' && savedPass){
+      document.getElementById('i-user').value = ADMIN_USER;
+      document.getElementById('i-pass').value = savedPass;
+      doLogin();
+    }
+  }catch(e){}
+})();
+
 function doLogout(){
+  try{ localStorage.removeItem('minas11_admin'); localStorage.removeItem('minas11_admin_pass'); }catch(e){}
   DATA=null; Object.values(charts).forEach(c=>{if(c)c.destroy();}); charts={};
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
