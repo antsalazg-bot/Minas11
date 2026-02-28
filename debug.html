@@ -4,55 +4,52 @@
 <style>body{font-family:monospace;padding:2rem;background:#f5f5f5;}pre{background:#fff;padding:1rem;border:1px solid #ddd;overflow-x:auto;font-size:.72rem;}</style>
 </head>
 <body>
-<h1>Debug v4 — simulate exact code logic</h1>
-<pre id="out"></pre>
+<h1>Debug v4</h1>
+<pre id="out">Cargando...</pre>
 <script>
 const SHEET_ID = '1BmKygJycO6wTF409i0stnVg3GX26apWGgQ-byPbRlnA';
 const BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=`;
-const MESES = ['Enero 2025','Febrero 2025','Marzo 2025','Abril 2025','Mayo 2025','Junio 2025','Julio 2025','Agosto 2025','Septiembre 2025','Octubre 2025','Noviembre 2025','Diciembre 2025','Enero 2026'];
 
 async function fetchSheet(name) {
   const res = await fetch(BASE + encodeURIComponent(name));
   const txt = await res.text();
-  return JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/)[1]);
+  const json = JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/)[1]);
+  return json.table.rows.map(r => r.c.map(c => c ? c.v : null));
 }
 
 async function run() {
   const lines = [];
   
-  for(const mes of MESES.slice(0,3)) {
-    const table = await fetchSheet(mes);
-    const rows = table.rows.map(r => r.c.map(c => c ? c.v : null));
-    
+  for(const mes of ['Enero 2025','Febrero 2025']) {
+    const rows = await fetchSheet(mes);
     let saldo=0, totalIng=0, totalEgr=0;
-    const skipped=[], counted=[];
     
     rows.forEach((row, i) => {
-      if(!row[0]) { skipped.push(`  Row ${i}: null row[0]`); return; }
-      if(row[0]==='SALDO MES ANTERIOR'){ saldo=typeof row[4]==='number'?row[4]:0; skipped.push(`  Row ${i}: SALDO=${saldo}`); return; }
-      if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA')){ skipped.push(`  Row ${i}: SKIP "${row[0]}"`); return; }
-      
+      if(!row[0]) return;
+      if(row[0]==='SALDO MES ANTERIOR'){ saldo=typeof row[4]==='number'?row[4]:0; return; }
+      if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA')) return;
       const ing = typeof row[3]==='number' ? row[3] : 0;
       const egr = typeof row[4]==='number' ? row[4] : 0;
-      if(ing>0||egr>0) counted.push(`  Row ${i}: ing=${ing} egr=${egr} v0="${row[0]}"`);
       totalIng+=ing; totalEgr+=egr;
     });
     
-    lines.push(`\n=== ${mes} ===`);
-    lines.push(`Saldo anterior: ${saldo}`);
-    lines.push(`Total ingresos: ${totalIng}`);
-    lines.push(`Total egresos: ${totalEgr}`);
-    lines.push(`Total rows: ${rows.length}`);
-    lines.push('Skipped:');
-    lines.push(...skipped);
-    lines.push('Counted (ing or egr > 0):');
-    lines.push(...counted.slice(0,10));
-    if(counted.length>10) lines.push(`  ... and ${counted.length-10} more`);
+    lines.push(`=== ${mes} ===`);
+    lines.push(`Saldo: ${saldo} | Ingresos: ${totalIng} | Egresos: ${totalEgr}`);
+    lines.push(`Rows totales: ${rows.length}`);
+    lines.push('');
+    
+    // Show all rows with any value in col3 or col4
+    rows.forEach((row,i) => {
+      const ing = typeof row[3]==='number' ? row[3] : null;
+      const egr = typeof row[4]==='number' ? row[4] : null;
+      if(ing||egr) lines.push(`  Row ${i}: v0="${row[0]}" ing=${ing} egr=${egr}`);
+    });
+    lines.push('');
   }
   
   document.getElementById('out').textContent = lines.join('\n');
 }
-run().catch(e => document.getElementById('out').textContent = 'ERROR: '+e);
+run().catch(e => document.getElementById('out').textContent = 'ERROR: '+e.stack);
 </script>
 </body>
 </html>
