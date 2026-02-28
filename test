@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8">
+<style>body{font-family:monospace;padding:2rem;background:#f5f5f5;}pre{background:#fff;padding:1rem;border:1px solid #ddd;overflow-x:auto;font-size:.75rem;}h2{margin-top:1.5rem;}</style>
+</head>
+<body>
+<h1>Debug — Google Sheets Raw Data</h1>
+<h2>Enero 2025 — primeras 6 filas</h2>
+<pre id="proc"></pre>
+<h2>Detalle Montos — primeras 5 filas</h2>
+<pre id="dm"></pre>
+<script>
+const SHEET_ID = '1BmKygJycO6wTF409i0stnVg3GX26apWGgQ-byPbRlnA';
+const BASE = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=`;
+async function fetchSheet(name) {
+  const res = await fetch(BASE + encodeURIComponent(name));
+  const txt = await res.text();
+  return JSON.parse(txt.match(/google\.visualization\.Query\.setResponse\(([\s\S]*)\);?\s*$/)[1]);
+}
+async function run() {
+  try {
+    const jan = await fetchSheet('Enero 2025');
+    const processed = jan.table.rows.slice(0,8).map((row,i)=>{
+      const vals = row.c.map(c=>c?c.v:null);
+      return `Row ${i}: ${JSON.stringify(vals)}`;
+    }).join('\n');
+    document.getElementById('proc').textContent = processed;
+    const dm = await fetchSheet('Detalle Montos');
+    const dmProc = dm.table.rows.slice(0,6).map((row,i)=>{
+      const vals = row.c.map(c=>c?c.v:null);
+      return `Row ${i}: ${JSON.stringify(vals)}`;
+    }).join('\n');
+    document.getElementById('dm').textContent = dmProc;
+  } catch(e) {
+    document.getElementById('proc').textContent = 'ERROR: ' + e.message;
+  }
+}
+run();
+</script>
+</body>
+</html>
