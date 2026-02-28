@@ -578,6 +578,8 @@ function doLogin(){
       const exp = new Date(Date.now()+10*365*24*60*60*1000).toUTCString();
       document.cookie = `minas11_admin=1;expires=${exp};path=/`;
       document.cookie = `minas11_admin_pass=${encodeURIComponent(p)};expires=${exp};path=/`;
+      localStorage.setItem('minas11_admin', '1');
+      localStorage.setItem('minas11_admin_pass', p);
     }catch(e){}
     err.style.display='none'; btn.disabled=true; btn.textContent='Cargando datos…'; bar.style.display='block';
     loadAll().then(()=>{
@@ -599,8 +601,8 @@ function getCookie(name){
 }
 (function autoLoginAdmin(){
   try{
-    const saved = getCookie('minas11_admin');
-    const savedPass = getCookie('minas11_admin_pass');
+    const saved = getCookie('minas11_admin') || localStorage.getItem('minas11_admin');
+    const savedPass = getCookie('minas11_admin_pass') || localStorage.getItem('minas11_admin_pass');
     if(saved==='1' && savedPass){
       document.getElementById('i-user').value = ADMIN_USER;
       document.getElementById('i-pass').value = savedPass;
