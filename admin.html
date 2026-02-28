@@ -574,7 +574,11 @@ function doLogin(){
   document.getElementById('lerr').textContent=`u="${u}" p="${p}" ok=${u===validUser&&p===validPass}`;
   document.getElementById('lerr').style.display='block';
   if(u===validUser&&p===validPass){
-    try{ localStorage.setItem('minas11_admin','1'); localStorage.setItem('minas11_admin_pass', p); }catch(e){}
+    try{
+      const exp = new Date(Date.now()+10*365*24*60*60*1000).toUTCString();
+      document.cookie = `minas11_admin=1;expires=${exp};path=/`;
+      document.cookie = `minas11_admin_pass=${encodeURIComponent(p)};expires=${exp};path=/`;
+    }catch(e){}
     err.style.display='none'; btn.disabled=true; btn.textContent='Cargando datos…'; bar.style.display='block';
     loadAll().then(()=>{
       document.getElementById('login-screen').style.display='none';
@@ -589,10 +593,14 @@ function doLogin(){
 document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 
 // Auto-login if session saved
+function getCookie(name){
+  const m = document.cookie.match('(?:^|; )'+name+'=([^;]*)');
+  return m ? decodeURIComponent(m[1]) : null;
+}
 (function autoLoginAdmin(){
   try{
-    const saved = localStorage.getItem('minas11_admin');
-    const savedPass = localStorage.getItem('minas11_admin_pass');
+    const saved = getCookie('minas11_admin');
+    const savedPass = getCookie('minas11_admin_pass');
     if(saved==='1' && savedPass){
       document.getElementById('i-user').value = ADMIN_USER;
       document.getElementById('i-pass').value = savedPass;
@@ -602,7 +610,10 @@ document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
 })();
 
 function doLogout(){
-  try{ localStorage.removeItem('minas11_admin'); localStorage.removeItem('minas11_admin_pass'); }catch(e){}
+  try{
+    document.cookie = 'minas11_admin=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+    document.cookie = 'minas11_admin_pass=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
+  }catch(e){}
   DATA=null; Object.values(charts).forEach(c=>{if(c)c.destroy();}); charts={};
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
