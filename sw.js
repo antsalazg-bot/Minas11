@@ -1,4 +1,7 @@
-const CACHE = 'minas11-v3';
+// Import OneSignal SW
+importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
+
+const CACHE = 'minas11-v4';
 const ASSETS = [
   '/Minas11/portal.html',
   '/Minas11/admin.html'
@@ -17,12 +20,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // For Google Sheets requests, always go network first
-  if(e.request.url.includes('google.com')) {
+  if(e.request.url.includes('google.com') || e.request.url.includes('onesignal.com')) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
-  // For app files, network first then cache
   e.respondWith(
     fetch(e.request)
       .then(res => {
