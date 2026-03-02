@@ -335,6 +335,25 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
 .recibo-btn:hover{background:var(--gold2);}
 .recibos-empty{text-align:center;padding:2.5rem 1rem;color:rgba(24,18,10,.35);font-size:.85rem;}
 .recibos-empty .recibos-empty-icon{font-size:2.5rem;margin-bottom:.5rem;}
+
+  /* ── Saldo banner ─────────────────────────── */
+  .saldo-ok{display:flex;align-items:center;gap:.75rem;background:linear-gradient(135deg,rgba(42,122,62,.12),rgba(42,122,62,.06));
+    border:1px solid rgba(42,122,62,.25);border-radius:8px;padding:.85rem 1rem;margin-bottom:.9rem;}
+  .saldo-ok .saldo-ic{font-size:1.6rem;line-height:1;}
+  .saldo-ok .saldo-txt h4{margin:0;font-size:.85rem;font-weight:700;color:var(--green,#2a7a3e);}
+  .saldo-ok .saldo-txt p{margin:.1rem 0 0;font-size:.72rem;color:rgba(24,18,10,.45);}
+  .saldo-warn{background:linear-gradient(135deg,rgba(196,60,40,.1),rgba(196,60,40,.05));
+    border:1px solid rgba(196,60,40,.25);border-radius:8px;padding:.9rem 1rem;margin-bottom:.9rem;}
+  .saldo-warn .sw-hdr{display:flex;align-items:center;gap:.6rem;margin-bottom:.55rem;}
+  .saldo-warn .sw-hdr span{font-size:1.4rem;}
+  .saldo-warn .sw-hdr h4{margin:0;font-size:.85rem;font-weight:700;color:var(--red,#c43c28);}
+  .saldo-warn .sw-row{display:flex;justify-content:space-between;align-items:center;
+    padding:.3rem 0;border-bottom:1px solid rgba(196,60,40,.1);font-size:.75rem;}
+  .saldo-warn .sw-row:last-child{border-bottom:none;}
+  .saldo-warn .sw-lbl{color:rgba(24,18,10,.5);}
+  .saldo-warn .sw-val{font-family:'Fraunces',serif;font-weight:700;color:var(--red,#c43c28);}
+  .saldo-warn .sw-total{font-size:.85rem;margin-top:.4rem;font-weight:700;}
+  .saldo-warn .sw-total .sw-val{font-size:.95rem;}
 </style>
 </head>
 <body>
@@ -397,6 +416,7 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
   <div id="page-inicio" class="page active">
     <div class="content fade-in">
       <div class="sync-info"><div class="sync-dot" id="sync-inicio"></div><span id="sync-label-inicio">Cargando…</span></div>
+      <div id="saldo-banner"></div>
       <div id="inicio-content"><div class="spin-wrap"><div class="spinner"></div><p>Cargando datos…</p></div></div>
     </div>
   </div>
@@ -463,7 +483,7 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
 // ═══════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqvEhy37cjY0cLPLste_Y8fZbZ07vyQ6DpV0R_wtdNXkMlzl-Ew83KQoeCndCbN0pR/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs0R86q90v1ycRiWt63Z0Lz0xM0K62RgLQRVpgw9J3V5A-KVUOqULEdwbaF7Gzo37j/exec';
 let SESSION_TOKEN = null;
 
 const HOJAS_MESES = [
@@ -541,6 +561,7 @@ async function doLogin(){
         document.getElementById('app').style.display='flex';
         document.getElementById('tb-user').textContent=dept;
         renderAll();
+        loadMiSaldo();
         try{
           OneSignalDeferred.push(async function(OneSignal){
             await OneSignal.Notifications.requestPermission();
@@ -580,6 +601,7 @@ function getCookie(name){const m=document.cookie.match('(?:^|; )'+name+'=([^;]*)
       document.getElementById('app').style.display='flex';
       document.getElementById('tb-user').textContent = currentOwner ? `${currentOwner} · Depto ${dept}` : dept;
       renderAll();
+      loadMiSaldo();
     }).catch((err)=>{
       SESSION_TOKEN=null;currentDept=null;
       btn.disabled=false;btn.textContent='Ingresar al Portal';bar.style.display='none';
@@ -716,6 +738,45 @@ function renderAll(){
   const tbUser = document.getElementById('tb-user');
   if(tbUser) tbUser.textContent = currentDept;
   renderInicio();renderAvisos();renderHistorialYRecibos();renderEgresos();
+}
+
+
+// ═══════════════════════════════════════════════════
+//  SALDO PERSONAL (banner en inicio)
+// ═══════════════════════════════════════════════════
+async function loadMiSaldo(){
+  try{
+    const res = await fetch(SCRIPT_URL,{
+      method:'POST',
+      body: JSON.stringify({accion:'saldo-depto', dept:currentDept, token:SESSION_TOKEN})
+    });
+    const data = await res.json();
+    if(data.ok && data.saldo) renderMiSaldo(data.saldo);
+  }catch(e){ /* silencioso si falla */ }
+}
+
+function renderMiSaldo(s){
+  const el = document.getElementById('saldo-banner');
+  if(!el) return;
+  if(s.total <= 0){
+    el.innerHTML = `<div class="saldo-ok">
+      <div class="saldo-ic">✅</div>
+      <div class="saldo-txt">
+        <h4>Al corriente</h4>
+        <p>No tienes adeudos registrados</p>
+      </div>
+    </div>`;
+    return;
+  }
+  const rows = [];
+  if(s.deudaHist > 0) rows.push({l:'Deuda histórica',v:s.deudaHist});
+  if(s.deudaAcum > 0) rows.push({l:'Cuotas pendientes',v:s.deudaAcum});
+  if(s.multas > 0)    rows.push({l:'Multas extemporáneas',v:s.multas});
+  el.innerHTML = `<div class="saldo-warn">
+    <div class="sw-hdr"><span>⚠️</span><h4>Tienes un saldo pendiente</h4></div>
+    ${rows.map(r=>`<div class="sw-row"><span class="sw-lbl">${r.l}</span><span class="sw-val">${fmtDec(r.v)}</span></div>`).join('')}
+    <div class="sw-row sw-total"><span class="sw-lbl">Total adeudado</span><span class="sw-val">${fmtDec(s.total)}</span></div>
+  </div>`;
 }
 
 // ═══════════════════════════════════════════════════
