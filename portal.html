@@ -230,9 +230,9 @@ table{width:100%;border-collapse:collapse;font-size:.78rem;table-layout:fixed;}
 thead th{padding:.65rem .8rem;text-align:left;font-size:.58rem;font-weight:700;
   letter-spacing:.09em;text-transform:uppercase;color:rgba(24,18,10,.4);
   background:var(--cream);border-bottom:1px solid var(--bdr);}
-thead th:nth-child(1){width:82px;}
-thead th:nth-child(3){width:90px;text-align:right;}
-thead th:nth-child(4){width:44px;text-align:center;}
+thead th:nth-child(1){width:78px;}
+thead th:nth-child(3){width:88px;text-align:right;}
+thead th:nth-child(4){width:58px;text-align:center;}
 tbody tr{border-bottom:1px solid rgba(24,18,10,.04);}
 tbody td{padding:.6rem .8rem;vertical-align:middle;}
 .td-f{color:rgba(24,18,10,.55);white-space:nowrap;font-size:.73rem;}
@@ -935,8 +935,8 @@ function applyHistFilters(){
     tbody.innerHTML=filtered.map(p=>{
       const recibo = _recibos.find(r => r.mes === p.mes && r.estado !== 'cancelado');
       const reciboBtn = recibo && recibo.link
-        ? `<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;color:var(--gold);font-weight:600;text-decoration:none;white-space:nowrap;">📄 Ver</a>`
-        : `<span style="color:rgba(24,18,10,.2);font-size:.72rem;">—</span>`;
+        ? `<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--gold);color:var(--ink);border-radius:3px;font-size:.85rem;text-decoration:none;flex-shrink:0;" title="Ver recibo">📄</a>`
+        : `<span style="color:rgba(24,18,10,.15);font-size:.82rem;display:block;text-align:center;">—</span>`;
       return `<tr>
         <td class="td-f">${p.fecha}</td>
         <td class="td-c">${p.concepto}<span class="td-c-sub badge ${p.status}">${ST_LABEL[p.status]}</span></td>
