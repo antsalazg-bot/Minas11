@@ -1,0 +1,25 @@
+{
+  "name": "Minas 11 Portal",
+  "short_name": "Minas 11",
+  "description": "Portal de Condóminos Real de Minas 11",
+  "start_url": "/Minas11/portal.html",
+  "scope": "/Minas11/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f4ed",
+  "theme_color": "#c49a22",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
