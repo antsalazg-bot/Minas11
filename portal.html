@@ -226,20 +226,24 @@ canvas{max-height:220px;}
 .mora p{font-size:.75rem;color:rgba(24,18,10,.55);line-height:1.4;}
 
 /* ── TABLE ─────────────────────── */
-.table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;width:100%;}
-table{width:100%;min-width:420px;border-collapse:collapse;font-size:.78rem;}
+table{width:100%;border-collapse:collapse;font-size:.78rem;table-layout:fixed;}
 thead th{padding:.65rem .8rem;text-align:left;font-size:.58rem;font-weight:700;
   letter-spacing:.09em;text-transform:uppercase;color:rgba(24,18,10,.4);
-  background:var(--cream);border-bottom:1px solid var(--bdr);white-space:nowrap;}
+  background:var(--cream);border-bottom:1px solid var(--bdr);}
+thead th:nth-child(1){width:82px;}
+thead th:nth-child(3){width:90px;text-align:right;}
+thead th:nth-child(4){width:44px;text-align:center;}
 tbody tr{border-bottom:1px solid rgba(24,18,10,.04);}
 tbody td{padding:.6rem .8rem;vertical-align:middle;}
 .td-f{color:rgba(24,18,10,.55);white-space:nowrap;font-size:.73rem;}
-.td-c{font-size:.78rem;max-width:130px;}
+.td-c{font-size:.78rem;word-break:break-word;}
+.td-c-sub{display:block;font-size:.62rem;margin-top:.15rem;}
 .td-s{color:rgba(24,18,10,.4);font-size:.72rem;}
 .td-m{font-family:'Fraunces',serif;font-size:.85rem;text-align:right;white-space:nowrap;}
 .td-m.ing{color:var(--sage);}
+.td-rec{text-align:center;}
 .badge{display:inline-block;padding:.15rem .45rem;border-radius:2px;font-size:.58rem;
-  font-weight:700;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+  font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
 .badge.puntual{background:#f0faf2;color:var(--sage);}
 .badge.tardio{background:#fff8e7;color:var(--amber);}
 .badge.parcial{background:#fff3e0;color:#7a5200;}
@@ -905,10 +909,10 @@ function renderHistorial(){
       </div>
       <div class="hist-summary-row" id="hist-summary"></div>
     </div>
-    <div class="panel"><div class="table-wrap"><table>
-      <thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Estado</th><th>Recibo</th></tr></thead>
+    <div class="panel"><table>
+      <thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Recibo</th></tr></thead>
       <tbody id="hist-tbody"></tbody>
-    </table></div>
+    </table>
     <div id="hist-empty" style="display:none;text-align:center;padding:2rem;color:rgba(24,18,10,.35);font-size:.82rem;">Sin resultados.</div>
     </div>
   `;
@@ -935,10 +939,9 @@ function applyHistFilters(){
         : `<span style="color:rgba(24,18,10,.2);font-size:.72rem;">—</span>`;
       return `<tr>
         <td class="td-f">${p.fecha}</td>
-        <td class="td-c">${p.concepto}</td>
+        <td class="td-c">${p.concepto}<span class="td-c-sub badge ${p.status}">${ST_LABEL[p.status]}</span></td>
         <td class="td-m ing">${fmtDec(p.monto)}</td>
-        <td><span class="badge ${p.status}">${ST_LABEL[p.status]}</span></td>
-        <td>${reciboBtn}</td>
+        <td class="td-rec">${reciboBtn}</td>
       </tr>`;
     }).join('');
   }
