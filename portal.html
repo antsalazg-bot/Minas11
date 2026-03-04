@@ -486,16 +486,32 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs0R86q90v1ycRiWt63Z0Lz0xM0K62RgLQRVpgw9J3V5A-KVUOqULEdwbaF7Gzo37j/exec';
 let SESSION_TOKEN = null;
 
-const HOJAS_MESES = [
-  'Enero 2025','Febrero 2025','Marzo 2025','Abril 2025',
-  'Mayo 2025','Junio 2025','Julio 2025','Agosto 2025',
-  'Septiembre 2025','Octubre 2025','Noviembre 2025','Diciembre 2025',
-  'Enero 2026'
-];
+// ── Genera automáticamente todos los meses desde Enero 2025 hasta el mes actual ──
+const _MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+(function generarMeses(){
+  const hoy = new Date();
+  const fin = {y: hoy.getFullYear(), m: hoy.getMonth()};
+  window._HOJAS_LIST = [];
+  let y = 2025, m = 0;
+  while(y < fin.y || (y === fin.y && m <= fin.m)){
+    window._HOJAS_LIST.push(_MESES_NOMBRES[m] + ' ' + y);
+    m++; if(m > 11){ m = 0; y++; }
+  }
+})();
+const HOJAS_MESES = window._HOJAS_LIST;
 
 // Passwords verified server-side, not stored in browser
 const CAT_LABELS = {"SM-VIG":"Vigilancia","SM-LIM":"Limpieza","SM-ADM":"Administración","SM-BAS":"Basura","SM-JAT":"Jardinería","SM-INT":"Internet","SB-CFE":"CFE / Luz","SB-ELV":"Elevadores","SB-PLT":"Planta luz","PE-CAB":"Cable elevador","PE-INT":"Interfon","PE-CIS":"Cisterna","MR-BOM":"Bombas","MR-ELE":"Electricista","MR-VID":"Lavado vidrios","MR-GEN":"Mantenimiento general","MR-PLOM":"Plomería","CI-INS":"Compras e insumos","ME-BAN":"Inversión/Bancos","ME-DEV":"Devoluciones","ME-CAJ":"Caja chica","ME-PEN":"Penalización","OTROS":"Otros"};
-const MES_SHORT = {'Enero 2025':'Ene 25','Febrero 2025':'Feb 25','Marzo 2025':'Mar 25','Abril 2025':'Abr 25','Mayo 2025':'May 25','Junio 2025':'Jun 25','Julio 2025':'Jul 25','Agosto 2025':'Ago 25','Septiembre 2025':'Sep 25','Octubre 2025':'Oct 25','Noviembre 2025':'Nov 25','Diciembre 2025':'Dic 25','Enero 2026':'Ene 26'};
+const _MESES_CORTOS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+const MES_SHORT = (function(){
+  const map = {};
+  window._HOJAS_LIST.forEach(largo => {
+    const [nombre, anio] = largo.split(' ');
+    const m = _MESES_NOMBRES.indexOf(nombre);
+    map[largo] = _MESES_CORTOS[m] + ' ' + String(anio).slice(2);
+  });
+  return map;
+})();
 const ST_ICON  = {puntual:'✓',tardio:'✓',parcial:'~',sin_pago:'·'};
 const ST_LABEL = {puntual:'Puntual',tardio:'Tardío',parcial:'Parcial',sin_pago:'Sin pago'};
 const TOTAL_DEPTOS = 28;
