@@ -648,13 +648,13 @@ const ADMIN_USER = 'admin';
 // Token de sesión en memoria (nunca se guarda en el código)
 let SESSION_TOKEN = null;
 
-const MESES = ['Enero 2025','Febrero 2025','Marzo 2025','Abril 2025','Mayo 2025','Junio 2025','Julio 2025','Agosto 2025','Septiembre 2025','Octubre 2025','Noviembre 2025','Diciembre 2025','Enero 2026','Febrero 2026','Marzo 2026'];
+const MESES = ['Enero 2025','Febrero 2025','Marzo 2025','Abril 2025','Mayo 2025','Junio 2025','Julio 2025','Agosto 2025','Septiembre 2025','Octubre 2025','Noviembre 2025','Diciembre 2025','Enero 2026'];
 const PORTAL_PASSWORDS = {"101":"bvjMeJ0s","102":"ymUmhpie","103":"Vsq1hlXy","104":"bVskvBfM","105":"78Y0YYmP","201":"QvgF7TUy","202":"TbmEchGp","204":"cWEbmYTj","205":"EbHcEOKj","301":"iJwCCKOn","302":"ljgHSta0","303":"5HVbcctK","304":"2mRc4mBE","305":"NTPhXvsz","401":"ebpi5mKi","402":"Jz66ma8Y","403":"EaDM9ecc","404":"HS07ExQv","405":"XDKBjlMz","501":"iYXZ0OTv","502":"YNl4YXzY","504":"LjYFOlxY","505":"YLV6Bybr","PH1":"RiCYmpjF","PH2":"2nfPo0OH","PH3":"Ie1J5OFi","PH4":"PQLhMCEn","PH5":"KPkwD5JU"};
 const DEPTOS = ['101','102','103','104','105','201','202','204','205','301','302','303','304','305','401','402','403','404','405','501','502','504','505','PH1','PH2','PH3','PH4','PH5'];
 const TOTAL_DEPTOS = 28;
 
 const CAT = {"SM-VIG":"Vigilancia","SM-LIM":"Limpieza","SM-ADM":"Administración","SM-BAS":"Basura","SM-JAT":"Jardinería","SM-INT":"Internet","SB-CFE":"CFE / Luz","SB-ELV":"Elevadores","SB-PLT":"Planta luz","PE-CAB":"Cable elevador","PE-INT":"Interfon","PE-CIS":"Cisterna","MR-BOM":"Bombas","MR-ELE":"Electricista","MR-VID":"Lavado vidrios","MR-GEN":"Mant. general","MR-PLOM":"Plomería","CI-INS":"Compras/insumos","ME-BAN":"Inversión/Bancos","ME-DEV":"Devoluciones","ME-CAJ":"Caja chica","ME-PEN":"Penalización"};
-const MS  = {'Enero 2025':'Ene 25','Febrero 2025':'Feb 25','Marzo 2025':'Mar 25','Abril 2025':'Abr 25','Mayo 2025':'May 25','Junio 2025':'Jun 25','Julio 2025':'Jul 25','Agosto 2025':'Ago 25','Septiembre 2025':'Sep 25','Octubre 2025':'Oct 25','Noviembre 2025':'Nov 25','Diciembre 2025':'Dic 25','Enero 2026':'Ene 26','Febrero 2026':'Feb 26','Marzo 2026':'Mar 26'};
+const MS  = {'Enero 2025':'Ene 25','Febrero 2025':'Feb 25','Marzo 2025':'Mar 25','Abril 2025':'Abr 25','Mayo 2025':'May 25','Junio 2025':'Jun 25','Julio 2025':'Jul 25','Agosto 2025':'Ago 25','Septiembre 2025':'Sep 25','Octubre 2025':'Oct 25','Noviembre 2025':'Nov 25','Diciembre 2025':'Dic 25','Enero 2026':'Ene 26'};
 const SI  = {puntual:'✓',tardio:'✓',parcial:'~',sin_pago:'·'};
 const SL  = {puntual:'Puntual',tardio:'Tardío',parcial:'Parcial',sin_pago:'Sin pago'};
 
@@ -782,7 +782,7 @@ async function generarRecibosDelMes(){
   try{
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
-      body: JSON.stringify({accion:'generar-recibos-mes', mes, token:ADMIN_TOKEN})
+      body: JSON.stringify({accion:'generar-recibos-mes', mes, token:SESSION_TOKEN})
     });
     const data = await res.json();
     if(data.ok){
@@ -820,7 +820,7 @@ async function cancelarRecibo(){
   try{
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
-      body: JSON.stringify({accion:'cancelar-recibo', folio, token:ADMIN_TOKEN})
+      body: JSON.stringify({accion:'cancelar-recibo', folio, token:SESSION_TOKEN})
     });
     const data = await res.json();
     result.style.display = 'block';
