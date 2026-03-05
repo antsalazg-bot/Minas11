@@ -953,14 +953,21 @@ async function loadAll(){
   MESES.forEach((mes,idx)=>{
     const table=results[idx]; if(!table)return;
     const allRows=rows(table);
-    // Saldo mes anterior ahora está en J2 (fila índice 1, columna J = índice 9)
+    // Saldo mes anterior: fila 2 col J (índice [1][9]).
+    // Fallback: si J no llega en el API, calcular de F2-D2+E2 (TOTAL SALDO - INGRESO + EGRESO)
     let saldoAnt=0;
-    if(allRows[1] && typeof allRows[1][9]==='number') saldoAnt=allRows[1][9];
-    let totalIng=0,totalEgr=0; const ecat={},pagaron=new Set();
-    allRows.forEach((row,rowIdx)=>{
-      if(rowIdx<3) return; // Saltar las 3 primeras filas de encabezado
+    if(allRows[1]){
+      if(typeof allRows[1][9]==='number') saldoAnt=allRows[1][9];
+      else if(typeof allRows[1][5]==='number'){
+        const f2=allRows[1][5], d2=typeof allRows[1][3]==='number'?allRows[1][3]:0, e2=typeof allRows[1][4]==='number'?allRows[1][4]:0;
+        saldoAnt=f2-d2+e2;
+      }
+    }
+    let totalIng=0,totalEgr=0,lastSaldoF=0; const ecat={},pagaron=new Set();
+    allRows.forEach((row)=>{
       if(!row[0]) return;
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
+      const sf=typeof row[5]==='number'?row[5]:null; if(sf!==null) lastSaldoF=sf;
       const ing=typeof row[3]==='number'?row[3]:0;
       const egr=typeof row[4]==='number'?row[4]:0;
       const nombre=row[2]||'', idC=row[6]||'', idE=row[7]||'';
@@ -979,7 +986,7 @@ async function loadAll(){
       }
       if(egr>0){totalEgr+=egr; const cat=(idE||'OTROS').split('-').slice(0,2).join('-')||'OTROS'; ecat[cat]=(ecat[cat]||0)+egr;}
     });
-    monthly[mes]={mes,saldo_anterior:saldoAnt,total_ingresos:totalIng,total_egresos:totalEgr,egresos_por_cat:ecat,deptos_pagaron:pagaron.size,total_deptos:TOTAL_DEPTOS,pct_cobranza:pagaron.size/TOTAL_DEPTOS};
+    monthly[mes]={mes,saldo_anterior:saldoAnt,saldo_final:lastSaldoF,total_ingresos:totalIng,total_egresos:totalEgr,egresos_por_cat:ecat,deptos_pagaron:pagaron.size,total_deptos:TOTAL_DEPTOS,pct_cobranza:pagaron.size/TOTAL_DEPTOS};
   });
 
   // Calculate cuota per dept: median of non-zero monthly payments
@@ -1009,7 +1016,7 @@ async function loadAll(){
     deptData[dept]={cuota,morosidad:Math.min(morosidad,0)*-1,pagos,resumen};
   });
 
-  DATA={monthly:MESES.map(mes=>monthly[mes]||{mes,saldo_anterior:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0}),deptData};
+  DATA={monthly:MESES.map(mes=>monthly[mes]||{mes,saldo_anterior:0,saldo_final:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0}),deptData};
 
   const t=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('tb-sync').textContent=`Sync ${t}`;
@@ -1027,7 +1034,9 @@ function rResumen(){
   const tEgr=M.reduce((s,m)=>s+m.total_egresos,0);
   const bal=tIng-tEgr;
   const avgCob=M.reduce((s,m)=>s+m.pct_cobranza,0)/M.length;
-  const lastSaldo=M[M.length-1].saldo_anterior;
+  // Usar saldo_final del último mes con datos reales (no el mes vacío más reciente)
+  const lastActual=[...M].reverse().find(m=>m.saldo_final>0);
+  const lastSaldo=lastActual?lastActual.saldo_final:([...M].reverse().find(m=>m.saldo_anterior>0)||{saldo_anterior:0}).saldo_anterior;
   const tMora=Object.values(DATA.deptData).reduce((s,d)=>s+d.morosidad,0);
 
   document.getElementById('res-content').innerHTML=`
@@ -1065,7 +1074,7 @@ function rResumen(){
   if(charts.sal)charts.sal.destroy();
   charts.sal=new Chart(document.getElementById('ch-sal').getContext('2d'),{type:'line',
     data:{labels:M.map(m=>MS[m.mes]||m.mes),datasets:[{label:'Saldo bancario',
-      data:M.map(m=>m.saldo_anterior),borderColor:'rgba(196,154,34,.9)',backgroundColor:'rgba(196,154,34,.08)',
+      data:M.map(m=>m.saldo_final||m.saldo_anterior),borderColor:'rgba(196,154,34,.9)',backgroundColor:'rgba(196,154,34,.08)',
       borderWidth:2,pointRadius:4,pointBackgroundColor:'rgba(196,154,34,1)',fill:true,tension:.3}]},
     options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmtD(c.raw)}}},
     scales:{y:{ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',color:'rgba(24,18,10,.4)',font:{family:'DM Sans',size:10}},grid:{color:'rgba(24,18,10,.05)'}},
@@ -1774,14 +1783,19 @@ async function loadEstadoMes(mes){
 }
 
 function renderEstadoMesTable(mes,rawRows){
-  // Saldo mes anterior ahora está en J2 (fila índice 1, columna J = índice 9)
+  // Saldo mes anterior: J2 (índice [1][9]), fallback F2-D2+E2
   let saldo=0;
-  if(rawRows[1] && typeof rawRows[1][9]==='number') saldo=rawRows[1][9];
+  if(rawRows[1]){
+    if(typeof rawRows[1][9]==='number') saldo=rawRows[1][9];
+    else if(typeof rawRows[1][5]==='number'){
+      const f2=rawRows[1][5], d2=typeof rawRows[1][3]==='number'?rawRows[1][3]:0, e2=typeof rawRows[1][4]==='number'?rawRows[1][4]:0;
+      saldo=f2-d2+e2;
+    }
+  }
   let tIng=0,tEgr=0;
   const dataRows=[];
 
   rawRows.forEach((row,i)=>{
-    if(i<3) return; // Saltar las 3 primeras filas de encabezado
     // Normalize date early (PRINCIPAL CAMBIO)
     const rawFecha = row[0];
     const fechaNorm = normalizeSheetDate(rawFecha);

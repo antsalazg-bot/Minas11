@@ -690,13 +690,18 @@ async function loadAllData(){
   HOJAS_MESES.forEach((mes,idx)=>{
     const table=monthlyResults[idx];if(!table)return;
     const allRowsP=tableToRows(table);
-    // Saldo mes anterior ahora está en J2 (fila índice 1, columna J = índice 9)
+    // Saldo mes anterior: J2 (índice [1][9]), fallback F2-D2+E2
     let saldoAnterior=0;
-    if(allRowsP[1] && typeof allRowsP[1][9]==='number') saldoAnterior=allRowsP[1][9];
+    if(allRowsP[1]){
+      if(typeof allRowsP[1][9]==='number') saldoAnterior=allRowsP[1][9];
+      else if(typeof allRowsP[1][5]==='number'){
+        const f2p=allRowsP[1][5], d2p=typeof allRowsP[1][3]==='number'?allRowsP[1][3]:0, e2p=typeof allRowsP[1][4]==='number'?allRowsP[1][4]:0;
+        saldoAnterior=f2p-d2p+e2p;
+      }
+    }
     let totalIngresos=0,totalEgresos=0,egresosCat={};
     const deptsPagaron=new Set();
-    allRowsP.forEach((row,rowIdx)=>{
-      if(rowIdx<3)return; // Saltar las 3 primeras filas de encabezado
+    allRowsP.forEach((row)=>{
       if(!row[0])return;
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
