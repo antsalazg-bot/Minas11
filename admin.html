@@ -1917,15 +1917,3 @@ if('serviceWorker' in navigator){
 </body>
 </html>
 
-Notas rápidas:
-- Cambios principales:
-  - Añadí normalizeSheetDate() y pad().
-  - En loadAll() ahora normalizo la fecha al guardar pagos en deptPagos.
-  - En renderEstadoMesTable() ahora normalizo la fecha (fecha: fechaNorm) y trabajo sobre ella.
-  - En openModal() se usa normalizeSheetDate para convertir la fecha a YYYY-MM-DD para el input[type=date].
-- Beneficio: ya no verás ISO crudas en la interfaz; todo se mostrará como DD/MM/YYYY.
-- Recomendación final: si puedes, normaliza las fechas desde el Apps Script que entrega los datos (devolver "DD/MM/YYYY") para evitar conversiones en cliente.
-
-¿Quieres que también haga:
-- Un diff en formato patch (git) en lugar del archivo completo?
-- O que modifique el backend Apps Script (si me pasas el código) para devolver fechas ya normalizadas?
