@@ -939,7 +939,7 @@ async function loadAll(){
     let saldoAnt=0,totalIng=0,totalEgr=0; const ecat={},pagaron=new Set();
     rows(table).forEach((row)=>{
       if(!row[0]) return;
-      if(row[0]==='SALDO MES ANTERIOR'){saldoAnt=typeof row[4]==='number'?row[4]:0;return;}
+      if(row[0]==='SALDO MES ANTERIOR'){saldoAnt=typeof row[1]==='number'?row[1]:0;return;}
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
       const ing=typeof row[3]==='number'?row[3]:0;
       const egr=typeof row[4]==='number'?row[4]:0;
@@ -1755,7 +1755,7 @@ function renderEstadoMesTable(mes,rawRows){
     const rawFecha = row[0];
     const fechaNorm = normalizeSheetDate(rawFecha);
     if(!fechaNorm) return;
-    if(fechaNorm === 'SALDO MES ANTERIOR'){ saldo = typeof row[4] === 'number' ? row[4] : 0; return; }
+    if(fechaNorm === 'SALDO MES ANTERIOR'){ saldo = typeof row[1] === 'number' ? row[1] : 0; return; }
     if(fechaNorm === 'FECHA' || String(rawFecha).includes('ESTADO DE CUENTA')) return;
 
     const isTotal = String(rawFecha) === 'TOTAL';
