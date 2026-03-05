@@ -66,7 +66,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0ece4;color:var(--ink);min-he
 .fgrp input{width:100%;padding:.75rem 1rem;border:1.5px solid var(--bdr);border-radius:3px;
   font-family:'DM Sans',sans-serif;font-size:.92rem;background:var(--cream);color:var(--ink);outline:none;transition:border-color .2s;}
 .fgrp input:focus{border-color:var(--gold);}
-.lbtn{width:100%;padding:.85rem;background:var(--ink);color:var(--cream);border:none;border-radius:3px;
+.lbtn{width:100%;padding:.85rem;background:var(--ink);color:var(--cream);Border:none;border-radius:3px;
   font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:700;letter-spacing:.1em;
   text-transform:uppercase;cursor:pointer;transition:background .2s;margin-top:.4rem;}
 .lbtn:hover{background:var(--blue);}
@@ -681,6 +681,43 @@ const fmtD   = n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'
 
 let DATA=null, charts={}, selDept=null;
 
+// ── UTIL: normalización de fechas (agregado)
+function pad(n){ return String(n).padStart(2,'0'); }
+
+function normalizeSheetDate(v){
+  // Devuelve fecha en formato "DD/MM/YYYY" o '' si no existe
+  if(v === null || v === undefined || v === '') return '';
+  // Si ya es Date
+  if(v instanceof Date && !isNaN(v)) {
+    return `${pad(v.getDate())}/${pad(v.getMonth()+1)}/${v.getFullYear()}`;
+  }
+  // Si es número (timestamp)
+  if(typeof v === 'number'){
+    const d = new Date(v);
+    if(!isNaN(d)) return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  }
+  // Si es string
+  if(typeof v === 'string'){
+    v = v.trim();
+    // ISO con tiempo → usar parte YYYY-MM-DD para evitar cambios por zona horaria
+    const isoDate = v.match(/^(\d{4})-(\d{2})-(\d{2})T/);
+    if(isoDate){
+      return `${pad(Number(isoDate[3]))}/${pad(Number(isoDate[2]))}/${isoDate[1]}`;
+    }
+    // YYYY-MM-DD (sin tiempo)
+    const ymd = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if(ymd){
+      return `${pad(Number(ymd[3]))}/${pad(Number(ymd[2]))}/${ymd[1]}`;
+    }
+    // DD/MM/YYYY ya formateado
+    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v)) return v;
+  }
+  // Fallback: intentar crear Date y usar valores (puede incluir hora)
+  const d = new Date(v);
+  if(!isNaN(d)) return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  return String(v);
+}
+
 // ═══════════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════════
@@ -909,14 +946,14 @@ async function loadAll(){
       const nombre=row[2]||'', idC=row[6]||'', idE=row[7]||'';
       if(ing>0){
         totalIng+=ing;
-        const dm=idC.match(/^CM-(.+)$/);
+        const dm=(idC||'').toString().match(/^CM-(.+)$/);
         if(dm){
           const dept=dm[1]; pagaron.add(dept);
           if(!deptPagos[dept])deptPagos[dept]=[];
           if(!deptMontosMes[dept])deptMontosMes[dept]={};
           deptMontosMes[dept][mes]=(deptMontosMes[dept][mes]||0)+ing;
-          const f=typeof row[0]==='string'?row[0]:String(row[0]);
-          // Extract day: fecha is DD/MM/YYYY
+          // Normalize fecha antes de guardar (PARCHE PRINCIPAL)
+          const f = normalizeSheetDate(row[0]);
           deptPagos[dept].push({fecha:f,concepto:nombre,monto:ing,mes});
         }
       }
@@ -1714,17 +1751,21 @@ function renderEstadoMesTable(mes,rawRows){
   const dataRows=[];
 
   rawRows.forEach((row,i)=>{
-    if(!row[0])return;
-    if(row[0]==='SALDO MES ANTERIOR'){saldo=typeof row[4]==='number'?row[4]:0;return;}
-    if(row[0]==='FECHA'||String(row[0]).includes('ESTADO DE CUENTA'))return;
-    const isTotal=row[0]==='TOTAL';
-    const ing=typeof row[3]==='number'?row[3]:0;
-    const egr=typeof row[4]==='number'?row[4]:0;
-    const sal=typeof row[5]==='number'?row[5]:null;
-    const idC=row[6]||'';
-    const idE=row[7]||'';
-    if(!isTotal){tIng+=ing;tEgr+=egr;}
-    dataRows.push({i,fecha:row[0],id:row[1]||'',concepto:row[2]||'',ing,egr,saldo:sal,idC,idE,isTotal});
+    // Normalize date early (PRINCIPAL CAMBIO)
+    const rawFecha = row[0];
+    const fechaNorm = normalizeSheetDate(rawFecha);
+    if(!fechaNorm) return;
+    if(fechaNorm === 'SALDO MES ANTERIOR'){ saldo = typeof row[4] === 'number' ? row[4] : 0; return; }
+    if(fechaNorm === 'FECHA' || String(rawFecha).includes('ESTADO DE CUENTA')) return;
+
+    const isTotal = String(rawFecha) === 'TOTAL';
+    const ing = typeof row[3] === 'number' ? row[3] : 0;
+    const egr = typeof row[4] === 'number' ? row[4] : 0;
+    const sal = typeof row[5] === 'number' ? row[5] : null;
+    const idC = row[6] || '';
+    const idE = row[7] || '';
+    if(!isTotal){ tIng += ing; tEgr += egr; }
+    dataRows.push({ i, fecha: fechaNorm, id: row[1] || '', concepto: row[2] || '', ing, egr, saldo: sal, idC, idE, isTotal });
   });
 
   // Update stats
@@ -1786,9 +1827,11 @@ function openModal(rowIdx, mes){
     document.getElementById('modal-title').textContent='Editar movimiento';
     const row=emRawRows[mes]&&emRawRows[mes][rowIdx];
     if(row){
-      // fecha DD/MM/YYYY → YYYY-MM-DD for input
-      const parts=(row[0]||'').split('/');
-      const fechaInput=parts.length===3?`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`:hoy;
+      // Normalize fecha and convert to YYYY-MM-DD for input
+      const raw = row[0] || '';
+      const norm = normalizeSheetDate(raw); // DD/MM/YYYY
+      const parts = norm.split('/');
+      const fechaInput = (parts.length === 3) ? `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}` : hoy;
       document.getElementById('m-fecha').value=fechaInput;
       const isEgr=typeof row[4]==='number'&&row[4]>0;
       document.getElementById('m-tipo').value=isEgr?'egr':'ing';
@@ -1873,3 +1916,16 @@ if('serviceWorker' in navigator){
 </script>
 </body>
 </html>
+
+Notas rápidas:
+- Cambios principales:
+  - Añadí normalizeSheetDate() y pad().
+  - En loadAll() ahora normalizo la fecha al guardar pagos en deptPagos.
+  - En renderEstadoMesTable() ahora normalizo la fecha (fecha: fechaNorm) y trabajo sobre ella.
+  - En openModal() se usa normalizeSheetDate para convertir la fecha a YYYY-MM-DD para el input[type=date].
+- Beneficio: ya no verás ISO crudas en la interfaz; todo se mostrará como DD/MM/YYYY.
+- Recomendación final: si puedes, normaliza las fechas desde el Apps Script que entrega los datos (devolver "DD/MM/YYYY") para evitar conversiones en cliente.
+
+¿Quieres que también haga:
+- Un diff en formato patch (git) en lugar del archivo completo?
+- O que modifique el backend Apps Script (si me pasas el código) para devolver fechas ya normalizadas?
