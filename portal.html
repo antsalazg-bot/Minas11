@@ -490,7 +490,9 @@ let SESSION_TOKEN = null;
 const _MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 (function generarMeses(){
   const hoy = new Date();
-  const fin = {y: hoy.getFullYear(), m: hoy.getMonth()};
+  // Incluir hasta el mes siguiente para que hojas pre-creadas aparezcan
+  const finDate = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+  const fin = {y: finDate.getFullYear(), m: finDate.getMonth()};
   window._HOJAS_LIST = [];
   let y = 2025, m = 0;
   while(y < fin.y || (y === fin.y && m <= fin.m)){
@@ -687,12 +689,15 @@ async function loadAllData(){
   const monthlyResults = results;
   HOJAS_MESES.forEach((mes,idx)=>{
     const table=monthlyResults[idx];if(!table)return;
-    const rows=tableToRows(table);
-    let saldoAnterior=0,totalIngresos=0,totalEgresos=0,egresosCat={};
+    const allRowsP=tableToRows(table);
+    // Saldo mes anterior ahora está en J2 (fila índice 1, columna J = índice 9)
+    let saldoAnterior=0;
+    if(allRowsP[1] && typeof allRowsP[1][9]==='number') saldoAnterior=allRowsP[1][9];
+    let totalIngresos=0,totalEgresos=0,egresosCat={};
     const deptsPagaron=new Set();
-    rows.forEach(row=>{
+    allRowsP.forEach((row,rowIdx)=>{
+      if(rowIdx<3)return; // Saltar las 3 primeras filas de encabezado
       if(!row[0])return;
-      if(row[0]==='SALDO MES ANTERIOR'){saldoAnterior=typeof row[4]==='number'?row[4]:0;return;}
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
       if(ingreso>0){

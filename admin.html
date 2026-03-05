@@ -184,7 +184,7 @@ tbody td{padding:.75rem 1rem;}
 .dept-btn:hover{border-color:var(--gold);color:var(--ink);}
 .dept-btn.active{background:var(--ink);color:var(--cream);border-color:var(--ink);}
 .dept-btn.mora{border-color:rgba(139,26,26,.3);color:var(--red);}
-.dept-btn.mora.active{background:var(--red);border-color:var(--red);}
+.dept-btn.mora.active{background:var(--red);border-color:var(--red);color:var(--cream);}
 
 /* SEM */
 .sem-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:.5rem;}
@@ -654,7 +654,9 @@ const _MESES_CORTOS  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','O
 (function generarMeses(){
   const inicio = {y:2025, m:0}; // Enero 2025
   const hoy = new Date();
-  const fin = {y:hoy.getFullYear(), m:hoy.getMonth()};
+  // Incluir hasta el mes siguiente para que hojas pre-creadas aparezcan en los menús
+  const finDate = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1);
+  const fin = {y:finDate.getFullYear(), m:finDate.getMonth()};
   window._MESES_LIST = [];
   window._MS_MAP = {};
   let {y,m} = inicio;
@@ -667,6 +669,20 @@ const _MESES_CORTOS  = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','O
   }
 })();
 const MESES = window._MESES_LIST;
+// Años disponibles derivados de los meses generados
+const YEARS = [...new Set(MESES.map(m => m.split(' ')[1]))].sort();
+// Filtro global de año ('todos' = sin filtro)
+let curYear = 'todos';
+function filtrarMeses(monthly){ return curYear==='todos'?monthly:monthly.filter(m=>m.mes.endsWith(' '+curYear)); }
+function yearSelHtml(onchange){
+  return `<div style="display:inline-flex;align-items:center;gap:.5rem;margin-bottom:1.2rem">
+    <span style="font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(24,18,10,.38)">Año</span>
+    <select onchange="${onchange}" style="padding:.35rem .8rem;border:1.5px solid var(--bdr);border-radius:3px;font-family:'DM Sans',sans-serif;font-size:.82rem;background:#fff;color:var(--ink);outline:none;cursor:pointer">
+      <option value="todos" ${curYear==='todos'?'selected':''}>Todos</option>
+      ${YEARS.map(y=>`<option value="${y}" ${curYear===y?'selected':''}>${y}</option>`).join('')}
+    </select>
+  </div>`;
+}
 const PORTAL_PASSWORDS = {"101":"bvjMeJ0s","102":"ymUmhpie","103":"Vsq1hlXy","104":"bVskvBfM","105":"78Y0YYmP","201":"QvgF7TUy","202":"TbmEchGp","204":"cWEbmYTj","205":"EbHcEOKj","301":"iJwCCKOn","302":"ljgHSta0","303":"5HVbcctK","304":"2mRc4mBE","305":"NTPhXvsz","401":"ebpi5mKi","402":"Jz66ma8Y","403":"EaDM9ecc","404":"HS07ExQv","405":"XDKBjlMz","501":"iYXZ0OTv","502":"YNl4YXzY","504":"LjYFOlxY","505":"YLV6Bybr","PH1":"RiCYmpjF","PH2":"2nfPo0OH","PH3":"Ie1J5OFi","PH4":"PQLhMCEn","PH5":"KPkwD5JU"};
 const DEPTOS = ['101','102','103','104','105','201','202','204','205','301','302','303','304','305','401','402','403','404','405','501','502','504','505','PH1','PH2','PH3','PH4','PH5'];
 const TOTAL_DEPTOS = 28;
@@ -936,10 +952,14 @@ async function loadAll(){
 
   MESES.forEach((mes,idx)=>{
     const table=results[idx]; if(!table)return;
-    let saldoAnt=0,totalIng=0,totalEgr=0; const ecat={},pagaron=new Set();
-    rows(table).forEach((row)=>{
+    const allRows=rows(table);
+    // Saldo mes anterior ahora está en J2 (fila índice 1, columna J = índice 9)
+    let saldoAnt=0;
+    if(allRows[1] && typeof allRows[1][9]==='number') saldoAnt=allRows[1][9];
+    let totalIng=0,totalEgr=0; const ecat={},pagaron=new Set();
+    allRows.forEach((row,rowIdx)=>{
+      if(rowIdx<3) return; // Saltar las 3 primeras filas de encabezado
       if(!row[0]) return;
-      if(row[0]==='SALDO MES ANTERIOR'){saldoAnt=typeof row[1]==='number'?row[1]:0;return;}
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
       const ing=typeof row[3]==='number'?row[3]:0;
       const egr=typeof row[4]==='number'?row[4]:0;
@@ -1002,7 +1022,7 @@ function renderAll(){rResumen();rCobranza();rEgresos();rDepto();rMorosos();rSald
 //  RESUMEN
 // ═══════════════════════════════════════════════
 function rResumen(){
-  const M=DATA.monthly;
+  const M=filtrarMeses(DATA.monthly);
   const tIng=M.reduce((s,m)=>s+m.total_ingresos,0);
   const tEgr=M.reduce((s,m)=>s+m.total_egresos,0);
   const bal=tIng-tEgr;
@@ -1011,6 +1031,7 @@ function rResumen(){
   const tMora=Object.values(DATA.deptData).reduce((s,d)=>s+d.morosidad,0);
 
   document.getElementById('res-content').innerHTML=`
+    ${yearSelHtml("curYear=this.value;rResumen()")}
     <div class="kpi-row c4">
       <div class="kcard g"><div class="klbl">Ingresos acumulados</div><div class="kval">${fmt(tIng)}</div><div class="ksub">${M.length} meses</div></div>
       <div class="kcard r"><div class="klbl">Egresos acumulados</div><div class="kval">${fmt(tEgr)}</div><div class="ksub">Todos los conceptos</div></div>
@@ -1093,14 +1114,17 @@ function rResMes(idx){
 //  COBRANZA
 // ═══════════════════════════════════════════════
 function rCobranza(){
-  const M=DATA.monthly;
+  const M=filtrarMeses(DATA.monthly);
+  const mesesFiltrados=new Set(M.map(m=>m.mes));
   const rows2=DEPTOS.map(dept=>{
     const d=DATA.deptData[dept];
-    return{dept,cuota:d.cuota,resumen:d.resumen,morosidad:d.morosidad,total:d.pagos.reduce((s,p)=>s+p.monto,0)};
+    const resumenFilt=d.resumen.filter(r=>mesesFiltrados.has(r.mes));
+    return{dept,cuota:d.cuota,resumen:resumenFilt,morosidad:d.morosidad,total:d.pagos.filter(p=>mesesFiltrados.has(p.mes)).reduce((s,p)=>s+p.monto,0)};
   });
   const avgCob=(M.reduce((s,m)=>s+m.pct_cobranza,0)/M.length*100).toFixed(1);
 
   document.getElementById('cob-content').innerHTML=`
+    ${yearSelHtml("curYear=this.value;rCobranza()")}
     <div class="kpi-row c3">
       <div class="kcard g"><div class="klbl">Cobranza promedio</div><div class="kval">${avgCob}%</div><div class="ksub">Del período completo</div></div>
       <div class="kcard b"><div class="klbl">Deptos al corriente</div><div class="kval">${rows2.filter(r=>r.morosidad===0&&r.resumen.filter(m=>m.st==='sin_pago').length<=1).length}</div><div class="ksub">Sin adeudos relevantes</div></div>
@@ -1108,10 +1132,10 @@ function rCobranza(){
     </div>
     <div class="stitle"><h2>Cobranza mensual</h2><span class="tag">% departamentos que pagaron</span></div>
     <div class="panel panel-pad"><canvas id="ch-cob"></canvas></div>
-    <div class="stitle"><h2>Estado por departamento</h2><span class="tag">2025–2026</span></div>
+    <div class="stitle"><h2>Estado por departamento</h2><span class="tag">${curYear==='todos'?'Todos los años':curYear}</span></div>
     <div class="panel" style="overflow-x:auto">
       <table>
-        <thead><tr><th>Depto</th><th>Cuota</th>${MESES.map(m=>`<th style="text-align:center;min-width:48px">${MS[m]||m}</th>`).join('')}<th style="text-align:right">Total pagado</th></tr></thead>
+        <thead><tr><th>Depto</th><th>Cuota</th>${M.map(m=>`<th style="text-align:center;min-width:48px">${MS[m.mes]||m.mes}</th>`).join('')}<th style="text-align:right">Total pagado</th></tr></thead>
         <tbody>${rows2.map(r=>`<tr>
           <td><strong>${r.dept}</strong>${r.morosidad>0?` <span class="badge danger">mora</span>`:''}</td>
           <td class="td-muted">${fmt(r.cuota)}</td>
@@ -1137,7 +1161,7 @@ function rCobranza(){
 //  EGRESOS
 // ═══════════════════════════════════════════════
 function rEgresos(){
-  const M=DATA.monthly;
+  const M=filtrarMeses(DATA.monthly);
   const catTot={};
   M.forEach(m=>{Object.entries(m.egresos_por_cat).forEach(([c,v])=>{catTot[c]=(catTot[c]||0)+v;});});
   const sorted=Object.entries(catTot).sort((a,b)=>b[1]-a[1]);
@@ -1145,6 +1169,7 @@ function rEgresos(){
   const clrs=['rgba(139,58,15,.8)','rgba(196,154,34,.8)','rgba(58,92,60,.8)','rgba(28,58,92,.8)','rgba(122,82,0,.75)','rgba(139,26,26,.75)','rgba(58,92,60,.55)','rgba(196,154,34,.55)'];
 
   document.getElementById('egr-content').innerHTML=`
+    ${yearSelHtml("curYear=this.value;rEgresos()")}
     <div class="kpi-row c3">
       <div class="kcard r"><div class="klbl">Total egresos</div><div class="kval">${fmt(tEgr)}</div><div class="ksub">${M.length} meses</div></div>
       <div class="kcard o"><div class="klbl">Promedio mensual</div><div class="kval">${fmt(tEgr/M.length)}</div><div class="ksub">Por mes</div></div>
@@ -1209,6 +1234,7 @@ function rEgresos(){
 function rDepto(){
   const first=selDept||DEPTOS[0];
   document.getElementById('dept-content').innerHTML=`
+    ${yearSelHtml("curYear=this.value;rDepto()")}
     <div class="stitle" style="margin-top:0"><h2>Selecciona un departamento</h2></div>
     <div class="dept-grid" id="dg">${DEPTOS.map(d=>`<button class="dept-btn ${DATA.deptData[d].morosidad>0?'mora':''} ${d===first?'active':''}" onclick="selDepto('${d}',this)">${d}</button>`).join('')}</div>
     <div id="dd"></div>`;
@@ -1224,7 +1250,8 @@ function selDepto(dept,btn){
 
 function rDeptDetail(dept){
   const d=DATA.deptData[dept];
-  const resumen=d.resumen;
+  const mesesFiltrados=new Set(filtrarMeses(DATA.monthly).map(m=>m.mes));
+  const resumen=d.resumen.filter(r=>mesesFiltrados.has(r.mes));
   const tPag=d.pagos.reduce((s,p)=>s+p.monto,0);
   const esp=d.cuota*resumen.length;
   const pct=esp>0?(tPag/esp*100).toFixed(1):0;
@@ -1747,15 +1774,18 @@ async function loadEstadoMes(mes){
 }
 
 function renderEstadoMesTable(mes,rawRows){
-  let saldo=0,tIng=0,tEgr=0;
+  // Saldo mes anterior ahora está en J2 (fila índice 1, columna J = índice 9)
+  let saldo=0;
+  if(rawRows[1] && typeof rawRows[1][9]==='number') saldo=rawRows[1][9];
+  let tIng=0,tEgr=0;
   const dataRows=[];
 
   rawRows.forEach((row,i)=>{
+    if(i<3) return; // Saltar las 3 primeras filas de encabezado
     // Normalize date early (PRINCIPAL CAMBIO)
     const rawFecha = row[0];
     const fechaNorm = normalizeSheetDate(rawFecha);
     if(!fechaNorm) return;
-    if(fechaNorm === 'SALDO MES ANTERIOR'){ saldo = typeof row[1] === 'number' ? row[1] : 0; return; }
     if(fechaNorm === 'FECHA' || String(rawFecha).includes('ESTADO DE CUENTA')) return;
 
     const isTotal = String(rawFecha) === 'TOTAL';
