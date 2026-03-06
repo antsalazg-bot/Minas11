@@ -12,6 +12,7 @@
 <title>Admin · Real de Minas 11</title>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root{--ink:#18120a;--cream:#f8f4ed;--warm:#efe7d5;--gold:#c49a22;--gold2:#e8b84b;--rust:#8b3a0f;--sage:#3a5c3c;--red:#8b1a1a;--amber:#7a5200;--slate:#2c3e50;--blue:#1a3a5c;--bdr:rgba(24,18,10,.10);--sh:0 2px 24px rgba(24,18,10,.07);}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -448,6 +449,11 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
         <button class="slink" onclick="sv('generar-recibos',this)"><span class="ic">🧾</span>Generar Recibos</button>
         <button class="slink" onclick="sv('cancelar-recibo',this)"><span class="ic">❌</span>Cancelar Recibo</button>
       </div>
+      <div class="sb-section" style="margin-top:.5rem">
+        <div class="sb-lbl">Configuración</div>
+        <button class="slink" onclick="sv('tarifas',this)"><span class="ic">💲</span>Tarifas</button>
+        <button class="slink" onclick="sv('importar-mes',this)"><span class="ic">📥</span>Importar Mes</button>
+      </div>
     </aside>
 
     <main class="main-content">
@@ -602,6 +608,74 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
               <button class="btn-primary" id="btn-cancelar-rec" onclick="cancelarRecibo()">❌ Cancelar Recibo</button>
             </div>
             <div id="cr-result" style="margin-top:1.2rem;display:none;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ TARIFAS ══ -->
+      <div id="view-tarifas" class="view">
+        <div class="content fade-in">
+          <div class="page-hdr"><h1>Tarifas</h1><p>CuotaTotal y Multa con vigencia por fecha</p></div>
+          <div class="panel panel-pad" style="max-width:100%;margin-bottom:1.5rem">
+            <div class="stitle"><h2>Historial de tarifas</h2></div>
+            <div id="tarifas-tabla">Cargando…</div>
+          </div>
+          <div class="panel panel-pad" style="max-width:560px">
+            <div class="stitle"><h2>Agregar tarifa</h2></div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-lbl">Concepto</label>
+                <select id="tf-concepto" class="form-input">
+                  <option value="CuotaTotal">CuotaTotal</option>
+                  <option value="Multa">Multa</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-lbl">Monto ($)</label>
+                <input id="tf-monto" type="number" class="form-input" placeholder="82638.03"/>
+              </div>
+              <div class="form-group">
+                <label class="form-lbl">Fecha inicio (DD/MM/YYYY)</label>
+                <input id="tf-inicio" type="text" class="form-input" placeholder="01/01/2025"/>
+              </div>
+              <div class="form-group">
+                <label class="form-lbl">Fecha fin (DD/MM/YYYY · vacío = sin límite)</label>
+                <input id="tf-fin" type="text" class="form-input" placeholder=""/>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" onclick="guardarTarifa()">💾 Guardar tarifa</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ IMPORTAR MES ══ -->
+      <div id="view-importar-mes" class="view">
+        <div class="content fade-in">
+          <div class="page-hdr"><h1>Importar Mes</h1><p>Sube un Excel (.xlsx) para crear o reemplazar una hoja mensual</p></div>
+          <div class="panel panel-pad" style="max-width:560px">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-lbl">Mes destino</label>
+                <select id="imp-mes" class="form-input">
+                  ${MESES.map(m=>`<option value="${m}">${m}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group full">
+                <label class="form-lbl">Archivo Excel (.xlsx)</label>
+                <input id="imp-file" type="file" accept=".xlsx,.xls" class="form-input" onchange="previewImport()"/>
+              </div>
+            </div>
+            <div id="imp-preview" style="display:none;margin-top:1rem">
+              <div class="stitle"><h2>Vista previa</h2><span class="tag" id="imp-rows-count"></span></div>
+              <div id="imp-tabla" style="overflow-x:auto;max-height:300px;overflow-y:auto;font-size:.78rem;"></div>
+              <div class="form-actions" style="margin-top:1rem">
+                <button class="btn-primary" id="btn-imp-confirm" onclick="confirmarImport()">📥 Importar</button>
+                <button class="btn-sec" onclick="cancelarImport()" style="margin-left:.5rem">Cancelar</button>
+              </div>
+            </div>
+            <div id="imp-result" style="margin-top:1rem;display:none;"></div>
           </div>
         </div>
       </div>
@@ -915,6 +989,8 @@ function sv(name,btn){
   document.querySelectorAll('.slink').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+name).classList.add('active');
   if(btn)btn.classList.add('active');
+  if(name==='tarifas') rTarifas();
+  if(name==='importar-mes') initImportMes();
 }
 
 // ═══════════════════════════════════════════════
@@ -1945,6 +2021,123 @@ async function guardarModal(){
     } else {toast('Error: '+(data.error||'desconocido'),'err');}
   }catch(e){toast('Error de conexión','err');}
   finally{btn.disabled=false;btn.textContent='💾 Guardar';}
+}
+
+// ═══════════════════════════════════════════════
+//  TARIFAS
+// ═══════════════════════════════════════════════
+async function rTarifas(){
+  document.getElementById('tarifas-tabla').textContent='Cargando…';
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'leer-tarifas',token:SESSION_TOKEN})});
+    const data=await res.json();
+    if(!data.ok){document.getElementById('tarifas-tabla').textContent='Error: '+(data.error||'desconocido');return;}
+    if(!data.tarifas||!data.tarifas.length){document.getElementById('tarifas-tabla').innerHTML='<p style="color:rgba(24,18,10,.4);padding:.5rem">Sin tarifas registradas.</p>';return;}
+    let html='<table style="width:100%;border-collapse:collapse;font-size:.82rem"><thead><tr>'
+      +'<th style="text-align:left;padding:.5rem .8rem;border-bottom:2px solid var(--bdr)">Concepto</th>'
+      +'<th style="text-align:right;padding:.5rem .8rem;border-bottom:2px solid var(--bdr)">Monto</th>'
+      +'<th style="text-align:left;padding:.5rem .8rem;border-bottom:2px solid var(--bdr)">Desde</th>'
+      +'<th style="text-align:left;padding:.5rem .8rem;border-bottom:2px solid var(--bdr)">Hasta</th>'
+      +'</tr></thead><tbody>';
+    data.tarifas.forEach(t=>{
+      html+=`<tr><td style="padding:.45rem .8rem;border-bottom:1px solid var(--bdr)">${t.concepto}</td>`
+        +`<td style="padding:.45rem .8rem;border-bottom:1px solid var(--bdr);text-align:right">${fmtD(t.monto)}</td>`
+        +`<td style="padding:.45rem .8rem;border-bottom:1px solid var(--bdr)">${t.fechaInicio||'—'}</td>`
+        +`<td style="padding:.45rem .8rem;border-bottom:1px solid var(--bdr)">${t.fechaFin||'Sin límite'}</td></tr>`;
+    });
+    html+='</tbody></table>';
+    document.getElementById('tarifas-tabla').innerHTML=html;
+  }catch(e){document.getElementById('tarifas-tabla').textContent='Error de conexión';}
+}
+async function guardarTarifa(){
+  const concepto=document.getElementById('tf-concepto').value;
+  const monto=parseFloat(document.getElementById('tf-monto').value||'0');
+  const fechaInicio=(document.getElementById('tf-inicio').value||'').trim();
+  const fechaFin=(document.getElementById('tf-fin').value||'').trim();
+  if(!monto||!fechaInicio){toast('Completa monto y fecha inicio','err');return;}
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'guardar-tarifa',token:SESSION_TOKEN,concepto,monto,fechaInicio,fechaFin})});
+    const data=await res.json();
+    if(data.ok){toast('✓ Tarifa guardada');rTarifas();}
+    else toast('Error: '+(data.error||''),'err');
+  }catch(e){toast('Error de conexión','err');}
+}
+
+// ═══════════════════════════════════════════════
+//  IMPORTAR MES
+// ═══════════════════════════════════════════════
+let _impData=null;
+function initImportMes(){
+  // Populate mes selector with all months
+  const sel=document.getElementById('imp-mes');
+  if(sel && !sel.options.length){
+    MESES.forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m;sel.appendChild(o);});
+    // Default to last active month
+    if(DATA&&DATA.activeMonths&&DATA.activeMonths.length) sel.value=DATA.activeMonths[DATA.activeMonths.length-1];
+  }
+  _impData=null;
+  document.getElementById('imp-preview').style.display='none';
+  document.getElementById('imp-result').style.display='none';
+  const fi=document.getElementById('imp-file');
+  if(fi) fi.value='';
+}
+function previewImport(){
+  const file=document.getElementById('imp-file').files[0];
+  if(!file){return;}
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const wb=XLSX.read(e.target.result,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      _impData=filas;
+      document.getElementById('imp-rows-count').textContent=(filas.length-1)+' filas';
+      // Show first 10 rows preview
+      const preview=filas.slice(0,10);
+      let html='<table style="border-collapse:collapse;font-size:.75rem;min-width:100%"><tbody>';
+      preview.forEach((r,i)=>{
+        html+='<tr>';
+        r.forEach(c=>{html+=`<td style="padding:.3rem .5rem;border:1px solid var(--bdr);${i===0?'font-weight:700;background:var(--warm)':''}">${c!==null&&c!==undefined?c:''}</td>`;});
+        html+='</tr>';
+      });
+      if(filas.length>10) html+=`<tr><td colspan="${(filas[0]||[]).length}" style="padding:.3rem .5rem;color:rgba(24,18,10,.4);font-size:.7rem">… y ${filas.length-10} filas más</td></tr>`;
+      html+='</tbody></table>';
+      document.getElementById('imp-tabla').innerHTML=html;
+      document.getElementById('imp-preview').style.display='block';
+      document.getElementById('imp-result').style.display='none';
+    }catch(err){toast('Error leyendo el archivo: '+err.message,'err');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+function cancelarImport(){
+  _impData=null;
+  document.getElementById('imp-preview').style.display='none';
+  document.getElementById('imp-file').value='';
+}
+async function confirmarImport(sobreescribir){
+  if(!_impData||!_impData.length){toast('Sin datos','err');return;}
+  const mes=document.getElementById('imp-mes').value;
+  const btn=document.getElementById('btn-imp-confirm');
+  btn.disabled=true; btn.textContent='Importando…';
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+      accion:'crear-hoja-mes',token:SESSION_TOKEN,mes,filas:_impData,sobreescribir:sobreescribir||false
+    })});
+    const data=await res.json();
+    if(data.ok){
+      const rd=document.getElementById('imp-result');
+      rd.innerHTML=`<p style="color:var(--sage);font-weight:600">✓ Hoja "${mes}" creada con ${data.filas} filas.</p>`;
+      rd.style.display='block';
+      document.getElementById('imp-preview').style.display='none';
+      _impData=null; document.getElementById('imp-file').value='';
+      toast('✓ Mes importado correctamente');
+    } else if(data.existe){
+      if(confirm(`La hoja "${mes}" ya existe. ¿Reemplazar?`)) confirmarImport(true);
+    } else {
+      toast('Error: '+(data.error||'desconocido'),'err');
+    }
+  }catch(e){toast('Error de conexión','err');}
+  finally{btn.disabled=false; btn.textContent='📥 Importar';}
 }
 
 // Safety: also bind login button via addEventListener in case onclick attribute fails
