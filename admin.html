@@ -966,6 +966,7 @@ async function loadAll(){
     let totalIng=0,totalEgr=0,lastSaldoF=0; const ecat={},pagaron=new Set();
     allRows.forEach((row)=>{
       if(!row[0]) return;
+      if(row[0]==='SALDO MES ANTERIOR'||row[0]==='SALDO ANTERIOR'||String(row[0]).toUpperCase().startsWith('SALDO')) return;
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
       const sf=typeof row[5]==='number'?row[5]:null; if(sf!==null) lastSaldoF=sf;
       const ing=typeof row[3]==='number'?row[3]:0;

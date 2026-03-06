@@ -703,6 +703,7 @@ async function loadAllData(){
     const deptsPagaron=new Set();
     allRowsP.forEach((row)=>{
       if(!row[0])return;
+      if(row[0]==='SALDO MES ANTERIOR'||row[0]==='SALDO ANTERIOR'||String(row[0]).toUpperCase().startsWith('SALDO')) return;
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
       if(ingreso>0){
