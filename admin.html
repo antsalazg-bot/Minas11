@@ -945,6 +945,7 @@ const rows=t=>(!t||!t.rows)?[]:t.rows.map(r=>r.c.map(c=>c?c.v:null));
 // ═══════════════════════════════════════════════
 async function loadAll(){
   const results=await Promise.all(MESES.map(m=>fetchSheet(m).catch(()=>null)));
+  const activeMonths=MESES.filter((_,i)=>results[i]!==null);
 
   const monthly={};
   const deptPagos={}; // {dept: [{fecha,concepto,monto,mes}]}
@@ -1003,7 +1004,7 @@ async function loadAll(){
   DEPTOS.forEach(dept=>{
     const cuota=deptCuota[dept]||0;
     const pagos=deptPagos[dept]||[];
-    const resumen=MESES.map(mes=>{
+    const resumen=activeMonths.map(mes=>{
       const monto=(deptMontosMes[dept]&&deptMontosMes[dept][mes])||0;
       const pm=pagos.filter(p=>p.mes===mes);
       const diaStr=pm.length>0?(pm[0].fecha||'').split('/')[0]:'';
@@ -1017,11 +1018,11 @@ async function loadAll(){
     deptData[dept]={cuota,morosidad:Math.min(morosidad,0)*-1,pagos,resumen};
   });
 
-  DATA={monthly:MESES.map(mes=>monthly[mes]||{mes,saldo_anterior:0,saldo_final:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0}),deptData};
+  DATA={activeMonths,monthly:activeMonths.map(mes=>monthly[mes]||{mes,saldo_anterior:0,saldo_final:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0}),deptData};
 
   const t=new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('tb-sync').textContent=`Sync ${t}`;
-  document.getElementById('res-sub').textContent=`${MESES.length} meses · Actualizado ${t}`;
+  document.getElementById('res-sub').textContent=`${DATA.activeMonths.length} meses · Actualizado ${t}`;
 }
 
 function renderAll(){rResumen();rCobranza();rEgresos();rDepto();rMorosos();rSaldos();rEstadoMes();rContrasenas();rAvisos();}
@@ -1472,12 +1473,12 @@ async function verificarAhora(){
 // ═══════════════════════════════════════════════
 function initForms(){
   document.getElementById('p-dept').innerHTML=DEPTOS.map(d=>`<option value="${d}">${d}</option>`).join('');
-  document.getElementById('p-mes').innerHTML=MESES.map(m=>`<option value="${m}">${m}</option>`).join('');
-  document.getElementById('p-mes').value=MESES[MESES.length-1];
-  document.getElementById('gr-mes').innerHTML=MESES.map(m=>`<option value="${m}">${m}</option>`).join('');
-  document.getElementById('gr-mes').value=MESES[MESES.length-1];
-  document.getElementById('e-mes').innerHTML=MESES.map(m=>`<option value="${m}">${m}</option>`).join('');
-  document.getElementById('e-mes').value=MESES[MESES.length-1];
+  document.getElementById('p-mes').innerHTML=DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('p-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
+  document.getElementById('gr-mes').innerHTML=DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('gr-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
+  document.getElementById('e-mes').innerHTML=DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('e-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
   document.getElementById('e-cat').innerHTML=Object.entries(CAT).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
   const hoy=new Date().toISOString().split('T')[0];
   document.getElementById('p-fecha').value=hoy;
@@ -1758,7 +1759,7 @@ async function rEstadoMes(){
   container.innerHTML=`
     <div class="em-toolbar">
       <select id="em-sel" onchange="loadEstadoMes(this.value)">
-        ${MESES.map(m=>`<option value="${m}">${m}</option>`).join('')}
+        ${DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('')}
       </select>
       <div class="em-stats" id="em-stats"></div>
     </div>
@@ -1766,7 +1767,7 @@ async function rEstadoMes(){
     <button class="em-add-btn" onclick="openModal(null)">＋ Agregar movimiento</button>
   `;
   // Load last month by default
-  const defaultMes=MESES[MESES.length-1];
+  const defaultMes=DATA.activeMonths[DATA.activeMonths.length-1];
   document.getElementById('em-sel').value=defaultMes;
   await loadEstadoMes(defaultMes);
 }

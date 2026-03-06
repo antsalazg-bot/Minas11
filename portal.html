@@ -666,6 +666,7 @@ async function loadAllData(){
     fetchSheet('Catalogo Ingresos').catch(()=>null),
     ...HOJAS_MESES.map(m=>fetchSheet(m).catch(()=>null))
   ]);
+  const activeMonths=HOJAS_MESES.filter((_,i)=>results[i]!==null);
   // Extract owner name from catalog
   if(catalogTable){
     const catRows = tableToRows(catalogTable);
@@ -735,7 +736,7 @@ async function loadAllData(){
   const deptData={};
   [currentDept].forEach(dept=>{
     const cuota=deptCuota[dept]||0,pagos=deptPagos[dept]||[];
-    const resumen=HOJAS_MESES.map(mes=>{
+    const resumen=activeMonths.map(mes=>{
       const monto=(deptMontosMes[dept]&&deptMontosMes[dept][mes])||0;
       const pm=pagos.filter(p=>p.mes===mes);
       const diaStr=pm.length>0?(pm[0].fecha||'').split('/')[0]:'';
@@ -747,8 +748,8 @@ async function loadAllData(){
     deptData[dept]={cuota,morosidad:0,pagos,resumen_mensual:resumen};
   });
 
-  const monthly=HOJAS_MESES.map(mes=>monthlyData[mes]||{mes,saldo_anterior:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0});
-  DATA={monthly,deptData};
+  const monthly=activeMonths.map(mes=>monthlyData[mes]||{mes,saldo_anterior:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0});
+  DATA={activeMonths,monthly,deptData};
 
   const now=new Date(),t=now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   ['inicio','avisos','hist','egr'].forEach(k=>{
