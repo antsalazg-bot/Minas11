@@ -1539,7 +1539,7 @@ async function verificarAhora(){
     const res = await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'verificar-ahora',token:SESSION_TOKEN,ultimoMes})});
     const data = await res.json();
     if(data.ok){
-      toast(`✓ ${data.mes}: ${data.pagaron} pagaron · ${data.noPagaron} sin pago · Multa $${data.multa}`);
+      toast(`✓ Verificación completa · ${data.meses} meses · ${data.deptos} deptos actualizados`);
       rSaldos();
     } else toast('Error: '+data.error,'err');
   }catch(e){ toast('Error de conexión','err'); }
