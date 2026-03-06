@@ -2089,7 +2089,7 @@ function previewImport(){
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
-      const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:null});
+      const filas=XLSX.utils.sheet_to_json(ws,{header:1,defval:null,cellDates:true,dateNF:'DD/MM/YYYY'});
       _impData=filas;
       document.getElementById('imp-rows-count').textContent=(filas.length-1)+' filas';
       // Show first 10 rows preview
