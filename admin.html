@@ -1491,10 +1491,10 @@ function renderSaldosTable(saldos){
             <td style="padding:.55rem .8rem;font-weight:700;">${s.depto}</td>
             <td style="padding:.55rem .8rem;font-size:.75rem;color:rgba(24,18,10,.6);">${s.propietario||'—'}</td>
             <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;color:rgba(24,18,10,.7);">${s.cuotaVigente>0?fmtD(s.cuotaVigente):'—'}</td>
-            <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;${s.deudaHist>0?'color:var(--red);':'color:rgba(24,18,10,.3);'}">${s.deudaHist>0?fmtD(s.deudaHist):'—'}</td>
+            <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;${s.deudaHist>0?'color:var(--red);':s.deudaHist<0?'color:var(--sage);':'color:rgba(24,18,10,.3);'}">${s.deudaHist>0?fmtD(s.deudaHist):s.deudaHist<0?'▲ '+fmtD(Math.abs(s.deudaHist)):'—'}</td>
             <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;${s.deudaAcum>0?'color:var(--red);':'color:rgba(24,18,10,.3);'}">${s.deudaAcum>0?fmtD(s.deudaAcum):'—'}</td>
             <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;${s.multas>0?'color:var(--amber);':'color:rgba(24,18,10,.3);'}">${s.multas>0?fmtD(s.multas):'—'}</td>
-            <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;font-size:.92rem;font-weight:700;${s.total>0?'color:var(--red);':'color:var(--sage);'}">${fmtD(s.total)}</td>
+            <td style="padding:.55rem .8rem;text-align:right;font-family:'Fraunces',serif;font-size:.92rem;font-weight:700;${s.total>0?'color:var(--red);':s.total<0?'color:var(--sage);font-style:italic;':'color:var(--sage);'}">${s.total<0?'▲ '+fmtD(Math.abs(s.total)):fmtD(s.total)}</td>
             <td style="padding:.55rem .8rem;text-align:center;font-size:.72rem;color:rgba(24,18,10,.4);">${s.ultimoMesPagado||'—'}</td>
             <td style="padding:.55rem .8rem;text-align:center;">
               <div style="display:flex;gap:.3rem;justify-content:center;">
