@@ -732,16 +732,25 @@ async function loadAllData(){
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
       if(ingreso>0){
         totalIngresos+=ingreso;
-        // Primario: col I (índice 8) = depto directo
+        // 1) Col I (índice 8) — depto directo: "302", "PH4", etc.
         const deptColI = row[8] ? String(row[8]).trim().toUpperCase() : null;
-        // Secundario: extraer depto del IDConcepto (CM-101, CE-ELV-101, CE-CIS-101)
+        // 2) Col G (índice 6) — ID Concepto con número: CM-302, CE-CIS-305, CV-VIG-101
+        //    Solo si el último segmento contiene un dígito (no es tipo como "CIS")
         const mCM  = String(idConc).match(/^CM-(.+)$/);
-        const mCE  = String(idConc).match(/^CE-[A-Z]+-(.+)$/);
-        const deptFromG = mCM ? mCM[1].toUpperCase() : (mCE ? mCE[1].toUpperCase() : null);
-        const deptPagante = deptColI || deptFromG;
+        const mCEfull = String(idConc).match(/^(?:CE|CV)-[A-Z]+-(\w*\d\w*)$/i);
+        const deptFromG = mCM
+          ? mCM[1].toUpperCase()
+          : (mCEfull ? mCEfull[1].toUpperCase() : null);
+        // 3) Col C (índice 2) — Concepto libre: "CUOTA EXTRA CISTERNAS 305"
+        //    Extrae número de depto (3 dígitos o PH+dígito) al final del texto
+        const mConc = !deptColI && !deptFromG
+          ? (nombre.match(/\b(\d{3}|PH\d)\s*$/i) || null)
+          : null;
+        const deptFromConc = mConc ? mConc[1].toUpperCase() : null;
+        const deptPagante = deptColI || deptFromG || deptFromConc;
         // Cobranza %: solo CM (cuota de mantenimiento principal)
         if(mCM){ deptsPagaron.add((deptColI || mCM[1]).toUpperCase()); }
-        // Historial de pagos: todos los movimientos del depto (CM + CE)
+        // Historial de pagos: todos los movimientos del depto (CM + CE + CV)
         if(deptPagante){
           if(!deptPagos[deptPagante])deptPagos[deptPagante]=[];
           deptPagos[deptPagante].push({fecha:fmtFechaPortal(fecha),concepto:nombre||String(idConc),monto:ingreso,mes,idConc:String(idConc)});
