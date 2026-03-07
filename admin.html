@@ -241,6 +241,17 @@ tbody td{padding:.75rem 1rem;}
 .btn-sec{padding:.75rem 1.5rem;background:var(--cream);color:var(--ink);border:1.5px solid var(--bdr);
   border-radius:3px;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;}
 .btn-sec:hover{border-color:var(--gold);}
+/* FILTER BAR */
+.fbar{display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;margin-bottom:.8rem;}
+.fbar-sep{margin:0 .3rem;border-left:1px solid var(--bdr);align-self:stretch;}
+.fbtn{padding:.26rem .68rem;border:1.5px solid var(--bdr);border-radius:2px;font-size:.67rem;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;background:#fff;color:rgba(24,18,10,.45);cursor:pointer;
+  transition:all .15s;font-family:'DM Sans',sans-serif;}
+.fbtn:hover{border-color:var(--gold);color:var(--ink);}
+.fbtn.active{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+.fbtn.ce-on{background:rgba(122,82,0,.85);color:#fff;border-color:rgba(122,82,0,.85);}
+.fsel{padding:.26rem .5rem;border:1.5px solid var(--bdr);border-radius:2px;font-size:.72rem;
+  font-family:'DM Sans',sans-serif;background:#fff;color:rgba(24,18,10,.7);cursor:pointer;}
 .form-actions{display:flex;gap:.8rem;margin-top:1.2rem;}
 
 /* MES SELECTOR */
@@ -1345,13 +1356,26 @@ function rDeptDetail(dept){
         <div class="sem-am">${m.total>0?fmt(m.total):'—'}</div>
         <div class="sem-dy">${m.dia?'Día '+m.dia:SL[m.st]}</div>
       </div>`).join('')}</div></div>
-    <div class="stitle"><h2>Movimientos</h2><span class="tag">${d.pagos.length} registros</span></div>
-    <div class="panel"><table>
-      <thead><tr><th>Fecha</th><th>Concepto</th><th>Mes</th><th style="text-align:right">Monto</th><th>Estado</th></tr></thead>
+    <div class="stitle"><h2>Movimientos</h2><span class="tag" id="mov-tag">${d.pagos.length} registros</span></div>
+    <div class="fbar">
+      <button class="fbtn active" onclick="filtMovTipo('todos',this)">Todos</button>
+      <button class="fbtn" onclick="filtMovTipo('cm',this)">CM — Mantenimiento</button>
+      <button class="fbtn" onclick="filtMovTipo('ce',this)">CE — Extraordinarias</button>
+      <div class="fbar-sep"></div>
+      <select id="flt-mes-mov" class="fsel" onchange="filtMovMes(this.value)">
+        <option value="">Todos los meses</option>
+        ${[...new Set([...d.pagos].map(p=>p.mes))].sort((a,b)=>{const[ma,ya]=a.split(' ');const[mb,yb]=b.split(' ');return ya!==yb?ya-yb:['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].indexOf(ma)-['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'].indexOf(mb);}).map(m=>`<option value="${m}">${m}</option>`).join('')}
+      </select>
+    </div>
+    <div class="panel"><table id="tbl-movs">
+      <thead><tr><th>Fecha</th><th>Concepto</th><th>Mes</th><th>Tipo</th><th style="text-align:right">Monto</th><th>Estado</th></tr></thead>
       <tbody>${[...d.pagos].sort((a,b)=>b.fecha.split('/').reverse().join('').localeCompare(a.fecha.split('/').reverse().join(''))).map(p=>{
         const ms=resumen.find(m=>m.mes===p.mes);
         const st=ms?ms.st:'parcial';
-        return`<tr><td class="td-muted">${p.fecha}</td><td>${p.concepto}</td><td class="td-muted">${p.mes}</td><td class="td-num pos">${fmtD(p.monto)}</td><td><span class="badge ${st}">${SL[st]}</span></td></tr>`;
+        const ic=String(p.idConc||'').toUpperCase();
+        const tipo=ic.startsWith('CM-')?'cm':ic.startsWith('CE-')||ic.startsWith('CV-')?'ce':'oi';
+        const tipoBadge=tipo==='cm'?'<span class="badge ok">CM</span>':tipo==='ce'?'<span class="badge tardio">CE</span>':'<span class="badge">Otro</span>';
+        return`<tr data-tipo="${tipo}" data-mes="${p.mes}"><td class="td-muted">${p.fecha}</td><td>${p.concepto}</td><td class="td-muted">${p.mes}</td><td>${tipoBadge}</td><td class="td-num pos">${fmtD(p.monto)}</td><td><span class="badge ${st}">${SL[st]}</span></td></tr>`;
       }).join('')}</tbody>
     </table></div>
     <div id="dept-detalle"><div class="spin-wrap"><div class="spinner"></div><p>Cargando desglose…</p></div></div>`;
@@ -1397,6 +1421,9 @@ async function rDeptDetalle(dept){
       h+=`<div class="mora-alert danger" style="margin-top:1rem"><div class="mora-ic">📋</div><div><h3>Adeudo histórico: ${fmtD(deudaH)}</h3><p>Saldo acumulado de períodos anteriores al registro actual.</p></div></div>`;
     }
 
+    // Años disponibles para filtro
+    const desgYears=[...new Set(det.map(m=>m.mes.split(' ')[1]))].sort();
+
     h+=`
     <div class="stitle" style="margin-top:1.5rem"><h2>Desglose mensual</h2><span class="tag">${det.length} meses</span></div>
     <div class="kpi-row c4" style="margin-bottom:1rem">
@@ -1405,7 +1432,13 @@ async function rDeptDetalle(dept){
       <div class="kcard ${totMult>0?'r':'g'}"><div class="klbl">Multas</div><div class="kval">${fmt(totMult)}</div><div class="ksub">${totMult>0?det.filter(m=>m.multa>0).length+' mes(es) con multa':'Sin multas'}</div></div>
       <div class="kcard ${saldoFin>0?'r':saldoFin<0?'g':'s'}"><div class="klbl">Saldo corriente</div><div class="kval">${fmtD(saldoFin)}</div><div class="ksub">${saldoFin>0?'Adeudo pendiente':saldoFin<0?'Saldo a favor':'Al corriente'}</div></div>
     </div>
-    <div class="panel" style="overflow-x:auto"><table style="min-width:720px">
+    <div class="fbar">
+      <button class="fbtn active" id="flt-dy-todos" onclick="filtDesgAno('',this)">Todos</button>
+      ${desgYears.map(y=>`<button class="fbtn" id="flt-dy-${y}" onclick="filtDesgAno('${y}',this)">${y}</button>`).join('')}
+      <div class="fbar-sep"></div>
+      <button class="fbtn" id="flt-desg-ce" onclick="filtDesgCE(this)">Solo meses con CE</button>
+    </div>
+    <div class="panel" style="overflow-x:auto"><table id="tbl-desg" style="min-width:720px">
       <thead><tr>
         <th>Mes</th>
         <th style="text-align:right">Cuota CM</th>
@@ -1425,29 +1458,32 @@ async function rDeptDetalle(dept){
       const sc=m.saldoCorriente;
       const scCls=sc>0?'neg':sc<0?'pos':'';
       const scTxt=sc===0?'—':fmtD(sc);
-
-      // Separar pagos CM y CE para la fila principal vs sub-filas
-      const pagCM=(m.pagados||[]).filter(p=>p.tipo==='CM');
-      const pagCE=(m.pagados||[]).filter(p=>p.tipo==='CE');
-      const pagCMTxt=pagCM.length
-        ? pagCM.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px">CM</span>`).join(' &nbsp;|&nbsp; ')
-        : '<span class="td-muted">Sin pago CM</span>';
-      const totalCMPag=pagCM.reduce((s,p)=>s+p.monto,0);
+      const mesYear=m.mes.split(' ')[1]||'';
       const hasExtras=m.extras&&m.extras.length>0;
 
-      // Fila principal (cuota CM)
-      h+=`<tr style="${hasExtras?'border-bottom:none':''}">
+      // Pagos CM y CE — separados solo cuando hay CE extras registrados
+      const pagCM=(m.pagados||[]).filter(p=>p.tipo==='CM');
+      const pagCE=(m.pagados||[]).filter(p=>p.tipo==='CE');
+      // 🔑 FIX: si no hay extras registrados, mostrar TODOS los pagos (CM+CE) en fila principal
+      const mainPagos = hasExtras ? pagCM : (m.pagados||[]);
+      const mainPagTxt=mainPagos.length
+        ? mainPagos.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;${p.tipo==='CE'?'background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)':''}">${p.tipo||'CM'}</span>`).join(' &nbsp;|&nbsp; ')
+        : '<span class="td-muted">Sin pago</span>';
+      const totalMainPag=mainPagos.reduce((s,p)=>s+p.monto,0);
+
+      // Fila principal (CM + todos los pagos cuando sin extras)
+      h+=`<tr class="mes-row" data-year="${mesYear}" data-hasce="${hasExtras?'1':'0'}" style="${hasExtras?'border-bottom:none':''}">
         <td style="white-space:nowrap;font-weight:500${hasExtras?';border-bottom:none':''}">${m.mes}</td>
         <td class="td-num">${fmtD(m.cuotaMant)}</td>
-        <td class="td-num td-muted">—</td>
+        <td class="td-num td-muted">${hasExtras?'↓':m.cuotaExtra>0?fmtD(m.cuotaExtra):'—'}</td>
         <td class="td-num" style="font-weight:600">${fmtD(m.cuotaTotal)}</td>
-        <td style="font-size:.82rem">${pagCMTxt}</td>
-        <td class="td-num pos">${totalCMPag>0?fmtD(totalCMPag):'—'}</td>
+        <td style="font-size:.82rem">${mainPagTxt}</td>
+        <td class="td-num pos">${totalMainPag>0?fmtD(totalMainPag):'—'}</td>
         <td class="td-num ${m.multa>0?'neg':''}">${m.multa>0?fmtD(m.multa):'—'}</td>
         <td class="td-num ${scCls}" style="font-weight:600">${scTxt}</td>
       </tr>`;
 
-      // Sub-filas CE (una por cada extra esperado del mes)
+      // Sub-filas CE cuando hay extras registrados (muestra CE esperado + CE pagado)
       if(hasExtras){
         const cePagTxt=pagCE.length
           ? pagCE.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)">CE</span>`).join(' &nbsp;|&nbsp; ')
@@ -1456,7 +1492,7 @@ async function rDeptDetalle(dept){
         m.extras.forEach((ex,i)=>{
           const isLast=i===m.extras.length-1;
           const idBadge=ex.idConcepto?` <span class="tag" style="font-size:.6rem;padding:1px 5px;background:rgba(58,92,60,.1);color:rgba(58,92,60,.8)">${ex.idConcepto}</span>`:'';
-          h+=`<tr style="background:rgba(122,82,0,.03);${isLast?'':'border-bottom:none'}">
+          h+=`<tr class="ce-row" data-year="${mesYear}" data-hasce="1" style="background:rgba(122,82,0,.03);${isLast?'':'border-bottom:none'}">
             <td style="font-size:.78rem;color:rgba(122,82,0,.9);padding-left:1.4rem;font-style:italic;${isLast?'':'border-bottom:none'}">↳ ${ex.concepto||'Cuota Extra'}${idBadge}</td>
             <td class="td-num td-muted">—</td>
             <td class="td-num" style="color:rgba(122,82,0,.85);font-weight:600">${fmtD(ex.monto)}</td>
@@ -1491,6 +1527,52 @@ async function rDeptDetalle(dept){
 }
 
 // ═══════════════════════════════════════════════
+//  FILTROS — Movimientos
+// ═══════════════════════════════════════════════
+let _movTipo='todos', _movMes='';
+function filtMovTipo(tipo,btn){
+  _movTipo=tipo;
+  document.querySelectorAll('#tbl-movs').length&&document.querySelectorAll('[onclick*="filtMovTipo"]').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  _aplicarFiltMovs();
+}
+function filtMovMes(mes){ _movMes=mes; _aplicarFiltMovs(); }
+function _aplicarFiltMovs(){
+  const rows=document.querySelectorAll('#tbl-movs tbody tr');
+  let vis=0;
+  rows.forEach(r=>{
+    const ok=(_movTipo==='todos'||r.dataset.tipo===_movTipo)&&(!_movMes||r.dataset.mes===_movMes);
+    r.style.display=ok?'':'none';
+    if(ok)vis++;
+  });
+  const tag=document.getElementById('mov-tag');
+  if(tag)tag.textContent=`${vis} registros`;
+}
+
+// ═══════════════════════════════════════════════
+//  FILTROS — Desglose Mensual
+// ═══════════════════════════════════════════════
+let _desgYear='', _desgCE=false;
+function filtDesgAno(year,btn){
+  _desgYear=year;
+  document.querySelectorAll('[id^="flt-dy-"]').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  _aplicarFiltDesg();
+}
+function filtDesgCE(btn){
+  _desgCE=!_desgCE;
+  if(btn){btn.classList.toggle('active',_desgCE);btn.classList.toggle('ce-on',_desgCE);}
+  _aplicarFiltDesg();
+}
+function _aplicarFiltDesg(){
+  document.querySelectorAll('#tbl-desg .mes-row, #tbl-desg .ce-row').forEach(r=>{
+    const yearOk=!_desgYear||r.dataset.year===_desgYear;
+    const ceOk=!_desgCE||r.dataset.hasce==='1';
+    r.style.display=(yearOk&&ceOk)?'':'none';
+  });
+}
+
+// ═══════════════════════════════════════════════
 //  CUOTAS EXTRAS
 // ═══════════════════════════════════════════════
 let CE_SALDOS=[], CE_LIST=[];
@@ -1501,7 +1583,21 @@ async function initCuotasExtras(){
   try{
     const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'leer-cuotas-extras',token:SESSION_TOKEN})});
     const data=await res.json();
-    if(!data.ok){el.innerHTML=`<p style="color:var(--red);padding:1rem">${data.error}</p>`;return;}
+    if(!data.ok){
+      // Si el error es de hoja → el backend no está actualizado
+      const needsDeploy = (data.error||'').toLowerCase().includes('hoja') || (data.error||'').toLowerCase().includes('encontrad');
+      el.innerHTML=needsDeploy
+        ? `<div class="mora-alert danger"><div class="mora-ic">🚀</div><div>
+            <h3>Backend desactualizado</h3>
+            <p>El AppScript no tiene las acciones nuevas. Pasos:<br>
+            1. Abre <strong>Google Apps Script</strong> del spreadsheet.<br>
+            2. Reemplaza el código con el contenido de <code>Codigo_completo.gs</code>.<br>
+            3. Haz un nuevo <strong>Deploy → Manage deployments → New deployment</strong>.<br>
+            4. Copia la nueva URL en la constante <code>SCRIPT_URL</code> de este archivo.</p>
+          </div></div>`
+        : `<p style="color:var(--red);padding:1rem">${data.error}</p>`;
+      return;
+    }
     CE_SALDOS=data.saldos||[]; CE_LIST=data.extras||[];
     rCuotasExtras();
   }catch(e){el.innerHTML='<p style="color:var(--red);padding:1rem">Error de conexión</p>';}
