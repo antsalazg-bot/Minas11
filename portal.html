@@ -533,6 +533,28 @@ let currentPage = 'inicio';
 const fmt    = n => !n&&n!==0?'—':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
 const fmtDec = n => new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2}).format(n);
 
+// Formatea cualquier valor de fecha (Date, serial numérico, ISO string) → "DD/MM/YYYY"
+function fmtFechaPortal(v){
+  if(!v) return '';
+  if(v instanceof Date){
+    const d=String(v.getDate()).padStart(2,'0'), m=String(v.getMonth()+1).padStart(2,'0');
+    return `${d}/${m}/${v.getFullYear()}`;
+  }
+  if(typeof v==='number' && v>1){
+    // Serial date de Excel/Sheets
+    const dt=new Date(Math.round((v-25569)*86400000));
+    return `${String(dt.getUTCDate()).padStart(2,'0')}/${String(dt.getUTCMonth()+1).padStart(2,'0')}/${dt.getUTCFullYear()}`;
+  }
+  const s=String(v);
+  // ISO "2025-02-01" o "2025-02-01T00:00:00"
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+    const parts=s.split('T')[0].split('-');
+    if(parts.length===3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  // Ya viene en DD/MM/YYYY u otro formato — devolver tal cual
+  return s;
+}
+
 function navTo(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));
@@ -722,7 +744,7 @@ async function loadAllData(){
         // Historial de pagos: todos los movimientos del depto (CM + CE)
         if(deptPagante){
           if(!deptPagos[deptPagante])deptPagos[deptPagante]=[];
-          deptPagos[deptPagante].push({fecha:typeof fecha==='string'?fecha:String(fecha),concepto:nombre||String(idConc),monto:ingreso,mes,idConc:String(idConc)});
+          deptPagos[deptPagante].push({fecha:fmtFechaPortal(fecha),concepto:nombre||String(idConc),monto:ingreso,mes,idConc:String(idConc)});
         }
       }
       if(egreso>0){totalEgresos+=egreso;const cat=(idEgr||'OTROS').split('-').slice(0,2).join('-')||'OTROS';egresosCat[cat]=(egresosCat[cat]||0)+egreso;}
