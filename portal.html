@@ -975,8 +975,15 @@ async function renderMorosos(){
     }
 
     const rows = morososTable ? tableToRows(morososTable) : [];
-    // Skip header row, filter rows with dept and monto
-    const morosos = rows.filter(r => r[0] && r[1] && String(r[0]).trim().toUpperCase() !== 'DEPARTAMENTO');
+    // Skip header row: any header variant (DEPARTAMENTO, DEPTO, DEPT…) has no digits → reject it
+    // Also reject rows where monto is 0 or non-numeric
+    const morosos = rows.filter(r => {
+      if(!r[0] || !r[1]) return false;
+      const d = String(r[0]).trim().toUpperCase();
+      if(!/\d/.test(d)) return false;           // headers never contain digits
+      const m = typeof r[1]==='number' ? r[1] : parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
+      return m > 0;
+    });
 
     if(!morosos.length){
       container.innerHTML = `
@@ -991,7 +998,8 @@ async function renderMorosos(){
         ${morosos.map(r=>{
           const dept = String(r[0]).trim().toUpperCase();
           const monto = typeof r[1]==='number' ? r[1] : parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
-          const comentario = r[2] ? String(r[2]).trim() : '';
+          // r[2] puede ser un Date object o ISO string (fecha de corte) → formatear con fmtFecha
+          const comentario = r[2] ? (r[2] instanceof Date || (typeof r[2]==='string' && /^\d{4}-\d{2}-\d{2}/.test(r[2])) ? 'Corte: '+fmtFecha(r[2]) : String(r[2]).trim()) : '';
           const nombre = names[dept] || '';
           const esPropio = dept === currentDept.toUpperCase();
           return `<div class="moroso-card ${esPropio?'moroso-propio':''}">
