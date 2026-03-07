@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+<script src="shared.js"></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   OneSignalDeferred.push(async function(OneSignal) {
@@ -533,27 +534,8 @@ let currentPage = 'inicio';
 const fmt    = n => !n&&n!==0?'—':new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
 const fmtDec = n => new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',minimumFractionDigits:2}).format(n);
 
-// Formatea cualquier valor de fecha (Date, serial numérico, ISO string) → "DD/MM/YYYY"
-function fmtFechaPortal(v){
-  if(!v) return '';
-  if(v instanceof Date){
-    const d=String(v.getDate()).padStart(2,'0'), m=String(v.getMonth()+1).padStart(2,'0');
-    return `${d}/${m}/${v.getFullYear()}`;
-  }
-  if(typeof v==='number' && v>1){
-    // Serial date de Excel/Sheets
-    const dt=new Date(Math.round((v-25569)*86400000));
-    return `${String(dt.getUTCDate()).padStart(2,'0')}/${String(dt.getUTCMonth()+1).padStart(2,'0')}/${dt.getUTCFullYear()}`;
-  }
-  const s=String(v);
-  // ISO "2025-02-01" o "2025-02-01T00:00:00"
-  if(/^\d{4}-\d{2}-\d{2}/.test(s)){
-    const parts=s.split('T')[0].split('-');
-    if(parts.length===3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
-  }
-  // Ya viene en DD/MM/YYYY u otro formato — devolver tal cual
-  return s;
-}
+// Alias — la implementación canónica vive en shared.js → fmtFecha()
+const fmtFechaPortal = fmtFecha;
 
 function navTo(page) {
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -732,24 +714,11 @@ async function loadAllData(){
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
       if(ingreso>0){
         totalIngresos+=ingreso;
-        // 1) Col I (índice 8) — depto directo: "302", "PH4", etc.
-        const deptColI = row[8] ? String(row[8]).trim().toUpperCase() : null;
-        // 2) Col G (índice 6) — ID Concepto con número: CM-302, CE-CIS-305, CV-VIG-101
-        //    Solo si el último segmento contiene un dígito (no es tipo como "CIS")
-        const mCM  = String(idConc).match(/^CM-(.+)$/);
-        const mCEfull = String(idConc).match(/^(?:CE|CV)-[A-Z]+-(\w*\d\w*)$/i);
-        const deptFromG = mCM
-          ? mCM[1].toUpperCase()
-          : (mCEfull ? mCEfull[1].toUpperCase() : null);
-        // 3) Col C (índice 2) — Concepto libre: "CUOTA EXTRA CISTERNAS 305"
-        //    Extrae número de depto (3 dígitos o PH+dígito) al final del texto
-        const mConc = !deptColI && !deptFromG
-          ? (nombre.match(/\b(\d{3}|PH\d)\s*$/i) || null)
-          : null;
-        const deptFromConc = mConc ? mConc[1].toUpperCase() : null;
-        const deptPagante = deptColI || deptFromG || deptFromConc;
+        // Detección de depto — lógica en shared.js → detectDeptFromRow()
+        const {dept: deptPagante, mCM, deptColI} = detectDeptFromRow(row, nombre, idConc);
         // Cobranza %: solo CM (cuota de mantenimiento principal)
-        if(mCM){ deptsPagaron.add((deptColI || mCM[1]).toUpperCase()); }
+        if(mCM && deptColI) deptsPagaron.add(deptColI);
+        else if(mCM && deptPagante) deptsPagaron.add(deptPagante);
         // Historial de pagos: todos los movimientos del depto (CM + CE + CV)
         if(deptPagante){
           if(!deptPagos[deptPagante])deptPagos[deptPagante]=[];

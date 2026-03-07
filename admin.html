@@ -13,6 +13,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="shared.js"></script>
 <style>
 :root{--ink:#18120a;--cream:#f8f4ed;--warm:#efe7d5;--gold:#c49a22;--gold2:#e8b84b;--rust:#8b3a0f;--sage:#3a5c3c;--red:#8b1a1a;--amber:#7a5200;--slate:#2c3e50;--blue:#1a3a5c;--bdr:rgba(24,18,10,.10);--sh:0 2px 24px rgba(24,18,10,.07);}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -771,42 +772,8 @@ const fmtD   = n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'
 
 let DATA=null, charts={}, selDept=null;
 
-// ── UTIL: normalización de fechas (agregado)
-function pad(n){ return String(n).padStart(2,'0'); }
-
-function normalizeSheetDate(v){
-  // Devuelve fecha en formato "DD/MM/YYYY" o '' si no existe
-  if(v === null || v === undefined || v === '') return '';
-  // Si ya es Date
-  if(v instanceof Date && !isNaN(v)) {
-    return `${pad(v.getDate())}/${pad(v.getMonth()+1)}/${v.getFullYear()}`;
-  }
-  // Si es número (timestamp)
-  if(typeof v === 'number'){
-    const d = new Date(v);
-    if(!isNaN(d)) return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
-  }
-  // Si es string
-  if(typeof v === 'string'){
-    v = v.trim();
-    // ISO con tiempo → usar parte YYYY-MM-DD para evitar cambios por zona horaria
-    const isoDate = v.match(/^(\d{4})-(\d{2})-(\d{2})T/);
-    if(isoDate){
-      return `${pad(Number(isoDate[3]))}/${pad(Number(isoDate[2]))}/${isoDate[1]}`;
-    }
-    // YYYY-MM-DD (sin tiempo)
-    const ymd = v.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if(ymd){
-      return `${pad(Number(ymd[3]))}/${pad(Number(ymd[2]))}/${ymd[1]}`;
-    }
-    // DD/MM/YYYY ya formateado
-    if(/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(v)) return v;
-  }
-  // Fallback: intentar crear Date y usar valores (puede incluir hora)
-  const d = new Date(v);
-  if(!isNaN(d)) return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
-  return String(v);
-}
+// Alias — la implementación canónica vive en shared.js → fmtFecha()
+const normalizeSheetDate = fmtFecha;
 
 // ═══════════════════════════════════════════════
 //  AUTH
@@ -1051,18 +1018,8 @@ async function loadAll(){
       const nombre=row[2]||'', idC=row[6]||'', idE=row[7]||'';
       if(ing>0){
         totalIng+=ing;
-        // 1) Col I (índice 8) — depto directo
-        const deptColI = row[8] ? String(row[8]).trim().toUpperCase() : null;
-        // 2) Col G — CM-302, CE-CIS-305, CV-VIG-101 (último segmento debe tener dígito)
-        const mCM    = String(idC).match(/^CM-(.+)$/);
-        const mCEfull = String(idC).match(/^(?:CE|CV)-[A-Z]+-(\w*\d\w*)$/i);
-        const deptFromG = mCM ? mCM[1].toUpperCase() : (mCEfull ? mCEfull[1].toUpperCase() : null);
-        // 3) Fallback — extraer número de depto del Concepto (col C)
-        const mConc = !deptColI && !deptFromG
-          ? (nombre.match(/\b(\d{3}|PH\d)\s*$/i) || null)
-          : null;
-        const deptFromConc = mConc ? mConc[1].toUpperCase() : null;
-        const dept = deptColI || deptFromG || deptFromConc;
+        // Detección de depto — lógica en shared.js → detectDeptFromRow()
+        const {dept, mCM} = detectDeptFromRow(row, nombre, idC);
         if(dept){
           if(!deptPagos[dept])deptPagos[dept]=[];
           if(!deptMontosMes[dept])deptMontosMes[dept]={};
