@@ -727,21 +727,20 @@ async function loadAllData(){
         saldoAnterior=f2p-d2p+e2p;
       }
     }
-    let totalIngresos=0,totalEgresos=0,egresosCat={},egresosList=[];
+    let totalIngresos=0,totalEgresos=0,egresosCat={},egresosList=[],lastSaldoF=0;
     const deptsPagaron=new Set();
     allRowsP.forEach((row)=>{
       if(!row[0])return;
       if(row[0]==='SALDO MES ANTERIOR'||row[0]==='SALDO ANTERIOR'||String(row[0]).toUpperCase().startsWith('SALDO')) return;
       if(row[0]==='FECHA'||row[0]==='TOTAL'||String(row[0]).includes('ESTADO DE CUENTA'))return;
+      // Rastrear saldo_final = última celda no-nula de col F (igual que admin)
+      const sf=typeof row[5]==='number'?row[5]:null; if(sf!==null) lastSaldoF=sf;
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
       if(ingreso>0){
         totalIngresos+=ingreso;
-        // Detección de depto — lógica en shared.js → detectDeptFromRow()
         const {dept: deptPagante, mCM, deptColI} = detectDeptFromRow(row, nombre, idConc);
-        // Cobranza %: solo CM (cuota de mantenimiento principal)
         if(mCM && deptColI) deptsPagaron.add(deptColI);
         else if(mCM && deptPagante) deptsPagaron.add(deptPagante);
-        // Historial de pagos: todos los movimientos del depto (CM + CE + CV)
         if(deptPagante){
           if(!deptPagos[deptPagante])deptPagos[deptPagante]=[];
           deptPagos[deptPagante].push({fecha:fmtFechaPortal(fecha),concepto:nombre||String(idConc),monto:ingreso,mes,idConc:String(idConc)});
@@ -749,7 +748,7 @@ async function loadAllData(){
       }
       if(egreso>0){totalEgresos+=egreso;const cat=(idEgr||'OTROS').split('-').slice(0,2).join('-')||'OTROS';egresosCat[cat]=(egresosCat[cat]||0)+egreso;egresosList.push({fecha:fmtFechaPortal(fecha),concepto:nombre||'Egreso',cat,monto:egreso});}
     });
-    monthlyData[mes]={mes,saldo_anterior:saldoAnterior,total_ingresos:totalIngresos,total_egresos:totalEgresos,egresos_por_cat:egresosCat,egresos_list:egresosList,deptos_pagaron:deptsPagaron.size,total_deptos:TOTAL_DEPTOS,pct_cobranza:deptsPagaron.size/TOTAL_DEPTOS};
+    monthlyData[mes]={mes,saldo_anterior:saldoAnterior,saldo_final:lastSaldoF,total_ingresos:totalIngresos,total_egresos:totalEgresos,egresos_por_cat:egresosCat,egresos_list:egresosList,deptos_pagaron:deptsPagaron.size,total_deptos:TOTAL_DEPTOS,pct_cobranza:deptsPagaron.size/TOTAL_DEPTOS};
   });
 
   const deptMontosMes={};
@@ -779,8 +778,8 @@ async function loadAllData(){
     deptData[dept]={cuota,morosidad:0,pagos,resumen_mensual:resumen};
   });
 
-  const monthly=activeMonths.map(mes=>monthlyData[mes]||{mes,saldo_anterior:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0});
-  DATA={activeMonths,monthly,deptData};
+  const monthly=activeMonths.map(mes=>monthlyData[mes]||{mes,saldo_anterior:0,saldo_final:0,total_ingresos:0,total_egresos:0,egresos_por_cat:{},egresos_list:[],deptos_pagaron:0,total_deptos:TOTAL_DEPTOS,pct_cobranza:0});
+  DATA={activeMonths,monthly,deptData,deptMontosMes,deptPagos};
 
   const now=new Date(),t=now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
   ['inicio','avisos','hist','egr'].forEach(k=>{
@@ -896,8 +895,9 @@ function renderInicio(){
   const nPunt=resumen.filter(m=>m.status==='puntual').length;
   const nSin=resumen.filter(m=>m.status==='sin_pago').length;
   const MONTHLY=DATA.monthly;
-  const lastSaldo=MONTHLY[MONTHLY.length-1].saldo_anterior;
   const avgCob=MONTHLY.reduce((s,m)=>s+m.pct_cobranza,0)/MONTHLY.length;
+  const _lastActual=[...MONTHLY].reverse().find(m=>m.saldo_final>0);
+  const lastSaldo=_lastActual?_lastActual.saldo_final:([...MONTHLY].reverse().find(m=>m.saldo_anterior>0)||{saldo_anterior:0}).saldo_anterior;
 
   // Usar cuota vigente real del backend si está disponible
   const cuotaReal = (miSaldo && miSaldo.cuotaVigente > 0) ? miSaldo.cuotaVigente : d.cuota;
@@ -968,32 +968,30 @@ async function renderAvisos(){
 //  MOROSOS
 // ═══════════════════════════════════════════════════
 let _morososData=[];
+let _morSelectedDept=null;
 
 async function renderMorosos(){
-  const container = document.getElementById('morosos-content');
-  container.innerHTML = '<div class="spin-wrap"><div class="spinner"></div><p>Cargando…</p></div>';
+  const container=document.getElementById('morosos-content');
+  container.innerHTML='<div class="spin-wrap"><div class="spinner"></div><p>Cargando…</p></div>';
   try{
-    const [morososTable, catalogTable] = await Promise.all([
+    const [morososTable,catalogTable]=await Promise.all([
       fetchSheet('Morosos').catch(()=>null),
       fetchSheet('Catalogo Ingresos').catch(()=>null)
     ]);
-
-    // Lookup nombres desde catálogo
-    const names = {};
+    const names={};
     if(catalogTable){
       tableToRows(catalogTable).forEach(row=>{
-        if(!row[0]) return;
-        const id = String(row[0]).trim().toUpperCase();
-        const m = id.match(/^CM-(.+)$/);
-        if(m && row[5] && String(row[5]).trim()) names[m[1].toUpperCase()]=String(row[5]).trim();
+        if(!row[0])return;
+        const id=String(row[0]).trim().toUpperCase();
+        const m=id.match(/^CM-(.+)$/);
+        if(m&&row[5]&&String(row[5]).trim())names[m[1].toUpperCase()]=String(row[5]).trim();
       });
     }
-
-    const rows = morososTable ? tableToRows(morososTable) : [];
-    _morososData = rows.filter(r=>{
-      if(!r[0]||!r[1]) return false;
+    const rows=morososTable?tableToRows(morososTable):[];
+    _morososData=rows.filter(r=>{
+      if(!r[0]||!r[1])return false;
       const d=String(r[0]).trim().toUpperCase();
-      if(!/\d/.test(d)) return false;
+      if(!/\d/.test(d))return false;
       const m=typeof r[1]==='number'?r[1]:parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
       return m>0;
     }).map(r=>{
@@ -1002,7 +1000,7 @@ async function renderMorosos(){
       const comentario=r[2]?(r[2] instanceof Date||(typeof r[2]==='string'&&/^\d{4}-\d{2}-\d{2}/.test(r[2]))?'Corte: '+fmtFecha(r[2]):String(r[2]).trim()):'';
       return{dept,nombre:names[dept]||'',monto,comentario,esPropio:dept===currentDept.toUpperCase()};
     });
-
+    _morSelectedDept=null;
     buildMorososUI(container);
   }catch(e){
     container.innerHTML='<p style="color:var(--red);font-size:.82rem;padding:1rem">No se pudo cargar la información de morosos.</p>';
@@ -1010,104 +1008,143 @@ async function renderMorosos(){
 }
 
 function buildMorososUI(container){
-  const total=_morososData.reduce((s,r)=>s+r.monto,0);
-  const years=[...new Set(DATA.activeMonths.map(m=>m.split(' ')[1]))].sort();
+  const MONTHLY=DATA.monthly;
+  const cuota=(DATA.deptData[currentDept]&&DATA.deptData[currentDept].cuota)||0;
+  const totalMoroso=_morososData.reduce((s,r)=>s+r.monto,0);
+
+  // Datos para la gráfica: esperado vs recaudado por mes
+  const chartMeses=MONTHLY.slice(-12); // últimos 12 meses
+  const esperado=chartMeses.map(m=>TOTAL_DEPTOS*cuota);
+  const recaudado=chartMeses.map(m=>m.deptos_pagaron*cuota);
+  const noPagadoAmt=chartMeses.map(m=>(TOTAL_DEPTOS-m.deptos_pagaron)*cuota);
 
   container.innerHTML=`
-    <div class="stitle"><h2>Morosos</h2><span class="tag">${_morososData.length} con adeudo</span></div>
+    <div class="stitle"><h2>Morosidad</h2><span class="tag">${_morososData.length} con adeudo</span></div>
+
+    <!-- Gráfica cobranza mes a mes -->
     <div class="panel panel-pad" style="margin-bottom:1rem">
-      <div class="fbar">
-        <input id="mor-search" class="fsel" type="text" placeholder="Buscar depto…" oninput="applyMorFilters()"
-          style="min-width:130px;font-size:.78rem">
-        <button class="fbtn" onclick="document.getElementById('mor-search').value='';applyMorFilters()">✕ Limpiar</button>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
+        <span style="font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(24,18,10,.4)">Cobranza CM mensual</span>
+        <span style="font-size:.72rem;color:rgba(24,18,10,.4)">Cuota referencia ${fmtDec(cuota)}</span>
       </div>
-      <div class="hist-summary-row" id="mor-summary">${_morososData.length} departamentos · Total adeudado: <strong>${fmtDec(total)}</strong></div>
+      <canvas id="mor-chart" style="max-height:200px"></canvas>
     </div>
 
-    <div class="panel" style="overflow-x:auto"><table style="min-width:380px">
-      <thead><tr>
-        <th>Depto</th><th>Propietario</th>
-        <th style="text-align:right">Adeudo</th><th>Corte</th>
-      </tr></thead>
-      <tbody id="mor-tbody"></tbody>
-      <tfoot id="mor-tfoot"></tfoot>
-    </table></div>
-
-    <div class="stitle" style="margin-top:1.5rem"><h2>No pagaron en el mes</h2><span class="tag">Por mes</span></div>
-    <div class="panel panel-pad" style="margin-bottom:.8rem">
-      <div class="fbar">
-        <select id="mor-mes-sel" class="fsel" onchange="renderNoPagaron()">
-          <option value="">— Selecciona mes —</option>
-          ${DATA.activeMonths.slice().reverse().map(m=>`<option value="${m}">${m}</option>`).join('')}
-        </select>
-      </div>
+    <!-- Lista de deptos con adeudo -->
+    <div class="stitle"><h2>Departamentos con adeudo</h2><span class="tag">${_morososData.length} · ${fmtDec(totalMoroso)}</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:1rem" id="mor-chips">
+      ${_morososData.map(r=>`
+        <button onclick="morSelDept('${r.dept}')" id="morchip-${r.dept}"
+          style="padding:.4rem .8rem;border:1.5px solid ${r.esPropio?'var(--red)':'var(--bdr)'};border-radius:20px;
+          background:${r.esPropio?'#fff8f8':'#fff'};font-family:'DM Sans',sans-serif;font-size:.75rem;
+          font-weight:600;cursor:pointer;color:${r.esPropio?'var(--red)':'var(--ink)'};transition:all .15s"
+          title="${r.nombre||r.dept}">
+          ${r.dept} <span style="font-family:'Fraunces',serif;margin-left:.3rem;color:${r.esPropio?'var(--red)':'rgba(24,18,10,.5)'}">${fmt(r.monto)}</span>
+          ${r.esPropio?'<span class="moroso-yo">Tú</span>':''}
+        </button>`).join('')}
     </div>
-    <div id="mor-nopagaron"></div>
+
+    <!-- Panel de detalle del depto seleccionado -->
+    <div id="mor-detail"></div>
   `;
-  applyMorFilters();
-}
 
-function applyMorFilters(){
-  const q=(document.getElementById('mor-search')?.value||'').toUpperCase();
-  const filtered=_morososData.filter(r=>!q||r.dept.includes(q)||r.nombre.toUpperCase().includes(q));
-  const tbody=document.getElementById('mor-tbody');
-  const tfoot=document.getElementById('mor-tfoot');
-  const sumEl=document.getElementById('mor-summary');
-  if(!tbody)return;
-  tbody.innerHTML=filtered.map(r=>`<tr style="${r.esPropio?'background:#fff8f8;':''}">
-    <td style="font-weight:700;font-size:.82rem">
-      ${r.dept}${r.esPropio?` <span class="moroso-yo">Tú</span>`:''}
-    </td>
-    <td class="td-s">${r.nombre||'—'}</td>
-    <td class="td-m" style="color:var(--red)">${fmtDec(r.monto)}</td>
-    <td class="td-s">${r.comentario||'—'}</td>
-  </tr>`).join('');
-  const total=filtered.reduce((s,r)=>s+r.monto,0);
-  if(tfoot)tfoot.innerHTML=`<tr class="tfoot-row">
-    <td colspan="2">TOTAL <span style="font-weight:400;color:rgba(24,18,10,.4)">${filtered.length} deptos</span></td>
-    <td class="td-m" style="color:var(--red);font-weight:700">${fmtDec(total)}</td>
-    <td></td>
-  </tr>`;
-  if(sumEl)sumEl.innerHTML=`${filtered.length} departamentos · Total adeudado: <strong>${fmtDec(total)}</strong>`;
-}
-
-function renderNoPagaron(){
-  const mes=document.getElementById('mor-mes-sel').value;
-  const el=document.getElementById('mor-nopagaron');
-  if(!mes||!el)return;
-  const mesData=DATA.monthly.find(m=>m.mes===mes);
-  if(!mesData){el.innerHTML='';return;}
-
-  // Depts que SÍ pagaron CM ese mes (desde DATA)
-  const pagaronSet=new Set();
-  DATA.deptData && Object.entries(DATA.deptData).forEach(([d,dd])=>{
-    const r=dd.resumen_mensual.find(rm=>rm.mes===mes);
-    if(r&&r.total>0) pagaronSet.add(d.toUpperCase());
+  // Renderizar gráfica
+  const ctx=document.getElementById('mor-chart').getContext('2d');
+  if(charts.mor)charts.mor.destroy();
+  charts.mor=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:chartMeses.map(m=>MES_SHORT[m.mes]||m.mes),
+      datasets:[
+        {label:'Recaudado',data:recaudado,backgroundColor:'rgba(58,92,60,.7)',borderRadius:2,borderSkipped:false,stack:'s'},
+        {label:'No cobrado',data:noPagadoAmt,backgroundColor:'rgba(139,26,26,.45)',borderRadius:2,borderSkipped:false,stack:'s'}
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{labels:{font:{family:'DM Sans',size:10},color:'rgba(24,18,10,.5)'}},
+        tooltip:{callbacks:{
+          label:c=>`${c.dataset.label}: ${fmtDec(c.raw)}`,
+          afterBody:items=>{
+            const mes=chartMeses[items[0].dataIndex];
+            return [`${mes.deptos_pagaron}/${TOTAL_DEPTOS} deptos pagaron`];
+          }
+        }}
+      },
+      scales:{
+        y:{beginAtZero:true,stacked:true,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',color:'rgba(24,18,10,.4)',font:{family:'DM Sans',size:10}},grid:{color:'rgba(24,18,10,.05)'}},
+        x:{stacked:true,ticks:{color:'rgba(24,18,10,.45)',font:{family:'DM Sans',size:10}},grid:{display:false}}
+      }
+    }
   });
+}
 
-  // Lista de todos los deptos del edificio desde morosos + catalog
-  // Usamos los deptos en _morososData + los que SÍ pagaron
-  const todosDeptos=new Set([..._morososData.map(r=>r.dept),...Array.from(pagaronSet)]);
-
-  // No pagaron = en listado total pero no en pagaronSet
-  const noPagaron=[..._morososData.filter(r=>!pagaronSet.has(r.dept))];
-
-  if(!noPagaron.length){
-    el.innerHTML=`<div class="panel panel-pad"><div style="text-align:center;padding:1rem;color:var(--sage);font-size:.85rem">✅ Todos pagaron CM en ${mes}</div></div>`;
+function morSelDept(dept){
+  // Toggle: si ya está seleccionado, deseleccionar
+  if(_morSelectedDept===dept){
+    _morSelectedDept=null;
+    document.getElementById('mor-detail').innerHTML='';
+    document.querySelectorAll('#mor-chips button').forEach(b=>b.style.background=b.id==='morchip-'+dept&&b.style.borderColor.includes('red')?'#fff8f8':'#fff');
     return;
   }
-  el.innerHTML=`<div class="panel" style="overflow-x:auto"><table style="min-width:320px">
-    <thead><tr><th>Depto</th><th>Propietario</th><th style="text-align:right">Adeudo</th></tr></thead>
-    <tbody>${noPagaron.map(r=>`<tr style="${r.esPropio?'background:#fff8f8':''}">
-      <td style="font-weight:700;font-size:.82rem">${r.dept}${r.esPropio?` <span class="moroso-yo">Tú</span>`:''}</td>
-      <td class="td-s">${r.nombre||'—'}</td>
-      <td class="td-m" style="color:var(--red)">${fmtDec(r.monto)}</td>
-    </tr>`).join('')}</tbody>
-    <tfoot><tr class="tfoot-row">
-      <td colspan="2">${noPagaron.length} sin pago CM en ${mes}</td>
-      <td class="td-m" style="color:var(--red);font-weight:700">${fmtDec(noPagaron.reduce((s,r)=>s+r.monto,0))}</td>
-    </tr></tfoot>
-  </table></div>`;
+  _morSelectedDept=dept;
+
+  // Highlight chip seleccionado
+  document.querySelectorAll('#mor-chips button').forEach(b=>{
+    const isThis=b.id==='morchip-'+dept;
+    b.style.background=isThis?'var(--ink)':(b.style.borderColor.includes('red')?'#fff8f8':'#fff');
+    b.style.color=isThis?'var(--cream)':(b.style.borderColor.includes('red')?'var(--red)':'var(--ink)');
+  });
+
+  const moroso=_morososData.find(r=>r.dept===dept);
+  const MONTHLY=DATA.monthly;
+  const pagosDepto=(DATA.deptPagos&&DATA.deptPagos[dept])||[];
+  const montosMes=(DATA.deptMontosMes&&DATA.deptMontosMes[dept])||{};
+  const cuota=(DATA.deptData[currentDept]&&DATA.deptData[currentDept].cuota)||0;
+
+  // Historial mes a mes del depto
+  const filas=MONTHLY.map(m=>{
+    const pagado=montosMes[m.mes]||0;
+    const esCM=pagosDepto.filter(p=>p.mes===m.mes&&String(p.idConc).toUpperCase().startsWith('CM-'));
+    const esCE=pagosDepto.filter(p=>p.mes===m.mes&&String(p.idConc).toUpperCase().startsWith('CE-'));
+    let status='sin_pago',statusCls='sin_pago';
+    if(pagado>0){status=pagado>=cuota*0.98?'Al corriente':'Parcial';statusCls=pagado>=cuota*0.98?'puntual':'parcial';}
+    return{mes:m.mes,pagado,cmPagado:esCM.reduce((s,p)=>s+p.monto,0),cePagado:esCE.reduce((s,p)=>s+p.monto,0),status,statusCls};
+  }).filter(f=>f.pagado>0||f.mes===MONTHLY[MONTHLY.length-1].mes);
+
+  const totalPagado=filas.reduce((s,f)=>s+f.pagado,0);
+
+  document.getElementById('mor-detail').innerHTML=`
+    <div class="panel" style="overflow:hidden;margin-bottom:1rem">
+      <div style="padding:.8rem 1rem;background:rgba(24,18,10,.04);border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <span style="font-weight:700;font-size:.9rem">Depto ${dept}</span>
+          ${moroso&&moroso.nombre?`<span style="font-size:.8rem;color:rgba(24,18,10,.5);margin-left:.6rem">${moroso.nombre}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:.8rem">
+          ${moroso?`<span style="font-family:'Fraunces',serif;color:var(--red);font-weight:700">${fmtDec(moroso.monto)} adeudo</span>`:''}
+          <button onclick="morSelDept('${dept}')" style="border:none;background:none;cursor:pointer;color:rgba(24,18,10,.4);font-size:.9rem">✕</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto"><table style="min-width:340px">
+        <thead><tr>
+          <th>Mes</th><th style="text-align:right">CM</th><th style="text-align:right">CE</th>
+          <th style="text-align:right">Total</th><th>Estado</th>
+        </tr></thead>
+        <tbody>${filas.map(f=>`<tr>
+          <td class="td-s" style="white-space:nowrap">${f.mes}</td>
+          <td class="td-m" style="color:var(--sage)">${f.cmPagado>0?fmtDec(f.cmPagado):'—'}</td>
+          <td class="td-m" style="color:var(--amber)">${f.cePagado>0?fmtDec(f.cePagado):'—'}</td>
+          <td class="td-m" style="color:var(--sage)">${f.pagado>0?fmtDec(f.pagado):'—'}</td>
+          <td><span class="badge ${f.statusCls}">${f.status}</span></td>
+        </tr>`).join('')}</tbody>
+        <tfoot><tr class="tfoot-row">
+          <td>Total pagado</td><td></td><td></td>
+          <td class="td-m" style="color:var(--sage);font-weight:700">${fmtDec(totalPagado)}</td><td></td>
+        </tr></tfoot>
+      </table></div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1238,7 +1275,9 @@ function renderEgresos(){
   const totalEgr=MONTHLY.reduce((s,m)=>s+m.total_egresos,0);
   const totalIng=MONTHLY.reduce((s,m)=>s+m.total_ingresos,0);
   const avgCob=MONTHLY.reduce((s,m)=>s+m.pct_cobranza,0)/MONTHLY.length;
-  const lastSaldo=MONTHLY[MONTHLY.length-1].saldo_anterior;
+  // Igual que admin: último mes con saldo_final > 0, fallback a saldo_anterior
+  const lastActual=[...MONTHLY].reverse().find(m=>m.saldo_final>0);
+  const lastSaldo=lastActual?lastActual.saldo_final:([...MONTHLY].reverse().find(m=>m.saldo_anterior>0)||{saldo_anterior:0}).saldo_anterior;
 
   // Obtener años y categorías disponibles
   const years=[...new Set(MONTHLY.map(m=>m.mes.split(' ')[1]))].sort();
