@@ -1657,6 +1657,16 @@ function rCuotasExtras(){
     ${historicoHtml}`;
 }
 
+// Formatea un valor de mes/año (puede ser string feo de Date, fecha ISO, o texto)
+function fmtMesAno(v){
+  if(!v) return '';
+  const d = (v instanceof Date) ? v : new Date(v);
+  if(!isNaN(d.getTime())){
+    return d.toLocaleDateString('es-MX',{month:'long',year:'numeric'});
+  }
+  return String(v); // ya era texto legible (ej: "octubre 2025")
+}
+
 // Genera la card de una cuota extra con su tabla de deptos
 function ceCuotaCard(e){
   const esIndiviso=e.tipo==='INDIVISO';
@@ -1679,10 +1689,10 @@ function ceCuotaCard(e){
         <span class="badge ${esIndiviso?'tardio':'puntual'}" style="margin-left:.5rem">${esIndiviso?'× Indiviso':'Parejo'}</span>
       </div>
       <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-        <span style="font-size:.8rem;color:rgba(24,18,10,.5)">${e.mesAplica}</span>
+        <span style="font-size:.8rem;color:rgba(24,18,10,.5)">${fmtMesAno(e.mesAplica)}</span>
         <span style="font-family:'Fraunces',serif;font-size:1rem;font-weight:700">${fmtD(e.monto)}</span>
         ${esIndiviso?`<span style="font-size:.76rem;color:rgba(24,18,10,.45)">base · total edificio ${fmtD(totalEdificio)}</span>`:`<span style="font-size:.76rem;color:rgba(24,18,10,.45)">por depto · total edificio ${fmtD(totalEdificio)}</span>`}
-        <button onclick="eliminarCuotaExtra(${e.fila},'${e.concepto.replace(/'/g,"\\'")} — ${e.mesAplica}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:.2rem .5rem;opacity:.6" title="Eliminar">✕</button>
+        <button onclick="eliminarCuotaExtra(${e.fila},'${e.concepto.replace(/'/g,"\\'")} — ${fmtMesAno(e.mesAplica)}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:.2rem .5rem;opacity:.6" title="Eliminar">✕</button>
       </div>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr)">${grid}</div>
