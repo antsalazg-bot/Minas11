@@ -1475,7 +1475,7 @@ async function rDeptDetalle(dept){
       h+=`<tr class="mes-row" data-year="${mesYear}" data-hasce="${hasExtras?'1':'0'}" style="${hasExtras?'border-bottom:none':''}">
         <td style="white-space:nowrap;font-weight:500${hasExtras?';border-bottom:none':''}">${m.mes}</td>
         <td class="td-num">${fmtD(m.cuotaMant)}</td>
-        <td class="td-num td-muted">${hasExtras?'↓':m.cuotaExtra>0?fmtD(m.cuotaExtra):'—'}</td>
+        <td class="td-num" style="${m.cuotaExtra>0?'color:rgba(122,82,0,.85);font-weight:600':'color:rgba(24,18,10,.3)'}">${m.cuotaExtra>0?fmtD(m.cuotaExtra):'—'}</td>
         <td class="td-num" style="font-weight:600">${fmtD(m.cuotaTotal)}</td>
         <td style="font-size:.82rem">${mainPagTxt}</td>
         <td class="td-num pos">${totalMainPag>0?fmtD(totalMainPag):'—'}</td>
