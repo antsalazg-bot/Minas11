@@ -1343,9 +1343,11 @@ function rDeptDetail(dept){
         const st=ms?ms.st:'parcial';
         return`<tr><td class="td-muted">${p.fecha}</td><td>${p.concepto}</td><td class="td-muted">${p.mes}</td><td class="td-num pos">${fmtD(p.monto)}</td><td><span class="badge ${st}">${SL[st]}</span></td></tr>`;
       }).join('')}</tbody>
-    </table></div>`;
+    </table></div>
+    <div id="dept-detalle"><div class="spin-wrap"><div class="spinner"></div><p>Cargando desglose…</p></div></div>`;
 
   document.getElementById('dd').innerHTML=html;
+  rDeptDetalle(dept);
   if(charts.dept)charts.dept.destroy();
   const bc=resumen.map(m=>m.st==='puntual'?'rgba(58,92,60,.8)':m.st==='tardio'?'rgba(196,154,34,.8)':m.st==='parcial'?'rgba(122,82,0,.7)':'rgba(139,26,26,.75)');
   charts.dept=new Chart(document.getElementById('ch-dept').getContext('2d'),{type:'bar',
@@ -1357,6 +1359,95 @@ function rDeptDetail(dept){
     scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',color:'rgba(24,18,10,.4)',font:{family:'DM Sans',size:10}},grid:{color:'rgba(24,18,10,.05)'}},
     x:{ticks:{color:'rgba(24,18,10,.45)',font:{family:'DM Sans',size:10}},grid:{display:false}}}}
   });
+}
+
+// ─── Desglose mensual detallado (detalle-depto) ───────────────────────────
+async function rDeptDetalle(dept){
+  const el=document.getElementById('dept-detalle');
+  if(!el)return;
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'detalle-depto',token:SESSION_TOKEN,dept})});
+    const data=await res.json();
+    if(!data.ok){el.innerHTML=`<div class="mora-alert"><div class="mora-ic">⚠️</div><div><h3>No se pudo cargar el desglose</h3><p>${data.error||'error desconocido'}</p></div></div>`;return;}
+
+    const det=data.detalle||[];
+    if(!det.length){el.innerHTML='';return;}
+
+    // KPIs del desglose
+    const totEsp  = det.reduce((s,m)=>s+m.cuotaTotal,0);
+    const totPag  = det.reduce((s,m)=>s+m.totalPagado,0);
+    const totMult = det.reduce((s,m)=>s+m.multa,0);
+    const saldoFin= det[det.length-1].saldoCorriente;
+    const deudaH  = data.deudaHist||0;
+
+    let h='';
+
+    // Banner deuda histórica
+    if(deudaH>0){
+      h+=`<div class="mora-alert danger" style="margin-top:1rem"><div class="mora-ic">📋</div><div><h3>Adeudo histórico: ${fmtD(deudaH)}</h3><p>Saldo acumulado de períodos anteriores al registro actual.</p></div></div>`;
+    }
+
+    h+=`
+    <div class="stitle" style="margin-top:1.5rem"><h2>Desglose mensual</h2><span class="tag">${det.length} meses</span></div>
+    <div class="kpi-row c4" style="margin-bottom:1rem">
+      <div class="kcard s"><div class="klbl">Total esperado</div><div class="kval">${fmt(totEsp)}</div><div class="ksub">CM + CE acumulado</div></div>
+      <div class="kcard g"><div class="klbl">Total pagado</div><div class="kval">${fmt(totPag)}</div><div class="ksub">Ingresos registrados</div></div>
+      <div class="kcard ${totMult>0?'r':'g'}"><div class="klbl">Multas</div><div class="kval">${fmt(totMult)}</div><div class="ksub">${totMult>0?det.filter(m=>m.multa>0).length+' mes(es) con multa':'Sin multas'}</div></div>
+      <div class="kcard ${saldoFin>0?'r':saldoFin<0?'g':'s'}"><div class="klbl">Saldo corriente</div><div class="kval">${fmtD(saldoFin)}</div><div class="ksub">${saldoFin>0?'Adeudo pendiente':saldoFin<0?'Saldo a favor':'Al corriente'}</div></div>
+    </div>
+    <div class="panel" style="overflow-x:auto"><table style="min-width:720px">
+      <thead><tr>
+        <th>Mes</th>
+        <th style="text-align:right">Cuota CM</th>
+        <th style="text-align:right">Cuota CE</th>
+        <th style="text-align:right">Total esp.</th>
+        <th>Pagos realizados</th>
+        <th style="text-align:right">Total pag.</th>
+        <th style="text-align:right">Multa</th>
+        <th style="text-align:right">Saldo corr.</th>
+      </tr></thead>
+      <tbody>`;
+
+    let totPagFila=0, totEspFila=0, totMultFila=0;
+    for(const m of det){
+      totEspFila+=m.cuotaTotal; totPagFila+=m.totalPagado; totMultFila+=m.multa;
+      const sc=m.saldoCorriente;
+      const scCls=sc>0?'neg':sc<0?'pos':'';
+      const scTxt=sc===0?'—':fmtD(sc);
+      // Pagos inline: "Día 5 · $2,500 (CM) | Día 12 · $500 (CE)"
+      const pagTxt=m.pagados&&m.pagados.length
+        ? m.pagados.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px">${p.tipo}</span>`).join(' &nbsp;|&nbsp; ')
+        : '<span class="td-muted">Sin pago</span>';
+      h+=`<tr>
+        <td style="white-space:nowrap;font-weight:500">${m.mes}</td>
+        <td class="td-num">${m.cuotaMant>0?fmtD(m.cuotaMant):'—'}</td>
+        <td class="td-num">${m.cuotaExtra>0?fmtD(m.cuotaExtra):'—'}</td>
+        <td class="td-num" style="font-weight:600">${fmtD(m.cuotaTotal)}</td>
+        <td style="font-size:.82rem">${pagTxt}</td>
+        <td class="td-num pos">${m.totalPagado>0?fmtD(m.totalPagado):'—'}</td>
+        <td class="td-num ${m.multa>0?'neg':''}">${m.multa>0?fmtD(m.multa):'—'}</td>
+        <td class="td-num ${scCls}" style="font-weight:600">${scTxt}</td>
+      </tr>`;
+    }
+
+    // Fila de totales
+    const scFinalCls=saldoFin>0?'neg':saldoFin<0?'pos':'';
+    h+=`</tbody><tfoot><tr style="font-weight:700;border-top:2px solid rgba(24,18,10,.15)">
+      <td>TOTALES</td>
+      <td class="td-num">—</td>
+      <td class="td-num">—</td>
+      <td class="td-num">${fmtD(totEspFila)}</td>
+      <td></td>
+      <td class="td-num pos">${fmtD(totPagFila)}</td>
+      <td class="td-num ${totMultFila>0?'neg':''}">${totMultFila>0?fmtD(totMultFila):'—'}</td>
+      <td class="td-num ${scFinalCls}">${fmtD(saldoFin)}</td>
+    </tr></tfoot></table></div>`;
+
+    el.innerHTML=h;
+  }catch(e){
+    if(document.getElementById('dept-detalle'))
+      document.getElementById('dept-detalle').innerHTML=`<div class="mora-alert"><div class="mora-ic">⚠️</div><div><h3>Error cargando desglose</h3><p>${e.message}</p></div></div>`;
+  }
 }
 
 // ═══════════════════════════════════════════════
