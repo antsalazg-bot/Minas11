@@ -273,6 +273,28 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
 .fin-stat-label{font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
   color:rgba(24,18,10,.4);margin-top:.2rem;}
 
+/* ── FILTER BAR ─────────────────────── */
+.fbar{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;margin-bottom:.8rem;}
+.fbtn{padding:.35rem .7rem;border:1.5px solid var(--bdr);border-radius:2px;background:#fff;
+  font-family:'DM Sans',sans-serif;font-size:.7rem;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;cursor:pointer;color:rgba(24,18,10,.5);transition:all .15s;}
+.fbtn:hover{border-color:var(--gold);color:var(--ink);}
+.fbtn.active{background:var(--ink);color:var(--cream);border-color:var(--ink);}
+.fbtn.ce-on{background:rgba(122,82,0,.12);color:rgba(122,82,0,.9);border-color:rgba(122,82,0,.3);}
+.fsel{padding:.35rem .6rem;border:1.5px solid var(--bdr);border-radius:2px;
+  font-family:'DM Sans',sans-serif;font-size:.75rem;background:#fff;color:var(--ink);
+  outline:none;cursor:pointer;}
+.fsel:focus{border-color:var(--gold);}
+.fbar-sep{width:1px;height:1.2rem;background:var(--bdr);margin:0 .2rem;}
+.badge-cm{background:rgba(58,92,60,.12);color:var(--sage);padding:.15rem .45rem;border-radius:2px;
+  font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.badge-ce{background:rgba(122,82,0,.12);color:var(--amber);padding:.15rem .45rem;border-radius:2px;
+  font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.badge-otro{background:rgba(24,18,10,.07);color:rgba(24,18,10,.5);padding:.15rem .45rem;border-radius:2px;
+  font-size:.6rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
+.tfoot-row td{padding:.55rem .8rem;font-weight:700;border-top:2px solid var(--bdr);
+  font-size:.78rem;background:var(--cream);}
+
 /* ── SPINNER ─────────────────────── */
 .spin-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;
   padding:3rem;gap:1rem;color:rgba(24,18,10,.35);font-size:.82rem;}
@@ -470,7 +492,7 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
     </button>
     <button class="bnav-btn" id="bnav-egresos" onclick="navTo('egresos')">
       <span class="bnav-icon">📊</span>
-      <span class="bnav-label">Egresos</span>
+      <span class="bnav-label">Finanzas</span>
     </button>
     <button class="bnav-btn" id="bnav-morosos" onclick="navTo('morosos')">
       <span class="bnav-icon">⚠️</span>
@@ -705,7 +727,7 @@ async function loadAllData(){
         saldoAnterior=f2p-d2p+e2p;
       }
     }
-    let totalIngresos=0,totalEgresos=0,egresosCat={};
+    let totalIngresos=0,totalEgresos=0,egresosCat={},egresosList=[];
     const deptsPagaron=new Set();
     allRowsP.forEach((row)=>{
       if(!row[0])return;
@@ -725,9 +747,9 @@ async function loadAllData(){
           deptPagos[deptPagante].push({fecha:fmtFechaPortal(fecha),concepto:nombre||String(idConc),monto:ingreso,mes,idConc:String(idConc)});
         }
       }
-      if(egreso>0){totalEgresos+=egreso;const cat=(idEgr||'OTROS').split('-').slice(0,2).join('-')||'OTROS';egresosCat[cat]=(egresosCat[cat]||0)+egreso;}
+      if(egreso>0){totalEgresos+=egreso;const cat=(idEgr||'OTROS').split('-').slice(0,2).join('-')||'OTROS';egresosCat[cat]=(egresosCat[cat]||0)+egreso;egresosList.push({fecha:fmtFechaPortal(fecha),concepto:nombre||'Egreso',cat,monto:egreso});}
     });
-    monthlyData[mes]={mes,saldo_anterior:saldoAnterior,total_ingresos:totalIngresos,total_egresos:totalEgresos,egresos_por_cat:egresosCat,deptos_pagaron:deptsPagaron.size,total_deptos:TOTAL_DEPTOS,pct_cobranza:deptsPagaron.size/TOTAL_DEPTOS};
+    monthlyData[mes]={mes,saldo_anterior:saldoAnterior,total_ingresos:totalIngresos,total_egresos:totalEgresos,egresos_por_cat:egresosCat,egresos_list:egresosList,deptos_pagaron:deptsPagaron.size,total_deptos:TOTAL_DEPTOS,pct_cobranza:deptsPagaron.size/TOTAL_DEPTOS};
   });
 
   const deptMontosMes={};
@@ -900,12 +922,6 @@ function renderInicio(){
         <div class="sem-am">${m.total>0?fmt(m.total):'—'}</div>
         <div class="sem-dy">${m.dia?'Día '+m.dia:ST_LABEL[m.status]}</div>
       </div>`).join('')}</div></div>
-    <div class="stitle"><h2>Condominio</h2><span class="tag">${MONTHLY.length} meses</span></div>
-    <div class="kpi-row cols2">
-      <div class="kcard g"><div class="klbl">Ingresos totales</div><div class="kval">${fmt(MONTHLY.reduce((s,m)=>s+m.total_ingresos,0))}</div><div class="ksub">${MONTHLY.length} meses</div></div>
-      <div class="kcard r"><div class="klbl">Egresos totales</div><div class="kval">${fmt(MONTHLY.reduce((s,m)=>s+m.total_egresos,0))}</div><div class="ksub">Todos los conceptos</div></div>
-    </div>
-    <div class="kcard b" style="margin-bottom:1rem"><div class="klbl">Cobranza promedio</div><div class="kval">${(avgCob*100).toFixed(1)}%</div><div class="ksub">${TOTAL_DEPTOS} departamentos</div></div>
   `;
   document.getElementById('inicio-content').innerHTML=html;
 }
@@ -951,70 +967,147 @@ async function renderAvisos(){
 // ═══════════════════════════════════════════════════
 //  MOROSOS
 // ═══════════════════════════════════════════════════
+let _morososData=[];
+
 async function renderMorosos(){
   const container = document.getElementById('morosos-content');
   container.innerHTML = '<div class="spin-wrap"><div class="spinner"></div><p>Cargando…</p></div>';
   try{
-    // Load morosos sheet and catalog for names
     const [morososTable, catalogTable] = await Promise.all([
       fetchSheet('Morosos').catch(()=>null),
       fetchSheet('Catalogo Ingresos').catch(()=>null)
     ]);
 
-    // Build name lookup from catalog
+    // Lookup nombres desde catálogo
     const names = {};
     if(catalogTable){
       tableToRows(catalogTable).forEach(row=>{
         if(!row[0]) return;
         const id = String(row[0]).trim().toUpperCase();
         const m = id.match(/^CM-(.+)$/);
-        if(m && row[5] && String(row[5]).trim()){
-          names[m[1].toUpperCase()] = String(row[5]).trim();
-        }
+        if(m && row[5] && String(row[5]).trim()) names[m[1].toUpperCase()]=String(row[5]).trim();
       });
     }
 
     const rows = morososTable ? tableToRows(morososTable) : [];
-    // Skip header row: any header variant (DEPARTAMENTO, DEPTO, DEPT…) has no digits → reject it
-    // Also reject rows where monto is 0 or non-numeric
-    const morosos = rows.filter(r => {
-      if(!r[0] || !r[1]) return false;
-      const d = String(r[0]).trim().toUpperCase();
-      if(!/\d/.test(d)) return false;           // headers never contain digits
-      const m = typeof r[1]==='number' ? r[1] : parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
-      return m > 0;
+    _morososData = rows.filter(r=>{
+      if(!r[0]||!r[1]) return false;
+      const d=String(r[0]).trim().toUpperCase();
+      if(!/\d/.test(d)) return false;
+      const m=typeof r[1]==='number'?r[1]:parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
+      return m>0;
+    }).map(r=>{
+      const dept=String(r[0]).trim().toUpperCase();
+      const monto=typeof r[1]==='number'?r[1]:parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
+      const comentario=r[2]?(r[2] instanceof Date||(typeof r[2]==='string'&&/^\d{4}-\d{2}-\d{2}/.test(r[2]))?'Corte: '+fmtFecha(r[2]):String(r[2]).trim()):'';
+      return{dept,nombre:names[dept]||'',monto,comentario,esPropio:dept===currentDept.toUpperCase()};
     });
 
-    if(!morosos.length){
-      container.innerHTML = `
-        <div class="stitle"><h2>Morosos</h2><span class="tag">Estado de adeudos</span></div>
-        <div class="aviso-empty"><div class="aviso-empty-icon">✅</div><p>No hay adeudos registrados.</p></div>`;
-      return;
-    }
-
-    container.innerHTML = `
-      <div class="stitle"><h2>Morosos</h2><span class="tag">${morosos.length} con adeudo</span></div>
-      <div class="morosos-list">
-        ${morosos.map(r=>{
-          const dept = String(r[0]).trim().toUpperCase();
-          const monto = typeof r[1]==='number' ? r[1] : parseFloat(String(r[1]).replace(/[^0-9.-]/g,''))||0;
-          // r[2] puede ser un Date object o ISO string (fecha de corte) → formatear con fmtFecha
-          const comentario = r[2] ? (r[2] instanceof Date || (typeof r[2]==='string' && /^\d{4}-\d{2}-\d{2}/.test(r[2])) ? 'Corte: '+fmtFecha(r[2]) : String(r[2]).trim()) : '';
-          const nombre = names[dept] || '';
-          const esPropio = dept === currentDept.toUpperCase();
-          return `<div class="moroso-card ${esPropio?'moroso-propio':''}">
-            <div class="moroso-info">
-              <div class="moroso-dept">Depto ${dept} ${esPropio?'<span class="moroso-yo">Tú</span>':''}</div>
-              ${nombre?`<div class="moroso-nombre">${nombre}</div>`:''}
-              ${comentario?`<div class="moroso-comentario">${comentario}</div>`:''}
-            </div>
-            <div class="moroso-monto">${fmt(monto)}</div>
-          </div>`;
-        }).join('')}
-      </div>`;
+    buildMorososUI(container);
   }catch(e){
-    container.innerHTML = '<p style="color:var(--red);font-size:.82rem;padding:1rem">No se pudo cargar la información de morosos.</p>';
+    container.innerHTML='<p style="color:var(--red);font-size:.82rem;padding:1rem">No se pudo cargar la información de morosos.</p>';
   }
+}
+
+function buildMorososUI(container){
+  const total=_morososData.reduce((s,r)=>s+r.monto,0);
+  const years=[...new Set(DATA.activeMonths.map(m=>m.split(' ')[1]))].sort();
+
+  container.innerHTML=`
+    <div class="stitle"><h2>Morosos</h2><span class="tag">${_morososData.length} con adeudo</span></div>
+    <div class="panel panel-pad" style="margin-bottom:1rem">
+      <div class="fbar">
+        <input id="mor-search" class="fsel" type="text" placeholder="Buscar depto…" oninput="applyMorFilters()"
+          style="min-width:130px;font-size:.78rem">
+        <button class="fbtn" onclick="document.getElementById('mor-search').value='';applyMorFilters()">✕ Limpiar</button>
+      </div>
+      <div class="hist-summary-row" id="mor-summary">${_morososData.length} departamentos · Total adeudado: <strong>${fmtDec(total)}</strong></div>
+    </div>
+
+    <div class="panel" style="overflow-x:auto"><table style="min-width:380px">
+      <thead><tr>
+        <th>Depto</th><th>Propietario</th>
+        <th style="text-align:right">Adeudo</th><th>Corte</th>
+      </tr></thead>
+      <tbody id="mor-tbody"></tbody>
+      <tfoot id="mor-tfoot"></tfoot>
+    </table></div>
+
+    <div class="stitle" style="margin-top:1.5rem"><h2>No pagaron en el mes</h2><span class="tag">Por mes</span></div>
+    <div class="panel panel-pad" style="margin-bottom:.8rem">
+      <div class="fbar">
+        <select id="mor-mes-sel" class="fsel" onchange="renderNoPagaron()">
+          <option value="">— Selecciona mes —</option>
+          ${DATA.activeMonths.slice().reverse().map(m=>`<option value="${m}">${m}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div id="mor-nopagaron"></div>
+  `;
+  applyMorFilters();
+}
+
+function applyMorFilters(){
+  const q=(document.getElementById('mor-search')?.value||'').toUpperCase();
+  const filtered=_morososData.filter(r=>!q||r.dept.includes(q)||r.nombre.toUpperCase().includes(q));
+  const tbody=document.getElementById('mor-tbody');
+  const tfoot=document.getElementById('mor-tfoot');
+  const sumEl=document.getElementById('mor-summary');
+  if(!tbody)return;
+  tbody.innerHTML=filtered.map(r=>`<tr style="${r.esPropio?'background:#fff8f8;':''}">
+    <td style="font-weight:700;font-size:.82rem">
+      ${r.dept}${r.esPropio?` <span class="moroso-yo">Tú</span>`:''}
+    </td>
+    <td class="td-s">${r.nombre||'—'}</td>
+    <td class="td-m" style="color:var(--red)">${fmtDec(r.monto)}</td>
+    <td class="td-s">${r.comentario||'—'}</td>
+  </tr>`).join('');
+  const total=filtered.reduce((s,r)=>s+r.monto,0);
+  if(tfoot)tfoot.innerHTML=`<tr class="tfoot-row">
+    <td colspan="2">TOTAL <span style="font-weight:400;color:rgba(24,18,10,.4)">${filtered.length} deptos</span></td>
+    <td class="td-m" style="color:var(--red);font-weight:700">${fmtDec(total)}</td>
+    <td></td>
+  </tr>`;
+  if(sumEl)sumEl.innerHTML=`${filtered.length} departamentos · Total adeudado: <strong>${fmtDec(total)}</strong>`;
+}
+
+function renderNoPagaron(){
+  const mes=document.getElementById('mor-mes-sel').value;
+  const el=document.getElementById('mor-nopagaron');
+  if(!mes||!el)return;
+  const mesData=DATA.monthly.find(m=>m.mes===mes);
+  if(!mesData){el.innerHTML='';return;}
+
+  // Depts que SÍ pagaron CM ese mes (desde DATA)
+  const pagaronSet=new Set();
+  DATA.deptData && Object.entries(DATA.deptData).forEach(([d,dd])=>{
+    const r=dd.resumen_mensual.find(rm=>rm.mes===mes);
+    if(r&&r.total>0) pagaronSet.add(d.toUpperCase());
+  });
+
+  // Lista de todos los deptos del edificio desde morosos + catalog
+  // Usamos los deptos en _morososData + los que SÍ pagaron
+  const todosDeptos=new Set([..._morososData.map(r=>r.dept),...Array.from(pagaronSet)]);
+
+  // No pagaron = en listado total pero no en pagaronSet
+  const noPagaron=[..._morososData.filter(r=>!pagaronSet.has(r.dept))];
+
+  if(!noPagaron.length){
+    el.innerHTML=`<div class="panel panel-pad"><div style="text-align:center;padding:1rem;color:var(--sage);font-size:.85rem">✅ Todos pagaron CM en ${mes}</div></div>`;
+    return;
+  }
+  el.innerHTML=`<div class="panel" style="overflow-x:auto"><table style="min-width:320px">
+    <thead><tr><th>Depto</th><th>Propietario</th><th style="text-align:right">Adeudo</th></tr></thead>
+    <tbody>${noPagaron.map(r=>`<tr style="${r.esPropio?'background:#fff8f8':''}">
+      <td style="font-weight:700;font-size:.82rem">${r.dept}${r.esPropio?` <span class="moroso-yo">Tú</span>`:''}</td>
+      <td class="td-s">${r.nombre||'—'}</td>
+      <td class="td-m" style="color:var(--red)">${fmtDec(r.monto)}</td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr class="tfoot-row">
+      <td colspan="2">${noPagaron.length} sin pago CM en ${mes}</td>
+      <td class="td-m" style="color:var(--red);font-weight:700">${fmtDec(noPagaron.reduce((s,r)=>s+r.monto,0))}</td>
+    </tr></tfoot>
+  </table></div>`;
 }
 
 // ═══════════════════════════════════════════════════
@@ -1032,144 +1125,255 @@ async function renderHistorialYRecibos(){
   renderHistorial();
 }
 
+// Detecta tipo CM/CE a partir del idConc del pago
+function getTipoPago(p){
+  const ic=String(p.idConc||'').toUpperCase();
+  if(ic.startsWith('CM-'))return'CM';
+  if(ic.startsWith('CE-'))return'CE';
+  return'Otro';
+}
+
 function renderHistorial(){
   const d=DATA.deptData[currentDept];if(!d)return;
   const resumen=d.resumen_mensual;
   _histPagos=[...d.pagos].sort((a,b)=>b.fecha.split('/').reverse().join('').localeCompare(a.fecha.split('/').reverse().join(''))).map(p=>{
-    const ms=resumen.find(m=>m.mes===p.mes);return{...p,status:ms?ms.status:'parcial'};
+    const ms=resumen.find(m=>m.mes===p.mes);
+    return{...p,status:ms?ms.status:'parcial',tipo:getTipoPago(p)};
   });
   const meses=[...new Set(d.pagos.map(p=>p.mes))];
+  const years=[...new Set(meses.map(m=>m.split(' ')[1]))].sort();
   document.getElementById('historial-content').innerHTML=`
-    <div class="stitle"><h2>Historial de Pagos</h2><span class="tag">Depto ${currentDept}</span></div>
+    <div class="stitle"><h2>Mis Pagos</h2><span class="tag">Depto ${currentDept}</span></div>
     <div class="panel panel-pad" style="margin-bottom:1rem;">
-      <div class="hist-filter-row">
-        <div class="hist-filter-group">
-          <label class="hist-filter-label">Mes</label>
-          <select id="hist-filter-mes" class="hist-select" onchange="applyHistFilters()">
-            <option value="">Todos</option>${meses.map(m=>`<option value="${m}">${m}</option>`).join('')}
-          </select>
-        </div>
-        <div class="hist-filter-group">
-          <label class="hist-filter-label">Estado</label>
-          <select id="hist-filter-status" class="hist-select" onchange="applyHistFilters()">
-            <option value="">Todos</option>
-            <option value="puntual">Puntual</option>
-            <option value="tardio">Tardío</option>
-            <option value="parcial">Parcial</option>
-            <option value="sin_pago">Sin pago</option>
-          </select>
-        </div>
+      <div class="fbar">
+        <button class="fbtn active" onclick="hFiltTipo('',this)">Todos</button>
+        <button class="fbtn" onclick="hFiltTipo('CM',this)">CM — Mantenimiento</button>
+        <button class="fbtn" onclick="hFiltTipo('CE',this)">CE — Extraordinarias</button>
+        <div class="fbar-sep"></div>
+        <select id="hf-ano" class="fsel" onchange="applyHistFilters()">
+          <option value="">Año</option>${years.map(y=>`<option value="${y}">${y}</option>`).join('')}
+        </select>
+        <select id="hf-mes" class="fsel" onchange="applyHistFilters()">
+          <option value="">Mes</option>${meses.map(m=>`<option value="${m}">${m}</option>`).join('')}
+        </select>
       </div>
       <div class="hist-summary-row" id="hist-summary"></div>
     </div>
-    <div class="panel"><table>
-      <thead><tr><th>Fecha</th><th>Concepto</th><th style="text-align:right">Monto</th><th>Recibo</th></tr></thead>
+    <div class="panel" style="overflow-x:auto"><table style="min-width:480px">
+      <thead><tr>
+        <th>Fecha</th><th>Concepto</th><th>Tipo</th>
+        <th style="text-align:right">Monto</th><th>Recibo</th>
+      </tr></thead>
       <tbody id="hist-tbody"></tbody>
+      <tfoot id="hist-tfoot"></tfoot>
     </table>
     <div id="hist-empty" style="display:none;text-align:center;padding:2rem;color:rgba(24,18,10,.35);font-size:.82rem;">Sin resultados.</div>
-    </div>
-  `;
+    </div>`;
+  applyHistFilters();
+}
+
+let _hfTipo='';
+function hFiltTipo(tipo,btn){
+  _hfTipo=tipo;
+  document.querySelectorAll('.fbar .fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
   applyHistFilters();
 }
 
 function applyHistFilters(){
-  const mesFil=document.getElementById('hist-filter-mes')?.value||'';
-  const statFil=document.getElementById('hist-filter-status')?.value||'';
+  const anoFil=document.getElementById('hf-ano')?.value||'';
+  const mesFil=document.getElementById('hf-mes')?.value||'';
   const filtered=_histPagos.filter(p=>{
+    if(_hfTipo&&p.tipo!==_hfTipo)return false;
+    if(anoFil&&!p.mes.endsWith(anoFil))return false;
     if(mesFil&&p.mes!==mesFil)return false;
-    if(statFil&&p.status!==statFil)return false;
     return true;
   });
-  const tbody=document.getElementById('hist-tbody'),empty=document.getElementById('hist-empty');
+  const tbody=document.getElementById('hist-tbody');
+  const tfoot=document.getElementById('hist-tfoot');
+  const empty=document.getElementById('hist-empty');
   if(!tbody)return;
-  if(!filtered.length){tbody.innerHTML='';empty.style.display='block';}
-  else{
-    empty.style.display='none';
-    tbody.innerHTML=filtered.map(p=>{
-      const recibo = _recibos.find(r => r.mes === p.mes && r.estado !== 'cancelado');
-      const reciboBtn = recibo && recibo.link
-        ? `<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--gold);color:var(--ink);border-radius:3px;font-size:.85rem;text-decoration:none;flex-shrink:0;" title="Ver recibo">📄</a>`
-        : `<span style="color:rgba(24,18,10,.15);font-size:.82rem;display:block;text-align:center;">—</span>`;
-      return `<tr>
-        <td class="td-f">${p.fecha}</td>
-        <td class="td-c">${p.concepto}<span class="td-c-sub badge ${p.status}">${ST_LABEL[p.status]}</span></td>
-        <td class="td-m ing">${fmtDec(p.monto)}</td>
-        <td class="td-rec">${reciboBtn}</td>
-      </tr>`;
-    }).join('');
-  }
+  if(!filtered.length){tbody.innerHTML='';if(tfoot)tfoot.innerHTML='';empty.style.display='block';
+    document.getElementById('hist-summary').innerHTML='Sin resultados.';return;}
+  empty.style.display='none';
+  tbody.innerHTML=filtered.map(p=>{
+    const recibo=_recibos.find(r=>r.mes===p.mes&&r.estado!=='cancelado');
+    const reciboBtn=recibo&&recibo.link
+      ?`<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--gold);color:var(--ink);border-radius:3px;font-size:.85rem;text-decoration:none;flex-shrink:0;" title="Ver recibo">📄</a>`
+      :`<span style="color:rgba(24,18,10,.15);font-size:.82rem;display:block;text-align:center;">—</span>`;
+    const tipoBadge=p.tipo==='CM'?`<span class="badge-cm">CM</span>`:p.tipo==='CE'?`<span class="badge-ce">CE</span>`:`<span class="badge-otro">${p.tipo}</span>`;
+    return`<tr>
+      <td class="td-f">${p.fecha}</td>
+      <td class="td-c">${p.concepto}<span class="td-c-sub badge ${p.status}">${ST_LABEL[p.status]}</span></td>
+      <td>${tipoBadge}</td>
+      <td class="td-m ing">${fmtDec(p.monto)}</td>
+      <td class="td-rec">${reciboBtn}</td>
+    </tr>`;
+  }).join('');
+
+  // Totales por tipo
+  const totCM=filtered.filter(p=>p.tipo==='CM').reduce((s,p)=>s+p.monto,0);
+  const totCE=filtered.filter(p=>p.tipo==='CE').reduce((s,p)=>s+p.monto,0);
+  const totOtro=filtered.filter(p=>p.tipo==='Otro').reduce((s,p)=>s+p.monto,0);
   const total=filtered.reduce((s,p)=>s+p.monto,0);
-  const sumEl=document.getElementById('hist-summary');
-  if(sumEl)sumEl.innerHTML=`${filtered.length} pagos · Total: <strong>${fmtDec(total)}</strong>`;
+  if(tfoot)tfoot.innerHTML=`<tr class="tfoot-row">
+    <td colspan="2">TOTALES <span style="font-weight:400;color:rgba(24,18,10,.4)">${filtered.length} pagos</span></td>
+    <td style="font-size:.7rem">
+      ${totCM>0?`<span class="badge-cm">CM ${fmtDec(totCM)}</span> `:''}
+      ${totCE>0?`<span class="badge-ce">CE ${fmtDec(totCE)}</span>`:''}
+    </td>
+    <td class="td-m ing" style="font-weight:700">${fmtDec(total)}</td>
+    <td></td>
+  </tr>`;
+  document.getElementById('hist-summary').innerHTML=`${filtered.length} pagos · CM: <strong>${fmtDec(totCM)}</strong>${totCE>0?' · CE: <strong>'+fmtDec(totCE)+'</strong>':''} · Total: <strong>${fmtDec(total)}</strong>`;
 }
 
 // ═══════════════════════════════════════════════════
-//  EGRESOS
+//  EGRESOS / FINANZAS DEL CONDOMINIO
 // ═══════════════════════════════════════════════════
+let _egrFiltAno='', _egrFiltMes='', _egrFiltCat='';
+
 function renderEgresos(){
   const MONTHLY=DATA.monthly;
   const totalEgr=MONTHLY.reduce((s,m)=>s+m.total_egresos,0);
+  const totalIng=MONTHLY.reduce((s,m)=>s+m.total_ingresos,0);
+  const avgCob=MONTHLY.reduce((s,m)=>s+m.pct_cobranza,0)/MONTHLY.length;
+  const lastSaldo=MONTHLY[MONTHLY.length-1].saldo_anterior;
+
+  // Obtener años y categorías disponibles
+  const years=[...new Set(MONTHLY.map(m=>m.mes.split(' ')[1]))].sort();
   const allCats={};
-  MONTHLY.forEach(m=>Object.entries(m.egresos_por_cat).forEach(([cat,val])=>{allCats[cat]=(allCats[cat]||0)+val;}));
-  const cats=Object.entries(allCats).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  const maxCat=cats.length?cats[0][1]:1;
+  MONTHLY.forEach(m=>Object.entries(m.egresos_por_cat).forEach(([cat,val])=>{if(val>0)allCats[cat]=(allCats[cat]||0)+val;}));
+  const catsSorted=Object.entries(allCats).sort((a,b)=>b[1]-a[1]);
 
   let html=`
-    <div class="stitle"><h2>Egresos del Condominio</h2><span class="tag">${MONTHLY.length} meses</span></div>
-    <div class="kpi-row cols2">
-      <div class="kcard r"><div class="klbl">Total egresos</div><div class="kval">${fmt(totalEgr)}</div><div class="ksub">${MONTHLY.length} meses</div></div>
-      <div class="kcard o"><div class="klbl">Promedio mensual</div><div class="kval">${fmt(totalEgr/MONTHLY.length)}</div><div class="ksub">Por mes</div></div>
+    <div class="stitle"><h2>Finanzas del Condominio</h2><span class="tag">${MONTHLY.length} meses</span></div>
+    <div class="kpi-row cols2" style="margin-bottom:.6rem">
+      <div class="kcard g"><div class="klbl">Ingresos totales</div><div class="kval">${fmt(totalIng)}</div><div class="ksub">${MONTHLY.length} meses</div></div>
+      <div class="kcard r"><div class="klbl">Egresos totales</div><div class="kval">${fmt(totalEgr)}</div><div class="ksub">Todos los conceptos</div></div>
     </div>
-    <div class="stitle"><h2>Por categoría</h2></div>
-    <div class="panel panel-pad">
-      <div class="ebar-list">${cats.map(([cat,val])=>`
-        <div>
-          <div class="ebar-label">${CAT_LABELS[cat]||cat}</div>
-          <div class="ebar-row">
-            <div class="ebar-track" style="flex:1"><div class="ebar-fill" style="width:${(val/maxCat*100).toFixed(1)}%"></div></div>
-            <div class="ebar-val">${fmt(val)}</div>
-          </div>
-        </div>`).join('')}
-      </div>
+    <div class="kpi-row cols2" style="margin-bottom:1rem">
+      <div class="kcard b"><div class="klbl">Saldo bancario</div><div class="kval">${fmt(lastSaldo)}</div><div class="ksub">Último mes</div></div>
+      <div class="kcard o"><div class="klbl">Cobranza prom.</div><div class="kval">${(avgCob*100).toFixed(1)}%</div><div class="ksub">${TOTAL_DEPTOS} deptos</div></div>
     </div>
-    <div class="stitle"><h2>Por mes</h2></div>
-    <div class="mes-selector" id="egr-mes-sel"></div>
-    <div class="panel panel-pad" id="egr-mes-detail"></div>
-  `;
 
+    <div class="stitle"><h2>Egresos por mes</h2></div>
+    <div class="panel panel-pad" style="margin-bottom:1rem"><canvas id="egr-chart"></canvas></div>
+
+    <div class="stitle"><h2>Detalle de egresos</h2></div>
+    <div class="panel panel-pad" style="margin-bottom:1rem">
+      <div class="fbar">
+        <select id="egf-ano" class="fsel" onchange="applyEgrFilters()">
+          <option value="">Año</option>${years.map(y=>`<option value="${y}">${y}</option>`).join('')}
+        </select>
+        <select id="egf-mes" class="fsel" onchange="applyEgrFilters()">
+          <option value="">Mes</option>${MONTHLY.map(m=>`<option value="${m.mes}">${m.mes}</option>`).join('')}
+        </select>
+        <select id="egf-cat" class="fsel" onchange="applyEgrFilters()">
+          <option value="">Concepto</option>${catsSorted.map(([cat])=>`<option value="${cat}">${CAT_LABELS[cat]||cat}</option>`).join('')}
+        </select>
+        <button class="fbtn" onclick="limpiarEgrFiltros()">✕ Limpiar</button>
+      </div>
+      <div class="hist-summary-row" id="egr-summary"></div>
+    </div>
+    <div class="panel" style="overflow-x:auto"><table style="min-width:400px">
+      <thead><tr>
+        <th>Fecha</th><th>Mes</th><th>Concepto</th>
+        <th style="text-align:right;width:96px">Monto</th>
+      </tr></thead>
+      <tbody id="egr-tbody"></tbody>
+      <tfoot id="egr-tfoot"></tfoot>
+    </table>
+    <div id="egr-empty" style="display:none;text-align:center;padding:2rem;color:rgba(24,18,10,.35);font-size:.82rem;">Sin resultados con estos filtros.</div>
+    </div>
+  `;
   document.getElementById('egresos-content').innerHTML=html;
 
-  // Mes selector
-  const sel=document.getElementById('egr-mes-sel');
-  MONTHLY.forEach((m,i)=>{
-    const btn=document.createElement('button');
-    btn.className='mes-btn'+(i===MONTHLY.length-1?' active':'');
-    btn.textContent=MES_SHORT[m.mes]||m.mes;
-    btn.onclick=()=>{document.querySelectorAll('.mes-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderEgresosMes(i);};
-    sel.appendChild(btn);
+  // Gráfica de barras por mes
+  const ctx=document.getElementById('egr-chart').getContext('2d');
+  if(charts.egr)charts.egr.destroy();
+  charts.egr=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:MONTHLY.map(m=>MES_SHORT[m.mes]||m.mes),
+      datasets:[{
+        label:'Egresos',
+        data:MONTHLY.map(m=>m.total_egresos),
+        backgroundColor:'rgba(139,26,26,.7)',
+        borderRadius:2,
+        borderSkipped:false
+      },{
+        label:'Ingresos',
+        data:MONTHLY.map(m=>m.total_ingresos),
+        backgroundColor:'rgba(58,92,60,.5)',
+        borderRadius:2,
+        borderSkipped:false
+      }]
+    },
+    options:{responsive:true,plugins:{legend:{labels:{font:{family:'DM Sans',size:10},color:'rgba(24,18,10,.5)'}},tooltip:{callbacks:{label:c=>fmtDec(c.raw)}}},
+      scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',color:'rgba(24,18,10,.4)',font:{family:'DM Sans',size:10}},grid:{color:'rgba(24,18,10,.05)'}},
+      x:{ticks:{color:'rgba(24,18,10,.45)',font:{family:'DM Sans',size:10}},grid:{display:false}}}}
   });
-  renderEgresosMes(MONTHLY.length-1);
+
+  _egrFiltAno='';_egrFiltMes='';_egrFiltCat='';
+  applyEgrFilters();
 }
 
-function renderEgresosMes(idx){
-  const m=DATA.monthly[idx];
-  const cats=Object.entries(m.egresos_por_cat).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-  const maxE=cats.length?cats[0][1]:1;
-  document.getElementById('egr-mes-detail').innerHTML=`
-    <div style="margin-bottom:.8rem;display:flex;justify-content:space-between;align-items:baseline;">
-      <span style="font-family:'Fraunces',serif;font-size:1rem;">${m.mes}</span>
-      <span style="font-family:'Fraunces',serif;font-size:1.1rem;color:var(--red);">${fmt(m.total_egresos)}</span>
-    </div>
-    <div class="ebar-list">${cats.map(([cat,val])=>`
-      <div>
-        <div class="ebar-label">${CAT_LABELS[cat]||cat}</div>
-        <div class="ebar-row">
-          <div class="ebar-track" style="flex:1"><div class="ebar-fill" style="width:${(val/maxE*100).toFixed(1)}%"></div></div>
-          <div class="ebar-val">${fmt(val)}</div>
-        </div>
-      </div>`).join('')}
-    </div>
-  `;
+function limpiarEgrFiltros(){
+  document.getElementById('egf-ano').value='';
+  document.getElementById('egf-mes').value='';
+  document.getElementById('egf-cat').value='';
+  _egrFiltAno='';_egrFiltMes='';_egrFiltCat='';
+  applyEgrFilters();
+}
+
+function applyEgrFilters(){
+  _egrFiltAno=document.getElementById('egf-ano')?.value||'';
+  _egrFiltMes=document.getElementById('egf-mes')?.value||'';
+  _egrFiltCat=document.getElementById('egf-cat')?.value||'';
+
+  // Aplanar todos los egresos individuales con su mes
+  const todas=[];
+  DATA.monthly.forEach(m=>{
+    (m.egresos_list||[]).forEach(e=>{todas.push({...e,mes:m.mes});});
+  });
+
+  const filtered=todas.filter(e=>{
+    if(_egrFiltAno&&!e.mes.endsWith(_egrFiltAno))return false;
+    if(_egrFiltMes&&e.mes!==_egrFiltMes)return false;
+    if(_egrFiltCat&&e.cat!==_egrFiltCat)return false;
+    return true;
+  });
+
+  const tbody=document.getElementById('egr-tbody');
+  const tfoot=document.getElementById('egr-tfoot');
+  const empty=document.getElementById('egr-empty');
+  const sumEl=document.getElementById('egr-summary');
+  if(!tbody)return;
+
+  if(!filtered.length){
+    tbody.innerHTML='';if(tfoot)tfoot.innerHTML='';
+    empty.style.display='block';
+    if(sumEl)sumEl.innerHTML='Sin resultados.';return;
+  }
+  empty.style.display='none';
+  tbody.innerHTML=filtered.map(e=>`<tr>
+    <td class="td-f">${e.fecha}</td>
+    <td class="td-s">${MES_SHORT[e.mes]||e.mes}</td>
+    <td class="td-c">${e.concepto}<span class="td-c-sub" style="color:rgba(24,18,10,.4);font-size:.62rem">${CAT_LABELS[e.cat]||e.cat}</span></td>
+    <td class="td-m" style="color:var(--red)">${fmtDec(e.monto)}</td>
+  </tr>`).join('');
+
+  const total=filtered.reduce((s,e)=>s+e.monto,0);
+  // Totales por categoría (top 3)
+  const byCat={};filtered.forEach(e=>{byCat[e.cat]=(byCat[e.cat]||0)+e.monto;});
+  const topCats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  if(tfoot)tfoot.innerHTML=`<tr class="tfoot-row">
+    <td colspan="2">TOTAL <span style="font-weight:400;color:rgba(24,18,10,.4)">${filtered.length} movimientos</span></td>
+    <td style="font-size:.68rem;color:rgba(24,18,10,.45)">${topCats.map(([c,v])=>`${CAT_LABELS[c]||c}: ${fmt(v)}`).join(' · ')}</td>
+    <td class="td-m" style="color:var(--red);font-weight:700">${fmtDec(total)}</td>
+  </tr>`;
+  if(sumEl)sumEl.innerHTML=`${filtered.length} movimientos · Total: <strong>${fmtDec(total)}</strong>`;
 }
 </script>
 <script>
