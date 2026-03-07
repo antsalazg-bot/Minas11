@@ -483,8 +483,9 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
 // ═══════════════════════════════════════════════════
 //  CONFIG
 // ═══════════════════════════════════════════════════
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzs0R86q90v1ycRiWt63Z0Lz0xM0K62RgLQRVpgw9J3V5A-KVUOqULEdwbaF7Gzo37j/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxKFSVmxn-rLYfphRgnEiT9zKczWNiM1PautBYMhid4NTbqeAnO89AK_Z3lw2pZFB8/exec';
 let SESSION_TOKEN = null;
+let miSaldo = null; // Datos del saldo personal cargados desde backend
 
 // ── Genera automáticamente todos los meses desde Enero 2025 hasta el mes actual ──
 const _MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -709,11 +710,19 @@ async function loadAllData(){
       const fecha=row[0],nombre=row[2]||'',ingreso=typeof row[3]==='number'?row[3]:0,egreso=typeof row[4]==='number'?row[4]:0,idConc=row[6]||'',idEgr=row[7]||'';
       if(ingreso>0){
         totalIngresos+=ingreso;
-        const m=idConc.match(/^CM-(.+)$/);
-        if(m){
-          const dept=m[1];deptsPagaron.add(dept);
-          if(!deptPagos[dept])deptPagos[dept]=[];
-          deptPagos[dept].push({fecha:typeof fecha==='string'?fecha:String(fecha),concepto:nombre,monto:ingreso,mes});
+        // Primario: col I (índice 8) = depto directo
+        const deptColI = row[8] ? String(row[8]).trim().toUpperCase() : null;
+        // Secundario: extraer depto del IDConcepto (CM-101, CE-ELV-101, CE-CIS-101)
+        const mCM  = String(idConc).match(/^CM-(.+)$/);
+        const mCE  = String(idConc).match(/^CE-[A-Z]+-(.+)$/);
+        const deptFromG = mCM ? mCM[1].toUpperCase() : (mCE ? mCE[1].toUpperCase() : null);
+        const deptPagante = deptColI || deptFromG;
+        // Cobranza %: solo CM (cuota de mantenimiento principal)
+        if(mCM){ deptsPagaron.add((deptColI || mCM[1]).toUpperCase()); }
+        // Historial de pagos: todos los movimientos del depto (CM + CE)
+        if(deptPagante){
+          if(!deptPagos[deptPagante])deptPagos[deptPagante]=[];
+          deptPagos[deptPagante].push({fecha:typeof fecha==='string'?fecha:String(fecha),concepto:nombre||String(idConc),monto:ingreso,mes,idConc:String(idConc)});
         }
       }
       if(egreso>0){totalEgresos+=egreso;const cat=(idEgr||'OTROS').split('-').slice(0,2).join('-')||'OTROS';egresosCat[cat]=(egresosCat[cat]||0)+egreso;}
@@ -779,31 +788,76 @@ async function loadMiSaldo(){
       body: JSON.stringify({accion:'saldo-depto', dept:currentDept, token:SESSION_TOKEN})
     });
     const data = await res.json();
-    if(data.ok && data.saldo) renderMiSaldo(data.saldo);
+    if(data.ok && data.saldo){
+      miSaldo = data.saldo;
+      // Actualizar propietario si el backend lo tiene
+      if(miSaldo.propietario && !currentOwner) currentOwner = miSaldo.propietario;
+      // Actualizar topbar con nombre
+      const tbUser = document.getElementById('tb-user');
+      if(tbUser) tbUser.textContent = currentOwner ? `${currentOwner} · Depto ${currentDept}` : currentDept;
+      renderMiSaldo(miSaldo);
+      // Re-renderizar inicio con cuota real
+      if(currentPage === 'inicio') renderInicio();
+    }
   }catch(e){ /* silencioso si falla */ }
 }
 
 function renderMiSaldo(s){
   const el = document.getElementById('saldo-banner');
   if(!el) return;
+  const ultimoPago = s.ultimoMesPagado ? `Último pago: ${s.ultimoMesPagado}` : '';
+  const actualizado = s.actualizado ? `Actualizado: ${s.actualizado}` : '';
+
+  // Crédito / adelanto (saldo total negativo)
+  if(s.total < 0){
+    el.innerHTML = `<div class="saldo-ok" style="background:linear-gradient(135deg,rgba(196,154,34,.12),rgba(196,154,34,.06));border-color:rgba(196,154,34,.3);">
+      <div class="saldo-ic">💰</div>
+      <div class="saldo-txt">
+        <h4 style="color:var(--amber)">Tienes crédito / adelanto</h4>
+        <p>${fmtDec(Math.abs(s.total))} a favor — se aplicará a los próximos meses</p>
+        ${ultimoPago?`<p style="margin-top:.2rem">${ultimoPago}</p>`:''}
+      </div>
+    </div>`;
+    return;
+  }
+
+  // Al corriente (sin adeudo)
   if(s.total <= 0){
     el.innerHTML = `<div class="saldo-ok">
       <div class="saldo-ic">✅</div>
       <div class="saldo-txt">
         <h4>Al corriente</h4>
-        <p>No tienes adeudos registrados</p>
+        <p>No tienes adeudos registrados${ultimoPago?' · '+ultimoPago:''}</p>
       </div>
     </div>`;
     return;
   }
-  const rows = [];
-  if(s.deudaHist > 0) rows.push({l:'Deuda histórica',v:s.deudaHist});
-  if(s.deudaAcum > 0) rows.push({l:'Cuotas pendientes',v:s.deudaAcum});
-  if(s.multas > 0)    rows.push({l:'Multas extemporáneas',v:s.multas});
+
+  // Adeudo pendiente — desglose por rubro
+  const rubros = [];
+  if(s.deudaHist  > 0) rubros.push({l:'Deuda histórica',       v:s.deudaHist,  ic:'📋'});
+  if(s.deudaAcum  > 0) rubros.push({l:'Cuotas pendientes',      v:s.deudaAcum,  ic:'📅'});
+  if(s.multas     > 0) rubros.push({l:'Multas extemporáneas',   v:s.multas,     ic:'⚠️'});
+
+  // Explicación de cómo se aplicará el siguiente pago
+  const cuota = s.cuotaVigente || 0;
+  const pagoSugerido = s.deudaHist + s.deudaAcum + s.multas;
+  const nota = cuota > 0
+    ? `Tu cuota mensual vigente es <strong>${fmtDec(cuota)}</strong>. Los pagos se aplican al adeudo más antiguo primero.`
+    : '';
+
   el.innerHTML = `<div class="saldo-warn">
     <div class="sw-hdr"><span>⚠️</span><h4>Tienes un saldo pendiente</h4></div>
-    ${rows.map(r=>`<div class="sw-row"><span class="sw-lbl">${r.l}</span><span class="sw-val">${fmtDec(r.v)}</span></div>`).join('')}
-    <div class="sw-row sw-total"><span class="sw-lbl">Total adeudado</span><span class="sw-val">${fmtDec(s.total)}</span></div>
+    ${rubros.map(r=>`<div class="sw-row">
+      <span class="sw-lbl">${r.ic} ${r.l}</span>
+      <span class="sw-val">${fmtDec(r.v)}</span>
+    </div>`).join('')}
+    <div class="sw-row sw-total" style="padding-top:.5rem;border-top:1px solid rgba(196,60,40,.15);">
+      <span class="sw-lbl"><strong>Total adeudado</strong></span>
+      <span class="sw-val" style="font-size:1rem;">${fmtDec(s.total)}</span>
+    </div>
+    ${ultimoPago?`<div style="font-size:.68rem;color:rgba(24,18,10,.4);margin-top:.5rem">${ultimoPago}${actualizado?' · '+actualizado:''}</div>`:''}
+    ${nota?`<div style="font-size:.72rem;color:rgba(24,18,10,.5);margin-top:.6rem;line-height:1.4;padding-top:.5rem;border-top:1px solid rgba(196,60,40,.08)">${nota}</div>`:''}
   </div>`;
 }
 
@@ -823,14 +877,16 @@ function renderInicio(){
   const lastSaldo=MONTHLY[MONTHLY.length-1].saldo_anterior;
   const avgCob=MONTHLY.reduce((s,m)=>s+m.pct_cobranza,0)/MONTHLY.length;
 
-  let html='';
-  if(d.morosidad>0)html+=`<div class="mora"><div class="mora-ic">⚠️</div><div><h3>Saldo pendiente: ${fmtDec(d.morosidad)}</h3><p>Contacta a la administración.</p></div></div>`;
+  // Usar cuota vigente real del backend si está disponible
+  const cuotaReal = (miSaldo && miSaldo.cuotaVigente > 0) ? miSaldo.cuotaVigente : d.cuota;
+  const ownerLabel = (miSaldo && miSaldo.propietario) ? miSaldo.propietario : currentOwner;
 
+  let html='';
   html+=`
-    <div class="stitle"><h2>Mi Cuenta</h2><span class="tag">Depto ${currentDept}</span>${currentOwner ? `<span class="owner-name">${currentOwner}</span>` : ""}</div>
+    <div class="stitle"><h2>Mi Cuenta</h2><span class="tag">Depto ${currentDept}</span>${ownerLabel ? `<span class="owner-name">${ownerLabel}</span>` : ""}</div>
     <div class="kpi-row cols2">
       <div class="kcard g"><div class="klbl">Total pagado</div><div class="kval">${fmt(totalPag)}</div><div class="ksub">${d.pagos.length} pagos</div></div>
-      <div class="kcard o"><div class="klbl">Cuota mensual</div><div class="kval">${fmt(d.cuota)}</div><div class="ksub">${nPunt} meses a tiempo</div></div>
+      <div class="kcard o"><div class="klbl">Cuota mensual</div><div class="kval">${fmt(cuotaReal)}</div><div class="ksub">${nPunt} meses a tiempo</div></div>
     </div>
     <div class="kpi-row cols2">
       <div class="kcard ${pct>=90?'g':pct>=60?'o':'r'}"><div class="klbl">Cumplimiento</div><div class="kval">${pct}%</div><div class="ksub">${nSin} sin pago</div></div>
