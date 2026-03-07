@@ -1408,34 +1408,64 @@ async function rDeptDetalle(dept){
       </tr></thead>
       <tbody>`;
 
-    let totPagFila=0, totEspFila=0, totMultFila=0;
+    let totPagFila=0, totEspFila=0, totMultFila=0, totCMFila=0, totCEFila=0;
     for(const m of det){
       totEspFila+=m.cuotaTotal; totPagFila+=m.totalPagado; totMultFila+=m.multa;
+      totCMFila+=m.cuotaMant; totCEFila+=m.cuotaExtra||0;
       const sc=m.saldoCorriente;
       const scCls=sc>0?'neg':sc<0?'pos':'';
       const scTxt=sc===0?'—':fmtD(sc);
-      // Pagos inline: "Día 5 · $2,500 (CM) | Día 12 · $500 (CE)"
-      const pagTxt=m.pagados&&m.pagados.length
-        ? m.pagados.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px">${p.tipo}</span>`).join(' &nbsp;|&nbsp; ')
-        : '<span class="td-muted">Sin pago</span>';
-      h+=`<tr>
-        <td style="white-space:nowrap;font-weight:500">${m.mes}</td>
-        <td class="td-num">${m.cuotaMant>0?fmtD(m.cuotaMant):'—'}</td>
-        <td class="td-num">${m.cuotaExtra>0?fmtD(m.cuotaExtra):'—'}</td>
+
+      // Separar pagos CM y CE para la fila principal vs sub-filas
+      const pagCM=(m.pagados||[]).filter(p=>p.tipo==='CM');
+      const pagCE=(m.pagados||[]).filter(p=>p.tipo==='CE');
+      const pagCMTxt=pagCM.length
+        ? pagCM.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px">CM</span>`).join(' &nbsp;|&nbsp; ')
+        : '<span class="td-muted">Sin pago CM</span>';
+      const totalCMPag=pagCM.reduce((s,p)=>s+p.monto,0);
+      const hasExtras=m.extras&&m.extras.length>0;
+
+      // Fila principal (cuota CM)
+      h+=`<tr style="${hasExtras?'border-bottom:none':''}">
+        <td style="white-space:nowrap;font-weight:500${hasExtras?';border-bottom:none':''}">${m.mes}</td>
+        <td class="td-num">${fmtD(m.cuotaMant)}</td>
+        <td class="td-num td-muted">—</td>
         <td class="td-num" style="font-weight:600">${fmtD(m.cuotaTotal)}</td>
-        <td style="font-size:.82rem">${pagTxt}</td>
-        <td class="td-num pos">${m.totalPagado>0?fmtD(m.totalPagado):'—'}</td>
+        <td style="font-size:.82rem">${pagCMTxt}</td>
+        <td class="td-num pos">${totalCMPag>0?fmtD(totalCMPag):'—'}</td>
         <td class="td-num ${m.multa>0?'neg':''}">${m.multa>0?fmtD(m.multa):'—'}</td>
         <td class="td-num ${scCls}" style="font-weight:600">${scTxt}</td>
       </tr>`;
+
+      // Sub-filas CE (una por cada extra esperado del mes)
+      if(hasExtras){
+        const cePagTxt=pagCE.length
+          ? pagCE.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)">CE</span>`).join(' &nbsp;|&nbsp; ')
+          : '<span class="td-muted">Sin pago CE</span>';
+        const totalCEPag=pagCE.reduce((s,p)=>s+p.monto,0);
+        m.extras.forEach((ex,i)=>{
+          const isLast=i===m.extras.length-1;
+          const idBadge=ex.idConcepto?` <span class="tag" style="font-size:.6rem;padding:1px 5px;background:rgba(58,92,60,.1);color:rgba(58,92,60,.8)">${ex.idConcepto}</span>`:'';
+          h+=`<tr style="background:rgba(122,82,0,.03);${isLast?'':'border-bottom:none'}">
+            <td style="font-size:.78rem;color:rgba(122,82,0,.9);padding-left:1.4rem;font-style:italic;${isLast?'':'border-bottom:none'}">↳ ${ex.concepto||'Cuota Extra'}${idBadge}</td>
+            <td class="td-num td-muted">—</td>
+            <td class="td-num" style="color:rgba(122,82,0,.85);font-weight:600">${fmtD(ex.monto)}</td>
+            <td class="td-num td-muted">—</td>
+            <td style="font-size:.82rem">${i===0?cePagTxt:'<span class="td-muted">—</span>'}</td>
+            <td class="td-num pos">${i===0&&totalCEPag>0?fmtD(totalCEPag):'—'}</td>
+            <td class="td-num">—</td>
+            <td class="td-num td-muted">—</td>
+          </tr>`;
+        });
+      }
     }
 
-    // Fila de totales
+    // Fila de totales con CM y CE desglosados
     const scFinalCls=saldoFin>0?'neg':saldoFin<0?'pos':'';
     h+=`</tbody><tfoot><tr style="font-weight:700;border-top:2px solid rgba(24,18,10,.15)">
       <td>TOTALES</td>
-      <td class="td-num">—</td>
-      <td class="td-num">—</td>
+      <td class="td-num">${fmtD(totCMFila)}</td>
+      <td class="td-num" style="color:rgba(122,82,0,.85)">${totCEFila>0?fmtD(totCEFila):'—'}</td>
       <td class="td-num">${fmtD(totEspFila)}</td>
       <td></td>
       <td class="td-num pos">${fmtD(totPagFila)}</td>
