@@ -444,6 +444,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
         <button class="slink" onclick="sv('avisos',this)"><span class="ic">📢</span>Avisos</button>
         <button class="slink" onclick="sv('nuevo-pago',this)"><span class="ic">➕</span>Registrar Pago</button>
         <button class="slink" onclick="sv('nuevo-egreso',this)"><span class="ic">📋</span>Registrar Egreso</button>
+        <button class="slink" onclick="sv('cuotas-extras',this)"><span class="ic">⚡</span>Cuotas Extras</button>
       </div>
       <div class="sb-section" style="margin-top:.5rem">
         <div class="sb-lbl">Recibos</div>
@@ -567,6 +568,14 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
           </div>
         </div>
       </div>
+      <!-- CUOTAS EXTRAS -->
+      <div id="view-cuotas-extras" class="view">
+        <div class="content fade-in">
+          <div class="page-hdr"><h1>Cuotas Extraordinarias</h1><p>Registra cargos especiales: elevador, cisternas, pintura, etc.</p></div>
+          <div id="ce-content"><div class="spin-wrap"><div class="spinner"></div><p>Cargando…</p></div></div>
+        </div>
+      </div>
+
       <!-- GENERAR RECIBOS -->
       <div id="view-generar-recibos" class="view">
         <div class="content fade-in">
@@ -958,6 +967,7 @@ function sv(name,btn){
   if(btn)btn.classList.add('active');
   if(name==='tarifas') rTarifas();
   if(name==='importar-mes') initImportMes();
+  if(name==='cuotas-extras') initCuotasExtras();
 }
 
 // ═══════════════════════════════════════════════
@@ -1478,6 +1488,144 @@ async function rDeptDetalle(dept){
     if(document.getElementById('dept-detalle'))
       document.getElementById('dept-detalle').innerHTML=`<div class="mora-alert"><div class="mora-ic">⚠️</div><div><h3>Error cargando desglose</h3><p>${e.message}</p></div></div>`;
   }
+}
+
+// ═══════════════════════════════════════════════
+//  CUOTAS EXTRAS
+// ═══════════════════════════════════════════════
+let CE_SALDOS=[], CE_LIST=[];
+
+async function initCuotasExtras(){
+  const el=document.getElementById('ce-content');
+  el.innerHTML='<div class="spin-wrap"><div class="spinner"></div><p>Cargando…</p></div>';
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'leer-cuotas-extras',token:SESSION_TOKEN})});
+    const data=await res.json();
+    if(!data.ok){el.innerHTML=`<p style="color:var(--red);padding:1rem">${data.error}</p>`;return;}
+    CE_SALDOS=data.saldos||[]; CE_LIST=data.extras||[];
+    rCuotasExtras();
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:1rem">Error de conexión</p>';}
+}
+
+function rCuotasExtras(){
+  const el=document.getElementById('ce-content');
+  // Meses disponibles: activos + 6 futuros
+  const MN=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const allMeses=[...(DATA.activeMonths||[])];
+  if(allMeses.length){
+    const [lm,ly]=allMeses[allMeses.length-1].split(' ');
+    let y=parseInt(ly),m=MN.indexOf(lm);
+    for(let i=0;i<6;i++){m++;if(m>11){m=0;y++;}const nm=`${MN[m]} ${y}`;if(!allMeses.includes(nm))allMeses.push(nm);}
+  }
+  const mesOptions=allMeses.map(m=>`<option value="${m}">${m}</option>`).join('');
+
+  // Tabla de existentes
+  const existHtml=CE_LIST.length?`
+    <div class="stitle" style="margin-top:1.5rem"><h2>Cuotas registradas</h2><span class="tag">${CE_LIST.length} registros</span></div>
+    <div class="panel" style="overflow-x:auto"><table>
+      <thead><tr><th>Concepto</th><th>Mes</th><th>Tipo</th><th style="text-align:right">Monto</th><th>ID</th><th></th></tr></thead>
+      <tbody>${CE_LIST.map(e=>`<tr>
+        <td style="font-weight:500">${e.concepto}</td>
+        <td class="td-muted">${e.mesAplica}</td>
+        <td><span class="badge ${e.tipo==='INDIVISO'?'tardio':'puntual'}">${e.tipo==='INDIVISO'?'× Indiviso':'Parejo'}</span></td>
+        <td class="td-num">${fmtD(e.monto)}</td>
+        <td class="td-muted">${e.idConcepto||'—'}</td>
+        <td><button onclick="eliminarCuotaExtra(${e.fila},'${e.concepto.replace(/'/g,"\\'")} — ${e.mesAplica}')" style="border:none;background:none;color:var(--red);cursor:pointer;font-size:.8rem;padding:.2rem .5rem" title="Eliminar">✕</button></td>
+      </tr>`).join('')}</tbody>
+    </table></div>`
+    :`<p style="color:rgba(24,18,10,.4);font-size:.8rem;margin-top:1rem;padding:.5rem">No hay cuotas extraordinarias registradas.</p>`;
+
+  el.innerHTML=`
+    <div class="stitle"><h2>Nueva Cuota Extraordinaria</h2><span class="tag">Registrar cargo especial</span></div>
+    <div class="panel panel-pad" style="max-width:100%">
+      <div class="form-grid">
+        <div class="form-group"><label class="form-lbl">Concepto *</label><input id="ce-conc" type="text" class="form-input" placeholder="Ej: Cuota Elevador"/></div>
+        <div class="form-group"><label class="form-lbl">ID Concepto</label><input id="ce-id" type="text" class="form-input" placeholder="Ej: CE-ELEV"/><span class="form-hint">Opcional — para asociar pagos automáticamente</span></div>
+        <div class="form-group"><label class="form-lbl">Mes que aplica *</label><select id="ce-mes" class="form-select">${mesOptions}</select></div>
+        <div class="form-group"><label class="form-lbl">Monto *</label><input id="ce-monto" type="number" class="form-input" placeholder="0.00" step="0.01" oninput="previsualizarCE()"/></div>
+        <div class="form-group full">
+          <label class="form-lbl">Tipo de cobro</label>
+          <div style="display:flex;gap:2rem;margin-top:.5rem;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem">
+              <input type="radio" name="ce-tipo" value="FLAT" checked onchange="previsualizarCE()">
+              <span><strong>Monto parejo</strong> — mismo importe para todos los deptos</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer;font-size:.85rem">
+              <input type="radio" name="ce-tipo" value="INDIVISO" onchange="previsualizarCE()">
+              <span><strong>Por indiviso</strong> — monto base × fracción de cada depto</span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div id="ce-preview" style="margin:.6rem 0 1.2rem"></div>
+      <div class="form-actions">
+        <button class="btn-primary" id="btn-ce" onclick="guardarCuotaExtra()">💾 Guardar cuota extra</button>
+        <button class="btn-sec" onclick="limpiarCE()">Limpiar</button>
+      </div>
+    </div>
+    ${existHtml}`;
+}
+
+function previsualizarCE(){
+  const monto=parseFloat(document.getElementById('ce-monto')?.value)||0;
+  const tipo=document.querySelector('input[name="ce-tipo"]:checked')?.value||'FLAT';
+  const el=document.getElementById('ce-preview');
+  if(!el)return;
+  if(!monto||!CE_SALDOS.length){el.innerHTML='';return;}
+  let totalEdificio=0;
+  const filas=CE_SALDOS.map(s=>{
+    const m=tipo==='INDIVISO'?Math.round(monto*s.indiviso*100)/100:monto;
+    totalEdificio+=m;
+    return`<div style="display:flex;justify-content:space-between;align-items:center;padding:.28rem .7rem;border-bottom:1px solid rgba(24,18,10,.05)">
+      <span style="font-size:.78rem"><strong>${s.depto}</strong> <span style="color:rgba(24,18,10,.4)">${(s.propietario||'').split(' ')[0]}</span></span>
+      <span style="font-family:'Fraunces',serif;font-size:.85rem;font-weight:600">${fmtD(m)}</span>
+    </div>`;
+  }).join('');
+  el.innerHTML=`<div style="border:1px solid rgba(122,82,0,.2);border-radius:4px;overflow:hidden">
+    <div style="padding:.5rem 1rem;background:rgba(122,82,0,.07);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <span style="font-size:.72rem;font-weight:700;letter-spacing:.06em;color:rgba(122,82,0,.85)">VISTA PREVIA · ${tipo==='INDIVISO'?'PROPORCIONAL POR INDIVISO':'MONTO PAREJO'}</span>
+      <span style="font-size:.78rem;color:rgba(24,18,10,.5)">Total edificio: <strong>${fmtD(totalEdificio)}</strong></span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;max-height:280px;overflow-y:auto">${filas}</div>
+  </div>`;
+}
+
+function limpiarCE(){
+  ['ce-conc','ce-id','ce-monto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const flat=document.querySelector('input[name="ce-tipo"][value="FLAT"]');
+  if(flat)flat.checked=true;
+  const prev=document.getElementById('ce-preview');
+  if(prev)prev.innerHTML='';
+}
+
+async function guardarCuotaExtra(){
+  const concepto=(document.getElementById('ce-conc')?.value||'').trim();
+  const idConcepto=(document.getElementById('ce-id')?.value||'').trim();
+  const mesAplica=document.getElementById('ce-mes')?.value||'';
+  const monto=parseFloat(document.getElementById('ce-monto')?.value)||0;
+  const tipo=document.querySelector('input[name="ce-tipo"]:checked')?.value||'FLAT';
+  if(!concepto){toast('Ingresa el concepto','warn');return;}
+  if(!monto){toast('Ingresa el monto','warn');return;}
+  if(!mesAplica){toast('Selecciona el mes','warn');return;}
+  const btn=document.getElementById('btn-ce');
+  btn.disabled=true;btn.textContent='Guardando…';
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'guardar-cuota-extra',token:SESSION_TOKEN,concepto,monto,mesAplica,idConcepto,tipo})});
+    const data=await res.json();
+    if(data.ok){toast('✅ Cuota extra registrada');limpiarCE();await initCuotasExtras();}
+    else toast('Error: '+(data.error||'desconocido'),'error');
+  }catch(e){toast('Error de conexión','error');}
+  finally{btn.disabled=false;btn.textContent='💾 Guardar cuota extra';}
+}
+
+async function eliminarCuotaExtra(fila,desc){
+  if(!confirm(`¿Eliminar la cuota extra "${desc}"?`))return;
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'eliminar-cuota-extra',token:SESSION_TOKEN,fila})});
+    const data=await res.json();
+    if(data.ok){toast('✅ Cuota extra eliminada');await initCuotasExtras();}
+    else toast('Error: '+(data.error||'desconocido'),'error');
+  }catch(e){toast('Error de conexión','error');}
 }
 
 // ═══════════════════════════════════════════════
