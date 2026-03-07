@@ -1051,15 +1051,26 @@ async function loadAll(){
       const nombre=row[2]||'', idC=row[6]||'', idE=row[7]||'';
       if(ing>0){
         totalIng+=ing;
-        const dm=(idC||'').toString().match(/^CM-(.+)$/);
-        if(dm){
-          const dept=dm[1]; pagaron.add(dept);
+        // 1) Col I (índice 8) — depto directo
+        const deptColI = row[8] ? String(row[8]).trim().toUpperCase() : null;
+        // 2) Col G — CM-302, CE-CIS-305, CV-VIG-101 (último segmento debe tener dígito)
+        const mCM    = String(idC).match(/^CM-(.+)$/);
+        const mCEfull = String(idC).match(/^(?:CE|CV)-[A-Z]+-(\w*\d\w*)$/i);
+        const deptFromG = mCM ? mCM[1].toUpperCase() : (mCEfull ? mCEfull[1].toUpperCase() : null);
+        // 3) Fallback — extraer número de depto del Concepto (col C)
+        const mConc = !deptColI && !deptFromG
+          ? (nombre.match(/\b(\d{3}|PH\d)\s*$/i) || null)
+          : null;
+        const deptFromConc = mConc ? mConc[1].toUpperCase() : null;
+        const dept = deptColI || deptFromG || deptFromConc;
+        if(dept){
           if(!deptPagos[dept])deptPagos[dept]=[];
           if(!deptMontosMes[dept])deptMontosMes[dept]={};
           deptMontosMes[dept][mes]=(deptMontosMes[dept][mes]||0)+ing;
-          // Normalize fecha antes de guardar (PARCHE PRINCIPAL)
+          // Cobranza %: solo CM
+          if(mCM) pagaron.add(dept);
           const f = normalizeSheetDate(row[0]);
-          deptPagos[dept].push({fecha:f,concepto:nombre,monto:ing,mes});
+          deptPagos[dept].push({fecha:f,concepto:nombre,monto:ing,mes,idConc:String(idC)});
         }
       }
       if(egr>0){totalEgr+=egr; const cat=(idE||'OTROS').split('-').slice(0,2).join('-')||'OTROS'; ecat[cat]=(ecat[cat]||0)+egr;}
