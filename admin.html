@@ -865,6 +865,7 @@ function getCookie(name){
     const savedToken = getCookie('minas11_token') || localStorage.getItem('minas11_token');
     if(saved==='1' && savedToken){
       SESSION_TOKEN = savedToken;
+      const passEl=document.getElementById('i-pass'); if(passEl) passEl.value='        ';
       const btn=document.getElementById('login-btn'), bar=document.getElementById('lbar');
       btn.disabled=true; btn.textContent='Cargando datos...'; bar.style.display='block';
       loadAll().then(()=>{

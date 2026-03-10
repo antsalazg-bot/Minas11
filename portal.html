@@ -643,6 +643,7 @@ function getCookie(name){const m=document.cookie.match('(?:^|; )'+name+'=([^;]*)
     SESSION_TOKEN=token;
     currentDept=dept;
     document.getElementById('i-dept').value=dept;
+    const passEl=document.getElementById('i-pass'); if(passEl) passEl.value='        ';
     const btn=document.getElementById('login-btn'),bar=document.getElementById('login-loading');
     btn.disabled=true;btn.textContent='Cargando datos...';bar.style.display='block';
     loadAllData().then(()=>{
