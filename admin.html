@@ -381,6 +381,9 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
 
 .fade-in{animation:fi .3s ease-out;}
 @keyframes fi{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:none;}}
+
+.sin-pago-alert{color:var(--red);font-weight:600;font-size:.78rem;animation:blink-red 1.2s ease-in-out infinite;}
+@keyframes blink-red{0%,100%{opacity:1;}50%{opacity:.25;}}
 </style>
 </head>
 <body>
@@ -1477,7 +1480,7 @@ async function rDeptDetalle(dept){
       const mainPagos = hasExtras ? pagCM : (m.pagados||[]);
       const mainPagTxt=mainPagos.length
         ? mainPagos.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;${p.tipo==='CE'?'background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)':''}">${p.tipo||'CM'}</span>`).join(' &nbsp;|&nbsp; ')
-        : '<span class="td-muted">Sin pago</span>';
+        : '<span class="sin-pago-alert">Sin pago</span>';
       const totalMainPag=mainPagos.reduce((s,p)=>s+p.monto,0);
 
       // Fila principal (CM + todos los pagos cuando sin extras)
@@ -1498,7 +1501,7 @@ async function rDeptDetalle(dept){
       if(hasExtras){
         const cePagTxt=pagCE.length
           ? pagCE.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)">CE</span>`).join(' &nbsp;|&nbsp; ')
-          : '<span class="td-muted">Sin pago CE</span>';
+          : '<span class="sin-pago-alert">Sin pago CE</span>';
         const totalCEPag=pagCE.reduce((s,p)=>s+p.monto,0);
         m.extras.forEach((ex,i)=>{
           const isLast=i===m.extras.length-1;
