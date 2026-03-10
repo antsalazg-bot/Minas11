@@ -973,6 +973,7 @@ async function renderAvisos(){
 //  MOROSOS
 // ═══════════════════════════════════════════════════
 let _morososData=[];
+let _detalleSaldos={};
 let _morSelectedDept=null;
 let _morAnoPortal='';
 
@@ -980,9 +981,10 @@ async function renderMorosos(){
   const container=document.getElementById('morosos-content');
   container.innerHTML='<div class="spin-wrap"><div class="spinner"></div><p>Cargando…</p></div>';
   try{
-    const [morososTable,catalogTable]=await Promise.all([
+    const [morososTable,catalogTable,detalleTable]=await Promise.all([
       fetchSheet('Morosos').catch(()=>null),
-      fetchSheet('Catalogo Ingresos').catch(()=>null)
+      fetchSheet('Catalogo Ingresos').catch(()=>null),
+      fetchSheet('Detalle Saldos').catch(()=>null)
     ]);
     const names={};
     if(catalogTable){
@@ -1006,6 +1008,16 @@ async function renderMorosos(){
       const comentario=r[2]?(r[2] instanceof Date||(typeof r[2]==='string'&&/^\d{4}-\d{2}-\d{2}/.test(r[2]))?'Corte: '+fmtFecha(r[2]):String(r[2]).trim()):'';
       return{dept,nombre:names[dept]||'',monto,comentario,esPropio:dept===currentDept.toUpperCase()};
     });
+    _detalleSaldos={};
+    if(detalleTable){
+      tableToRows(detalleTable).forEach(r=>{
+        if(!r[0])return;
+        const dept=String(r[0]).trim().toUpperCase();
+        if(!/\d/.test(dept))return;
+        const n=s=>parseFloat(String(s).replace(/[^0-9.-]/g,''))||0;
+        _detalleSaldos[dept]={cm:n(r[2]),ce:n(r[3]),multas:n(r[4]),total:n(r[5]),actualizado:r[6]?fmtFecha(r[6]):''};
+      });
+    }
     _morSelectedDept=null;
     buildMorososUI(container);
   }catch(e){
@@ -1199,6 +1211,7 @@ function morSelDept(dept){
   });
 
   const moroso=_morososData.find(r=>r.dept===dept);
+  const detalle=_detalleSaldos[dept]||null;
   const MONTHLY=DATA.monthly;
   const pagosDepto=(DATA.deptPagos&&DATA.deptPagos[dept])||[];
   const montosMes=(DATA.deptMontosMes&&DATA.deptMontosMes[dept])||{};
@@ -1218,15 +1231,23 @@ function morSelDept(dept){
 
   document.getElementById('mor-detail').innerHTML=`
     <div class="panel" style="overflow:hidden;margin-bottom:1rem">
-      <div style="padding:.8rem 1rem;background:rgba(24,18,10,.04);border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center">
-        <div>
-          <span style="font-weight:700;font-size:.9rem">Depto ${dept}</span>
-          ${moroso&&moroso.nombre?`<span style="font-size:.8rem;color:rgba(24,18,10,.5);margin-left:.6rem">${moroso.nombre}</span>`:''}
+      <div style="padding:.8rem 1rem;background:rgba(24,18,10,.04);border-bottom:1px solid var(--bdr)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <span style="font-weight:700;font-size:.9rem">Depto ${dept}</span>
+            ${moroso&&moroso.nombre?`<span style="font-size:.8rem;color:rgba(24,18,10,.5);margin-left:.6rem">${moroso.nombre}</span>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:.8rem">
+            ${moroso?`<span style="font-family:'Fraunces',serif;color:var(--red);font-weight:700">${fmtDec(moroso.monto)} adeudo</span>`:''}
+            <button onclick="morSelDept('${dept}')" style="border:none;background:none;cursor:pointer;color:rgba(24,18,10,.4);font-size:.9rem">✕</button>
+          </div>
         </div>
-        <div style="display:flex;align-items:center;gap:.8rem">
-          ${moroso?`<span style="font-family:'Fraunces',serif;color:var(--red);font-weight:700">${fmtDec(moroso.monto)} adeudo</span>`:''}
-          <button onclick="morSelDept('${dept}')" style="border:none;background:none;cursor:pointer;color:rgba(24,18,10,.4);font-size:.9rem">✕</button>
-        </div>
+        ${detalle?`<div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.5rem">
+          ${detalle.cm>0?`<span style="font-size:.7rem;padding:.2rem .6rem;border-radius:12px;background:rgba(139,26,26,.08);color:var(--red);font-weight:600">CM ${fmtDec(detalle.cm)}</span>`:''}
+          ${detalle.ce>0?`<span style="font-size:.7rem;padding:.2rem .6rem;border-radius:12px;background:rgba(180,130,0,.1);color:#a07800;font-weight:600">CE ${fmtDec(detalle.ce)}</span>`:''}
+          ${detalle.multas>0?`<span style="font-size:.7rem;padding:.2rem .6rem;border-radius:12px;background:rgba(120,50,0,.08);color:#7a3000;font-weight:600">Multas ${fmtDec(detalle.multas)}</span>`:''}
+          ${detalle.actualizado?`<span style="font-size:.68rem;color:rgba(24,18,10,.35);margin-left:.3rem;align-self:center">corte ${detalle.actualizado}</span>`:''}
+        </div>`:''}
       </div>
       <div style="overflow-x:auto"><table style="min-width:340px">
         <thead><tr>
