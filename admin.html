@@ -1202,6 +1202,15 @@ function rCobranza(){
     return{dept,cuota:d.cuota,resumen:resumenFilt,morosidad:d.morosidad,total:d.pagos.filter(p=>mesesFiltrados.has(p.mes)).reduce((s,p)=>s+p.monto,0)};
   });
   const avgCob=(M.reduce((s,m)=>s+m.pct_cobranza,0)/M.length*100).toFixed(1);
+  // Totales por mes y globales para fila de totales
+  const totPorMes=M.map(mi=>{
+    let esperado=0,pagado=0;
+    rows2.forEach(r=>{const rm=r.resumen.find(x=>x.mes===mi.mes);esperado+=r.cuota;if(rm)pagado+=rm.total;});
+    return{mes:mi.mes,esperado,pagado};
+  });
+  const grandEsp=totPorMes.reduce((s,t)=>s+t.esperado,0);
+  const grandPag=rows2.reduce((s,r)=>s+r.total,0);
+  const grandPend=grandEsp-grandPag;
 
   document.getElementById('cob-content').innerHTML=`
     ${yearSelHtml("curYear=this.value;rCobranza()")}
@@ -1215,13 +1224,22 @@ function rCobranza(){
     <div class="stitle"><h2>Estado por departamento</h2><span class="tag">${curYear==='todos'?'Todos los años':curYear}</span></div>
     <div class="panel" style="overflow-x:auto">
       <table>
-        <thead><tr><th>Depto</th><th>Cuota</th>${M.map(m=>`<th style="text-align:center;min-width:48px">${MS[m.mes]||m.mes}</th>`).join('')}<th style="text-align:right">Total pagado</th></tr></thead>
-        <tbody>${rows2.map(r=>`<tr>
+        <thead><tr><th>Depto</th><th>Cuota</th>${M.map(m=>`<th style="text-align:right;min-width:72px">${MS[m.mes]||m.mes}</th>`).join('')}<th style="text-align:right">Total pagado</th><th style="text-align:right">Pendiente</th></tr></thead>
+        <tbody>${rows2.map(r=>{
+          const pend=r.resumen.reduce((s,m)=>s+(m.st==='sin_pago'?r.cuota:m.st==='parcial'?r.cuota-m.total:0),0);
+          return`<tr>
           <td><strong>${r.dept}</strong>${r.morosidad>0?` <span class="badge danger">mora</span>`:''}</td>
           <td class="td-muted">${fmt(r.cuota)}</td>
-          ${r.resumen.map(m=>`<td style="text-align:center"><span class="badge ${m.st}">${SI[m.st]}</span></td>`).join('')}
+          ${r.resumen.map(m=>`<td class="td-num" style="color:${m.st==='puntual'?'var(--sage)':m.st==='tardio'?'var(--amber)':m.st==='parcial'?'var(--amber)':'var(--red)'};opacity:${m.st==='sin_pago'?.4:1}">${m.total>0?fmt(m.total):'—'}</td>`).join('')}
           <td class="td-num pos">${fmt(r.total)}</td>
-        </tr>`).join('')}</tbody>
+          <td class="td-num ${pend>0?'neg':''}">${pend>0?fmt(pend):'—'}</td>
+        </tr>`;}).join('')}</tbody>
+        <tfoot><tr style="background:var(--cream);border-top:2px solid rgba(24,18,10,.15)">
+          <td colspan="2"><strong>TOTAL</strong></td>
+          ${totPorMes.map(t=>`<td style="text-align:right"><strong>${fmt(t.pagado)}</strong><br><span style="font-size:.65rem;color:rgba(24,18,10,.45)">${fmt(t.esperado)}</span></td>`).join('')}
+          <td class="td-num pos"><strong>${fmt(grandPag)}</strong></td>
+          <td class="td-num neg"><strong>${fmt(grandPend)}</strong></td>
+        </tr></tfoot>
       </table>
     </div>`;
 
