@@ -396,7 +396,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
     <div class="fgrp"><label>Usuario</label><input id="i-user" type="text" placeholder="admin" autocomplete="off"/></div>
     <div class="fgrp"><label>Contraseña</label>
       <div style="position:relative;display:flex;align-items:center;">
-        <input id="i-pass" type="password" placeholder="••••••••" style="padding-right:2.5rem;width:100%;"/>
+        <input id="i-pass" type="password" placeholder="" style="padding-right:2.5rem;width:100%;"/>
         <button type="button" onclick="togglePass('i-pass','eye-admin')" style="position:absolute;right:.6rem;background:none;border:none;cursor:pointer;font-size:1.1rem;color:rgba(255,255,255,.5);padding:0;line-height:1;" id="eye-admin">👁</button>
       </div>
     </div>
@@ -1777,47 +1777,162 @@ async function eliminarCuotaExtra(fila,desc){
 // ═══════════════════════════════════════════════
 //  MOROSOS
 // ═══════════════════════════════════════════════
-function rMorosos(){
-  const rows2=DEPTOS.map(dept=>{
-    const d=DATA.deptData[dept];
-    const nS=d.resumen.filter(m=>m.st==='sin_pago').length;
-    const nPa=d.resumen.filter(m=>m.st==='parcial').length;
-    const tPag=d.pagos.reduce((s,p)=>s+p.monto,0);
-    const esp=d.cuota*d.resumen.length;
-    return{dept,cuota:d.cuota,morosidad:d.morosidad,nS,nPa,diff:tPag-esp,tPag,esp};
-  }).filter(r=>r.morosidad>0||r.nS>1||r.diff<-r.cuota);
+let _morAno='';
+const _MES_ABR=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+function _mesAbr(mesStr){const p=mesStr.split(' ');const i=_MESES_NOMBRES.indexOf(p[0]);return i>=0?_MES_ABR[i]:p[0].slice(0,3);}
 
-  const tMora=rows2.reduce((s,r)=>s+r.morosidad,0);
-  const tDiff=rows2.reduce((s,r)=>s+(r.diff<0?r.diff:0),0);
+function rMorosos(){
+  const MONTHLY=DATA.monthly;
+  const years=[...new Set(MONTHLY.map(m=>m.mes.split(' ')[1]))].sort();
+  if(!_morAno&&years.length) _morAno=years[years.length-1];
+  const mesesAno=MONTHLY.filter(m=>m.mes.endsWith(_morAno));
+
+  // Resumen global (todos los meses)
+  const tMora=DEPTOS.reduce((s,d)=>s+(DATA.deptData[d].morosidad||0),0);
+  const rows2=DEPTOS.filter(dept=>{
+    const d=DATA.deptData[dept];
+    const rFilt=d.resumen.filter(r=>r.mes.endsWith(_morAno));
+    return d.morosidad>0||rFilt.some(r=>r.st==='sin_pago'||r.st==='parcial');
+  });
+
+  // KPIs
+  const sinPagoAno=DEPTOS.reduce((s,dept)=>{
+    const rFilt=DATA.deptData[dept].resumen.filter(r=>r.mes.endsWith(_morAno)&&r.st==='sin_pago');
+    return s+rFilt.length;
+  },0);
+
+  const yearOptions=years.map(y=>`<option value="${y}"${y===_morAno?' selected':''}>${y}</option>`).join('');
 
   document.getElementById('mor-content').innerHTML=`
-    <div class="kpi-row c3">
-      <div class="kcard r"><div class="klbl">Deptos irregulares</div><div class="kval">${rows2.length}</div><div class="ksub">Requieren seguimiento</div></div>
-      <div class="kcard r"><div class="klbl">Morosidad anterior</div><div class="kval">${fmt(tMora)}</div><div class="ksub">Adeudos de años previos</div></div>
-      <div class="kcard o"><div class="klbl">Diferencia acumulada</div><div class="kval">${fmt(Math.abs(tDiff))}</div><div class="ksub">Por debajo de lo esperado</div></div>
+    <!-- Filtro año -->
+    <div class="fbar" style="margin-bottom:1.5rem;align-items:center">
+      <label style="font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(24,18,10,.4)">Año:</label>
+      <select class="fsel" onchange="_morAno=this.value;rMorosos()">${yearOptions}</select>
     </div>
-    <div class="stitle"><h2>Departamentos con adeudos</h2><span class="tag">${rows2.length} unidades</span></div>
-    <div class="panel"><table>
-      <thead><tr><th>Depto</th><th style="text-align:right">Cuota</th><th style="text-align:right">Mora anterior</th>
-        <th style="text-align:center">Sin pago</th><th style="text-align:center">Parciales</th>
-        <th style="text-align:right">Total pagado</th><th style="text-align:right">Esperado</th>
-        <th style="text-align:right">Diferencia</th><th>Situación</th></tr></thead>
-      <tbody>${rows2.sort((a,b)=>a.diff-b.diff).map(r=>{
-        const lv=r.morosidad>0||r.nS>3?'danger':r.nS>1||r.diff<-r.cuota*2?'warn':'ok';
-        const lb=lv==='danger'?'Crítico':lv==='warn'?'Atención':'Leve';
-        return`<tr>
-          <td><strong>${r.dept}</strong></td>
-          <td class="td-num">${fmt(r.cuota)}</td>
-          <td class="td-num ${r.morosidad>0?'neg':''}">${r.morosidad>0?fmt(r.morosidad):'—'}</td>
-          <td style="text-align:center"><strong style="color:var(--red)">${r.nS}</strong></td>
-          <td style="text-align:center"><strong style="color:var(--amber)">${r.nPa}</strong></td>
-          <td class="td-num pos">${fmt(r.tPag)}</td>
-          <td class="td-num">${fmt(r.esp)}</td>
-          <td class="td-num ${r.diff<0?'neg':'pos'}">${fmt(r.diff)}</td>
-          <td><span class="badge ${lv}">${lb}</span></td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table></div>`;
+
+    <div class="kpi-row c3" style="margin-bottom:1.5rem">
+      <div class="kcard r"><div class="klbl">Deptos con adeudo</div><div class="kval">${rows2.length}</div><div class="ksub">${_morAno}</div></div>
+      <div class="kcard r"><div class="klbl">Sin pagos CM ${_morAno}</div><div class="kval">${sinPagoAno}</div><div class="ksub">Registros mes-depto</div></div>
+      <div class="kcard o"><div class="klbl">Mora histórica</div><div class="kval">${fmt(tMora)}</div><div class="ksub">Adeudos previos</div></div>
+    </div>
+
+    <!-- TABLA CM -->
+    <div class="stitle"><h2>Cuotas de Mantenimiento — CM</h2><span class="tag">${_morAno} · ${mesesAno.length} meses</span></div>
+    ${_buildCMTable(mesesAno)}
+
+    <!-- TABLA CE -->
+    <div class="stitle" style="margin-top:2rem"><h2>Cuotas Extraordinarias — CE</h2><span class="tag">${_morAno}</span></div>
+    <div id="mor-ce-wrap">
+      <div style="text-align:center;padding:1.2rem 0">
+        <button class="btn-sec" onclick="_loadMorCE('${_morAno}')" style="font-size:.78rem;padding:.5rem 1.2rem">Cargar datos CE</button>
+      </div>
+    </div>`;
+}
+
+function _buildCMTable(mesesAno){
+  if(!mesesAno.length) return`<p style="padding:1rem;color:rgba(24,18,10,.4)">No hay meses cargados para ${_morAno}.</p>`;
+  const th=`<th style="padding:.55rem .5rem;text-align:left;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(24,18,10,.38);background:var(--cream);border-bottom:1px solid var(--bdr);white-space:nowrap">`;
+  const thC=`<th style="padding:.55rem .4rem;text-align:center;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(24,18,10,.38);background:var(--cream);border-bottom:1px solid var(--bdr);white-space:nowrap">`;
+  const stBg={puntual:'background:#f0faf2;color:var(--sage)',tardio:'background:#fef8e7;color:var(--amber)',parcial:'background:#fff3e0;color:#7a5200',sin_pago:'background:#fef2f2;color:var(--red)'};
+  const stIc={puntual:'✓',tardio:'✓',parcial:'~',sin_pago:'×'};
+
+  // Solo depts con al menos un problema en el año
+  const deptsFilt=DEPTOS.map(dept=>{
+    const d=DATA.deptData[dept];
+    const rFilt=d.resumen.filter(r=>mesesAno.some(m=>m.mes===r.mes));
+    const adeudo=rFilt.filter(r=>r.st==='sin_pago').length*d.cuota
+                +rFilt.filter(r=>r.st==='parcial').reduce((s,r)=>s+(d.cuota-r.monto),0);
+    const hasIssue=d.morosidad>0||rFilt.some(r=>r.st==='sin_pago'||r.st==='parcial');
+    return{dept,d,rFilt,adeudo,hasIssue};
+  });
+  const conProblema=deptsFilt.filter(r=>r.hasIssue);
+  const alCorriente=deptsFilt.filter(r=>!r.hasIssue);
+
+  const buildRow=({dept,d,rFilt,adeudo})=>{
+    const cells=mesesAno.map(mes=>{
+      const r=rFilt.find(x=>x.mes===mes.mes);
+      if(!r) return`<td style="text-align:center;color:rgba(24,18,10,.15)">—</td>`;
+      return`<td style="text-align:center"><span style="display:inline-block;padding:.15rem .35rem;border-radius:2px;font-size:.65rem;font-weight:700;${stBg[r.st]||''}">${stIc[r.st]||r.st}</span></td>`;
+    });
+    const morCell=d.morosidad>0?`<td class="td-num neg" style="font-size:.78rem">${fmt(d.morosidad)}</td>`:`<td style="text-align:right;color:rgba(24,18,10,.2)">—</td>`;
+    return`<tr>
+      <td style="padding:.5rem .7rem;font-weight:700;font-size:.82rem">${dept}</td>
+      ${cells.join('')}
+      ${morCell}
+      <td class="td-num ${adeudo>0?'neg':''}" style="font-size:.82rem">${adeudo>0?fmt(adeudo):'—'}</td>
+    </tr>`;
+  };
+
+  return`<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+      <thead><tr>
+        ${th}Depto</th>
+        ${mesesAno.map(m=>`${thC}${_mesAbr(m.mes)}</th>`).join('')}
+        ${thC}Mora ant.</th>
+        ${thC}Adeudo CM</th>
+      </tr></thead>
+      <tbody>
+        ${conProblema.map(buildRow).join('')}
+        ${alCorriente.length?`<tr><td colspan="${mesesAno.length+3}" style="padding:.4rem .7rem;font-size:.72rem;color:rgba(24,18,10,.35);font-style:italic">
+          + ${alCorriente.length} departamentos al corriente en ${_morAno}
+        </td></tr>`:''}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+async function _loadMorCE(year){
+  const el=document.getElementById('mor-ce-wrap');
+  el.innerHTML='<div class="spin-wrap"><div class="spinner"></div><p>Cargando CE…</p></div>';
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'leer-cuotas-extras',token:SESSION_TOKEN})});
+    const data=await res.json();
+    if(!data.ok){el.innerHTML=`<p style="color:var(--red);padding:1rem">${data.error}</p>`;return;}
+    CE_SALDOS=data.saldos||[];CE_LIST=data.extras||[];
+    el.innerHTML=_buildCETable(year);
+  }catch(e){el.innerHTML='<p style="color:var(--red);padding:1rem">Error cargando cuotas extras.</p>';}
+}
+
+function _buildCETable(year){
+  const ceAno=CE_LIST.filter(e=>{
+    const ms=fmtMesAno(e.mesAplica);
+    return ms&&ms.includes(year);
+  });
+  if(!ceAno.length) return`<p style="padding:1rem;color:rgba(24,18,10,.4)">No hay cuotas extraordinarias registradas para ${year}.</p>`;
+
+  const thS=`style="padding:.55rem .5rem;text-align:left;font-size:.6rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(24,18,10,.38);background:var(--cream);border-bottom:1px solid var(--bdr);white-space:nowrap"`;
+  const thCS=`style="padding:.55rem .5rem;text-align:center;font-size:.6rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(24,18,10,.38);background:var(--cream);border-bottom:1px solid var(--bdr);white-space:nowrap"`;
+
+  const rows=DEPTOS.map(dept=>{
+    const cePagos=DATA.deptData[dept].pagos.filter(p=>String(p.idConc).startsWith('CE-'));
+    const saldoEntry=CE_SALDOS.find(s=>s.depto===dept);
+    let totalPend=0;
+    const cells=ceAno.map(e=>{
+      const paid=e.idConcepto?cePagos.some(p=>String(p.idConc).includes(e.idConcepto)):false;
+      const monto=e.tipo==='INDIVISO'&&saldoEntry?Math.round(e.monto*(saldoEntry.indiviso||0)*100)/100:e.monto;
+      if(!paid) totalPend+=monto;
+      return paid
+        ?`<td style="text-align:center"><span style="display:inline-block;padding:.15rem .35rem;border-radius:2px;font-size:.65rem;font-weight:700;background:#f0faf2;color:var(--sage)">✓</span></td>`
+        :`<td style="text-align:center"><span style="display:inline-block;padding:.15rem .35rem;border-radius:2px;font-size:.65rem;font-weight:700;background:#fef2f2;color:var(--red)">${fmt(monto)}</span></td>`;
+    });
+    return`<tr>
+      <td style="padding:.5rem .7rem;font-weight:700;font-size:.82rem">${dept}</td>
+      ${cells.join('')}
+      <td class="td-num ${totalPend>0?'neg':''}" style="font-size:.82rem">${totalPend>0?fmt(totalPend):'—'}</td>
+    </tr>`;
+  });
+
+  const headerCEs=ceAno.map(e=>`<th ${thCS}>${e.idConcepto||e.concepto.slice(0,10)}<br><span style="font-weight:400;font-family:'Fraunces',serif;font-size:.68rem">${fmt(e.monto)}</span></th>`).join('');
+
+  return`<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+      <thead><tr>
+        <th ${thS}>Depto</th>${headerCEs}
+        <th ${thCS}>Total pend.</th>
+      </tr></thead>
+      <tbody>${rows.join('')}</tbody>
+    </table>
+  </div>`;
 }
 
 

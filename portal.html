@@ -401,7 +401,7 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
     <div class="fgrp">
       <label>Contraseña</label>
       <div style="position:relative;">
-        <input id="i-pass" type="password" placeholder="••••••••" autocomplete="current-password" style="padding-right:3rem;width:100%;box-sizing:border-box;"/>
+        <input id="i-pass" type="password" placeholder="" autocomplete="current-password" style="padding-right:3rem;width:100%;box-sizing:border-box;"/>
         <button type="button" onclick="togglePass('i-pass','eye-portal')" style="position:absolute;right:0;top:0;bottom:0;width:3rem;background:none;border:none;cursor:pointer;font-size:1.1rem;color:rgba(24,18,10,.4);display:flex;align-items:center;justify-content:center;" id="eye-portal">👁</button>
       </div>
     </div>
@@ -1276,49 +1276,40 @@ let _egrFiltAno='', _egrFiltMes='', _egrFiltCat='';
 
 function renderEgresos(){
   const MONTHLY=DATA.monthly;
-  const totalEgr=MONTHLY.reduce((s,m)=>s+m.total_egresos,0);
-  const totalIng=MONTHLY.reduce((s,m)=>s+m.total_ingresos,0);
-  const avgCob=MONTHLY.reduce((s,m)=>s+m.pct_cobranza,0)/MONTHLY.length;
-  // Igual que admin: último mes con saldo_final > 0, fallback a saldo_anterior
-  const lastActual=[...MONTHLY].reverse().find(m=>m.saldo_final>0);
-  const lastSaldo=lastActual?lastActual.saldo_final:([...MONTHLY].reverse().find(m=>m.saldo_anterior>0)||{saldo_anterior:0}).saldo_anterior;
-
-  // Obtener años y categorías disponibles
   const years=[...new Set(MONTHLY.map(m=>m.mes.split(' ')[1]))].sort();
   const allCats={};
-  MONTHLY.forEach(m=>Object.entries(m.egresos_por_cat).forEach(([cat,val])=>{if(val>0)allCats[cat]=(allCats[cat]||0)+val;}));
+  MONTHLY.forEach(m=>Object.entries(m.egresos_por_cat||{}).forEach(([cat,val])=>{if(val>0)allCats[cat]=(allCats[cat]||0)+val;}));
   const catsSorted=Object.entries(allCats).sort((a,b)=>b[1]-a[1]);
 
   let html=`
     <div class="stitle"><h2>Finanzas del Condominio</h2><span class="tag">${MONTHLY.length} meses</span></div>
-    <div class="kpi-row cols2" style="margin-bottom:.6rem">
-      <div class="kcard g"><div class="klbl">Ingresos totales</div><div class="kval">${fmt(totalIng)}</div><div class="ksub">${MONTHLY.length} meses</div></div>
-      <div class="kcard r"><div class="klbl">Egresos totales</div><div class="kval">${fmt(totalEgr)}</div><div class="ksub">Todos los conceptos</div></div>
-    </div>
-    <div class="kpi-row cols2" style="margin-bottom:1rem">
-      <div class="kcard b"><div class="klbl">Saldo bancario</div><div class="kval">${fmt(lastSaldo)}</div><div class="ksub">Último mes</div></div>
-      <div class="kcard o"><div class="klbl">Cobranza prom.</div><div class="kval">${(avgCob*100).toFixed(1)}%</div><div class="ksub">${TOTAL_DEPTOS} deptos</div></div>
-    </div>
 
-    <div class="stitle"><h2>Egresos por mes</h2></div>
-    <div class="panel panel-pad" style="margin-bottom:1rem"><canvas id="egr-chart"></canvas></div>
-
-    <div class="stitle"><h2>Detalle de egresos</h2></div>
-    <div class="panel panel-pad" style="margin-bottom:1rem">
+    <!-- FILTROS AL TOPE -->
+    <div class="panel panel-pad" style="margin-bottom:1.2rem">
       <div class="fbar">
-        <select id="egf-ano" class="fsel" onchange="applyEgrFilters()">
-          <option value="">Año</option>${years.map(y=>`<option value="${y}">${y}</option>`).join('')}
+        <select id="egf-ano" class="fsel" onchange="updateEgrYear()">
+          <option value="">Todos los años</option>${years.map(y=>`<option value="${y}">${y}</option>`).join('')}
         </select>
         <select id="egf-mes" class="fsel" onchange="applyEgrFilters()">
-          <option value="">Mes</option>${MONTHLY.map(m=>`<option value="${m.mes}">${m.mes}</option>`).join('')}
+          <option value="">Todos los meses</option>${MONTHLY.map(m=>`<option value="${m.mes}">${m.mes}</option>`).join('')}
         </select>
         <select id="egf-cat" class="fsel" onchange="applyEgrFilters()">
-          <option value="">Concepto</option>${catsSorted.map(([cat])=>`<option value="${cat}">${CAT_LABELS[cat]||cat}</option>`).join('')}
+          <option value="">Todos los conceptos</option>${catsSorted.map(([cat])=>`<option value="${cat}">${CAT_LABELS[cat]||cat}</option>`).join('')}
         </select>
         <button class="fbtn" onclick="limpiarEgrFiltros()">✕ Limpiar</button>
       </div>
       <div class="hist-summary-row" id="egr-summary"></div>
     </div>
+
+    <!-- KPI CARDS (actualizados por filtro) -->
+    <div id="egr-kpis"></div>
+
+    <!-- GRÁFICA (actualizada por filtro) -->
+    <div class="stitle"><h2>Egresos por mes</h2></div>
+    <div class="panel panel-pad" style="margin-bottom:1rem"><canvas id="egr-chart"></canvas></div>
+
+    <!-- TABLA DETALLE -->
+    <div class="stitle"><h2>Detalle de egresos</h2></div>
     <div class="panel" style="overflow-x:auto"><table style="min-width:400px">
       <thead><tr>
         <th>Fecha</th><th>Mes</th><th>Concepto</th>
@@ -1331,41 +1322,31 @@ function renderEgresos(){
     </div>
   `;
   document.getElementById('egresos-content').innerHTML=html;
-
-  // Gráfica de barras por mes
-  const ctx=document.getElementById('egr-chart').getContext('2d');
-  if(charts.egr)charts.egr.destroy();
-  charts.egr=new Chart(ctx,{
-    type:'bar',
-    data:{
-      labels:MONTHLY.map(m=>MES_SHORT[m.mes]||m.mes),
-      datasets:[{
-        label:'Egresos',
-        data:MONTHLY.map(m=>m.total_egresos),
-        backgroundColor:'rgba(139,26,26,.7)',
-        borderRadius:2,
-        borderSkipped:false
-      },{
-        label:'Ingresos',
-        data:MONTHLY.map(m=>m.total_ingresos),
-        backgroundColor:'rgba(58,92,60,.5)',
-        borderRadius:2,
-        borderSkipped:false
-      }]
-    },
-    options:{responsive:true,plugins:{legend:{labels:{font:{family:'DM Sans',size:10},color:'rgba(24,18,10,.5)'}},tooltip:{callbacks:{label:c=>fmtDec(c.raw)}}},
-      scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',color:'rgba(24,18,10,.4)',font:{family:'DM Sans',size:10}},grid:{color:'rgba(24,18,10,.05)'}},
-      x:{ticks:{color:'rgba(24,18,10,.45)',font:{family:'DM Sans',size:10}},grid:{display:false}}}}
-  });
-
   _egrFiltAno='';_egrFiltMes='';_egrFiltCat='';
   applyEgrFilters();
 }
 
+function updateEgrYear(){
+  const ano=document.getElementById('egf-ano')?.value||'';
+  const MONTHLY=DATA.monthly;
+  const mesEl=document.getElementById('egf-mes');
+  if(!mesEl)return;
+  const mesesAno=ano?MONTHLY.filter(m=>m.mes.endsWith(ano)):MONTHLY;
+  mesEl.innerHTML=`<option value="">Todos los meses</option>${mesesAno.map(m=>`<option value="${m.mes}">${m.mes}</option>`).join('')}`;
+  // Reset mes si ya no está en el nuevo año
+  if(ano&&mesEl.value&&!mesEl.value.endsWith(ano)) mesEl.value='';
+  applyEgrFilters();
+}
+
 function limpiarEgrFiltros(){
+  const MONTHLY=DATA.monthly;
+  const mesEl=document.getElementById('egf-mes');
   document.getElementById('egf-ano').value='';
-  document.getElementById('egf-mes').value='';
   document.getElementById('egf-cat').value='';
+  if(mesEl){
+    mesEl.innerHTML=`<option value="">Todos los meses</option>${MONTHLY.map(m=>`<option value="${m.mes}">${m.mes}</option>`).join('')}`;
+    mesEl.value='';
+  }
   _egrFiltAno='';_egrFiltMes='';_egrFiltCat='';
   applyEgrFilters();
 }
@@ -1375,18 +1356,57 @@ function applyEgrFilters(){
   _egrFiltMes=document.getElementById('egf-mes')?.value||'';
   _egrFiltCat=document.getElementById('egf-cat')?.value||'';
 
-  // Aplanar todos los egresos individuales con su mes
-  const todas=[];
-  DATA.monthly.forEach(m=>{
-    (m.egresos_list||[]).forEach(e=>{todas.push({...e,mes:m.mes});});
-  });
+  const MONTHLY=DATA.monthly;
 
-  const filtered=todas.filter(e=>{
-    if(_egrFiltAno&&!e.mes.endsWith(_egrFiltAno))return false;
-    if(_egrFiltMes&&e.mes!==_egrFiltMes)return false;
-    if(_egrFiltCat&&e.cat!==_egrFiltCat)return false;
-    return true;
-  });
+  // Meses que pasan el filtro de año/mes (para KPIs y gráfica)
+  let mesFilt=MONTHLY;
+  if(_egrFiltAno) mesFilt=mesFilt.filter(m=>m.mes.endsWith(_egrFiltAno));
+  if(_egrFiltMes) mesFilt=mesFilt.filter(m=>m.mes===_egrFiltMes);
+
+  // KPIs filtrados
+  const totalIng=mesFilt.reduce((s,m)=>s+m.total_ingresos,0);
+  const totalEgr=mesFilt.reduce((s,m)=>s+m.total_egresos,0);
+  const avgCob=mesFilt.length?mesFilt.reduce((s,m)=>s+m.pct_cobranza,0)/mesFilt.length:0;
+  const lastActual=[...mesFilt].reverse().find(m=>m.saldo_final>0);
+  const lastSaldo=lastActual?lastActual.saldo_final:([...mesFilt].reverse().find(m=>m.saldo_anterior>0)||{saldo_anterior:0}).saldo_anterior;
+  const labelPeriodo=_egrFiltMes?_egrFiltMes:(_egrFiltAno?_egrFiltAno:`${MONTHLY.length} meses`);
+  const kpisEl=document.getElementById('egr-kpis');
+  if(kpisEl) kpisEl.innerHTML=`
+    <div class="kpi-row cols2" style="margin-bottom:.6rem">
+      <div class="kcard g"><div class="klbl">Ingresos</div><div class="kval">${fmt(totalIng)}</div><div class="ksub">${labelPeriodo}</div></div>
+      <div class="kcard r"><div class="klbl">Egresos</div><div class="kval">${fmt(totalEgr)}</div><div class="ksub">Todos los conceptos</div></div>
+    </div>
+    <div class="kpi-row cols2" style="margin-bottom:1rem">
+      <div class="kcard b"><div class="klbl">Saldo bancario</div><div class="kval">${fmt(lastSaldo)}</div><div class="ksub">Último mes</div></div>
+      <div class="kcard o"><div class="klbl">Cobranza prom.</div><div class="kval">${(avgCob*100).toFixed(1)}%</div><div class="ksub">${TOTAL_DEPTOS} deptos</div></div>
+    </div>`;
+
+  // Gráfica filtrada
+  const ctx=document.getElementById('egr-chart')?.getContext('2d');
+  if(ctx){
+    if(charts.egr)charts.egr.destroy();
+    charts.egr=new Chart(ctx,{
+      type:'bar',
+      data:{
+        labels:mesFilt.map(m=>MES_SHORT[m.mes]||m.mes),
+        datasets:[{
+          label:'Egresos',data:mesFilt.map(m=>m.total_egresos),
+          backgroundColor:'rgba(139,26,26,.7)',borderRadius:2,borderSkipped:false
+        },{
+          label:'Ingresos',data:mesFilt.map(m=>m.total_ingresos),
+          backgroundColor:'rgba(58,92,60,.5)',borderRadius:2,borderSkipped:false
+        }]
+      },
+      options:{responsive:true,plugins:{legend:{labels:{font:{family:'DM Sans',size:10},color:'rgba(24,18,10,.5)'}},tooltip:{callbacks:{label:c=>fmtDec(c.raw)}}},
+        scales:{y:{beginAtZero:true,ticks:{callback:v=>'$'+(v/1000).toFixed(0)+'k',color:'rgba(24,18,10,.4)',font:{family:'DM Sans',size:10}},grid:{color:'rgba(24,18,10,.05)'}},
+        x:{ticks:{color:'rgba(24,18,10,.45)',font:{family:'DM Sans',size:10}},grid:{display:false}}}}
+    });
+  }
+
+  // Tabla de detalle (aplica también filtro de concepto)
+  const todas=[];
+  mesFilt.forEach(m=>{(m.egresos_list||[]).forEach(e=>{todas.push({...e,mes:m.mes});});});
+  const filtered=_egrFiltCat?todas.filter(e=>e.cat===_egrFiltCat):todas;
 
   const tbody=document.getElementById('egr-tbody');
   const tfoot=document.getElementById('egr-tfoot');
@@ -1408,7 +1428,6 @@ function applyEgrFilters(){
   </tr>`).join('');
 
   const total=filtered.reduce((s,e)=>s+e.monto,0);
-  // Totales por categoría (top 3)
   const byCat={};filtered.forEach(e=>{byCat[e.cat]=(byCat[e.cat]||0)+e.monto;});
   const topCats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,3);
   if(tfoot)tfoot.innerHTML=`<tr class="tfoot-row">
