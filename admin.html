@@ -1344,7 +1344,7 @@ function rDeptDetail(dept){
     <div class="kpi-row c4">
       <div class="kcard g"><div class="klbl">Total pagado</div><div class="kval">${fmt(tPag)}</div><div class="ksub">${d.pagos.length} transacciones</div></div>
       <div class="kcard o"><div class="klbl">Cuota mensual</div><div class="kval">${fmt(d.cuota)}</div><div class="ksub">Vigente</div></div>
-      <div class="kcard ${pct>=90?'g':pct>=60?'o':'r'}"><div class="klbl">Cumplimiento</div><div class="kval">${pct}%</div><div class="ksub">Sobre esperado</div></div>
+      <div class="kcard o" id="kcard-pct"><div class="klbl">Cumplimiento</div><div class="kval">…</div><div class="ksub">Calculando CM+CE</div></div>
       <div class="kcard s"><div class="klbl">Meses sin pago</div><div class="kval">${nS}</div><div class="ksub">${nP} puntual · ${nT} tardío · ${nPa} parcial</div></div>
     </div>
     <div class="stitle"><h2>Evolución de pagos</h2><span class="tag">vs cuota esperada</span></div>
@@ -1414,6 +1414,14 @@ async function rDeptDetalle(dept){
     const totMult = det.reduce((s,m)=>s+m.multa,0);
     const saldoFin= det[det.length-1].saldoCorriente;
     const deudaH  = data.deudaHist||0;
+
+    // Actualizar kcard cumplimiento con porcentaje real (CM+CE)
+    const pctReal = totEsp>0?(totPag/totEsp*100).toFixed(1):0;
+    const kPct=document.getElementById('kcard-pct');
+    if(kPct){
+      kPct.className=`kcard ${pctReal>=90?'g':pctReal>=60?'o':'r'}`;
+      kPct.innerHTML=`<div class="klbl">Cumplimiento</div><div class="kval">${pctReal}%</div><div class="ksub">Sobre esperado CM+CE</div>`;
+    }
 
     let h='';
 
