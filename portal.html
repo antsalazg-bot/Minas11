@@ -974,6 +974,7 @@ async function renderAvisos(){
 // ═══════════════════════════════════════════════════
 let _morososData=[];
 let _morSelectedDept=null;
+let _morAnoPortal='';
 
 async function renderMorosos(){
   const container=document.getElementById('morosos-content');
@@ -1017,22 +1018,76 @@ function buildMorososUI(container){
   const cuota=(DATA.deptData[currentDept]&&DATA.deptData[currentDept].cuota)||0;
   const totalMoroso=_morososData.reduce((s,r)=>s+r.monto,0);
 
-  // Datos para la gráfica: esperado vs recaudado por mes
-  const chartMeses=MONTHLY.slice(-12); // últimos 12 meses
-  const esperado=chartMeses.map(m=>TOTAL_DEPTOS*cuota);
+  // Selector de año
+  const years=[...new Set(DATA.activeMonths.map(m=>m.split(' ').pop()))].sort();
+  const selYear=_morAnoPortal||(years[years.length-1]||'');
+  const mesesAno=DATA.activeMonths.filter(m=>!selYear||m.endsWith(selYear));
+
+  // Datos para la gráfica filtrados por año
+  const chartMeses=selYear?MONTHLY.filter(m=>m.mes.endsWith(selYear)):MONTHLY.slice(-12);
   const recaudado=chartMeses.map(m=>m.deptos_pagaron*cuota);
   const noPagadoAmt=chartMeses.map(m=>(TOTAL_DEPTOS-m.deptos_pagaron)*cuota);
+
+  // Helpers para tabla CM
+  const _MABR=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const _MNOMBRES=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  function mesAbr(mes){const p=mes.split(' ');const i=_MNOMBRES.indexOf(p[0]);return i>=0?_MABR[i]:p[0].slice(0,3);}
+  function deptCMamt(dept,mes){return((DATA.deptPagos[dept]||[]).filter(p=>p.mes===mes&&String(p.idConc).toUpperCase().startsWith('CM-'))).reduce((s,p)=>s+p.monto,0);}
+
+  // Deptos con actividad en el año seleccionado o con adeudo
+  const todosDeptos=[...new Set([...Object.keys(DATA.deptPagos||{}),..._morososData.map(r=>r.dept)])].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
+  const cmRows=todosDeptos.filter(d=>mesesAno.some(m=>deptCMamt(d,m)>0)||_morososData.find(r=>r.dept===d));
 
   container.innerHTML=`
     <div class="stitle"><h2>Morosidad</h2><span class="tag">${_morososData.length} con adeudo</span></div>
 
+    <!-- Selector año -->
+    <div style="display:flex;align-items:center;gap:.8rem;margin-bottom:1.2rem">
+      <label style="font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(24,18,10,.45)">Año</label>
+      <select onchange="_morAnoPortal=this.value;buildMorososUI(document.getElementById('morosos-content'))"
+        style="padding:.3rem .8rem;border:1px solid var(--bdr);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:.82rem;background:#fff">
+        <option value="">Todos</option>
+        ${years.map(y=>`<option value="${y}"${y===selYear?'selected':''}>${y}</option>`).join('')}
+      </select>
+    </div>
+
     <!-- Gráfica cobranza mes a mes -->
-    <div class="panel panel-pad" style="margin-bottom:1rem">
+    <div class="panel panel-pad" style="margin-bottom:1.2rem">
       <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.6rem">
         <span style="font-size:.7rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(24,18,10,.4)">Cobranza CM mensual</span>
         <span style="font-size:.72rem;color:rgba(24,18,10,.4)">Cuota referencia ${fmtDec(cuota)}</span>
       </div>
       <canvas id="mor-chart" style="max-height:200px"></canvas>
+    </div>
+
+    <!-- Tabla CM cruzada depto × mes -->
+    <div class="stitle"><h2>Cuotas de Mantenimiento — CM</h2><span class="tag">${selYear||'Todos'} · ${mesesAno.length} meses</span></div>
+    <div class="panel" style="overflow-x:auto;margin-bottom:1.5rem">
+      <table style="width:100%;border-collapse:collapse;font-size:.75rem">
+        <thead>
+          <tr style="background:rgba(24,18,10,.03)">
+            <th style="text-align:left;padding:.5rem .8rem;border-bottom:2px solid var(--bdr);font-weight:700;position:sticky;left:0;background:rgba(24,18,10,.03)">Depto</th>
+            ${mesesAno.map(m=>`<th style="padding:.5rem .6rem;border-bottom:2px solid var(--bdr);font-weight:600;white-space:nowrap">${mesAbr(m)}</th>`).join('')}
+            <th style="padding:.5rem .8rem;border-bottom:2px solid var(--bdr);color:var(--red);font-weight:700">Adeudo</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${cmRows.map(dept=>{
+            const moroso=_morososData.find(r=>r.dept===dept);
+            const esMio=dept===currentDept.toUpperCase();
+            const cells=mesesAno.map(mes=>{
+              const amt=deptCMamt(dept,mes);
+              if(amt>0)return`<td style="text-align:center;padding:.3rem .5rem"><span style="color:var(--green);font-size:1rem">✓</span></td>`;
+              return`<td style="text-align:center;padding:.3rem .5rem"><span style="color:rgba(24,18,10,.25);font-size:.9rem">×</span></td>`;
+            }).join('');
+            const adeudo=moroso?`<td style="text-align:right;padding:.3rem .8rem;color:var(--red);font-weight:700">${fmt(moroso.monto)}</td>`:`<td style="text-align:center;padding:.3rem .8rem;color:rgba(24,18,10,.25)">—</td>`;
+            return`<tr style="border-bottom:1px solid var(--bdr);${esMio?'background:rgba(180,30,30,.04)':''}">
+              <td style="padding:.4rem .8rem;font-weight:${esMio?700:500};position:sticky;left:0;background:${esMio?'rgba(180,30,30,.04)':'#fff'}">${dept}${esMio?` <span style="font-size:.65rem;color:var(--red)">Tú</span>`:''}</td>
+              ${cells}${adeudo}
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
     </div>
 
     <!-- Lista de deptos con adeudo -->
