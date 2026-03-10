@@ -1670,7 +1670,7 @@ function rCuotasExtras(){
       <div class="panel panel-pad">
         <div class="form-grid">
           <div class="form-group"><label class="form-lbl">Concepto *</label><input id="ce-conc" type="text" class="form-input" placeholder="Ej: Cuota Elevador"/></div>
-          <div class="form-group"><label class="form-lbl">ID Concepto</label><input id="ce-id" type="text" class="form-input" placeholder="Ej: CE-ELEV"/><span class="form-hint">Opcional — para asociar pagos en los estados de cuenta</span></div>
+          <div class="form-group"><label class="form-lbl">ID Concepto <span style="color:var(--red);font-weight:700">*</span></label><input id="ce-id" type="text" class="form-input" placeholder="Ej: CE-ELV, CE-CIS, CE-JAR"/><span class="form-hint">Prefijo del ID de pago (sin nro depto). Ej: si el pago es <code>CE-ELV-103</code>, aquí va <code>CE-ELV</code>. Necesario para detectar pagos en meses diferentes.</span></div>
           <div class="form-group"><label class="form-lbl">Mes que aplica *</label><select id="ce-mes" class="form-select">${mesOptions}</select></div>
           <div class="form-group"><label class="form-lbl">Monto *</label><input id="ce-monto" type="number" class="form-input" placeholder="0.00" step="0.01" oninput="previsualizarCE()"/></div>
           <div class="form-group full">
