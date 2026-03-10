@@ -1418,6 +1418,14 @@ async function rDeptDetalle(dept){
     const saldoFin= det[det.length-1].saldoCorriente;
     const deudaH  = data.deudaHist||0;
 
+    // Índice cross-mes de pagos CE para detectar CE pagadas en mes diferente al esperado
+    const allCEPagosCross=[];
+    det.forEach(m=>{
+      (m.pagados||[]).filter(p=>p.tipo==='CE').forEach(p=>{
+        allCEPagosCross.push(Object.assign({},p,{mesReal:m.mes}));
+      });
+    });
+
     // Actualizar kcard cumplimiento con porcentaje real (CM+CE)
     const pctReal = totEsp>0?(totPag/totEsp*100).toFixed(1):0;
     const kPct=document.getElementById('kcard-pct');
@@ -1499,20 +1507,27 @@ async function rDeptDetalle(dept){
 
       // Sub-filas CE cuando hay extras registrados (muestra CE esperado + CE pagado)
       if(hasExtras){
-        const cePagTxt=pagCE.length
-          ? pagCE.map(p=>`Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)">CE</span>`).join(' &nbsp;|&nbsp; ')
-          : '<span class="sin-pago-alert">Sin pago CE</span>';
-        const totalCEPag=pagCE.reduce((s,p)=>s+p.monto,0);
         m.extras.forEach((ex,i)=>{
           const isLast=i===m.extras.length-1;
           const idBadge=ex.idConcepto?` <span class="tag" style="font-size:.6rem;padding:1px 5px;background:rgba(58,92,60,.1);color:rgba(58,92,60,.8)">${ex.idConcepto}</span>`:'';
+          // Buscar pago CE en TODOS los meses usando prefijo idConcepto (detecta pago en mes diferente)
+          const exPagos=ex.idConcepto
+            ? allCEPagosCross.filter(p=>String(p.idConc||'').toUpperCase().startsWith(ex.idConcepto.toUpperCase()))
+            : pagCE;
+          const exPagTxt=exPagos.length
+            ? exPagos.map(p=>{
+                const nota=p.mesReal!==m.mes?` <span style="font-size:.63rem;color:rgba(24,18,10,.45);font-style:italic">(${p.mesReal})</span>`:'';
+                return `Día ${p.dia} · ${fmtD(p.monto)} <span class="tag" style="font-size:.65rem;padding:1px 5px;background:rgba(122,82,0,.12);color:rgba(122,82,0,.9)">CE</span>${nota}`;
+              }).join(' &nbsp;|&nbsp; ')
+            : '<span class="sin-pago-alert">Sin pago CE</span>';
+          const exTotalPag=exPagos.reduce((s,p)=>s+p.monto,0);
           h+=`<tr class="ce-row" data-year="${mesYear}" data-hasce="1" style="background:rgba(122,82,0,.03);${isLast?'':'border-bottom:none'}">
             <td style="font-size:.78rem;color:rgba(122,82,0,.9);padding-left:1.4rem;font-style:italic;${isLast?'':'border-bottom:none'}">↳ ${ex.concepto||'Cuota Extra'}${idBadge}</td>
             <td class="td-num td-muted">—</td>
             <td class="td-num" style="color:rgba(122,82,0,.85);font-weight:600">${fmtD(ex.monto)}</td>
             <td class="td-num td-muted">—</td>
-            <td style="font-size:.82rem">${i===0?cePagTxt:'<span class="td-muted">—</span>'}</td>
-            <td class="td-num pos">${i===0&&totalCEPag>0?fmtD(totalCEPag):'—'}</td>
+            <td style="font-size:.82rem">${exPagTxt}</td>
+            <td class="td-num pos">${exTotalPag>0?fmtD(exTotalPag):'—'}</td>
             <td class="td-num">—</td>
             <td class="td-num td-muted">—</td>
           </tr>`;
