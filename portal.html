@@ -895,7 +895,10 @@ function renderInicio(){
   if(!d){document.getElementById('inicio-content').innerHTML='<p style="padding:1rem;color:var(--red)">No se encontraron datos para este departamento.</p>';return;}
   const resumen=d.resumen_mensual;
   const totalPag=d.pagos.reduce((s,p)=>s+p.monto,0);
-  const espTotal=d.cuota*resumen.length;
+  // Cumplimiento: totalPagado / (totalPagado + deudaAcum) incluye CM+CE
+  // deudaAcum del backend es el saldo FIFO neto → totalPag+deudaAcum = esperado real
+  const deudaAcum=(miSaldo&&miSaldo.deudaAcum>0)?miSaldo.deudaAcum:0;
+  const espTotal=deudaAcum>0?(totalPag+deudaAcum):d.cuota*resumen.length;
   const pct=espTotal>0?(totalPag/espTotal*100).toFixed(1):0;
   const nPunt=resumen.filter(m=>m.status==='puntual').length;
   const nSin=resumen.filter(m=>m.status==='sin_pago').length;
@@ -916,7 +919,7 @@ function renderInicio(){
       <div class="kcard o"><div class="klbl">Cuota mensual</div><div class="kval">${fmt(cuotaReal)}</div><div class="ksub">${nPunt} meses a tiempo</div></div>
     </div>
     <div class="kpi-row cols2">
-      <div class="kcard ${pct>=90?'g':pct>=60?'o':'r'}"><div class="klbl">Cumplimiento</div><div class="kval">${pct}%</div><div class="ksub">${nSin} sin pago</div></div>
+      <div class="kcard ${pct>=90?'g':pct>=60?'o':'r'}"><div class="klbl">Cumplimiento</div><div class="kval">${pct}%</div><div class="ksub">${deudaAcum>0?'CM+CE':'Solo CM'} · ${nSin} sin pago</div></div>
       <div class="kcard b"><div class="klbl">Saldo bancario</div><div class="kval">${fmt(lastSaldo)}</div><div class="ksub">Último mes</div></div>
     </div>
     <div class="stitle"><h2>Estado por mes</h2></div>
