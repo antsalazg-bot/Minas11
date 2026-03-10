@@ -305,20 +305,24 @@ tbody td{padding:.6rem .8rem;vertical-align:middle;}
 /* ── DESKTOP ─────────────────────── */
 @media(min-width:768px){
   #app{flex-direction:row;flex-wrap:wrap;}
-  .topbar{left:0;right:0;}
+  .topbar{left:0;right:0;padding:0 2rem;}
   .bottom-nav{
-    position:fixed;left:0;top:var(--top-h);bottom:0;width:200px;
-    flex-direction:column;border-top:none;border-right:1px solid var(--bdr);
+    position:fixed;left:0;top:var(--top-h);bottom:0;width:220px;
+    flex-direction:column;justify-content:flex-start;
+    border-top:none;border-right:1px solid var(--bdr);
     height:auto;box-shadow:2px 0 12px rgba(24,18,10,.06);
+    padding-top:.75rem;
   }
-  .bnav-btn{flex-direction:row;justify-content:flex-start;padding:.9rem 1.2rem;gap:.7rem;border-radius:0;}
+  .bnav-btn{flex:none;flex-direction:row;justify-content:flex-start;padding:.75rem 1.4rem;gap:.8rem;border-radius:0;}
   .bnav-btn .bnav-icon{font-size:1.1rem;}
-  .bnav-btn .bnav-label{font-size:.75rem;letter-spacing:.04em;}
+  .bnav-btn .bnav-label{font-size:.8rem;letter-spacing:.04em;font-weight:600;}
   .bnav-btn.active::after{top:0;left:0;bottom:0;right:auto;width:3px;height:auto;border-radius:0 2px 2px 0;}
-  .page{padding-left:200px;padding-bottom:0;min-height:100vh;}
-  .content{padding:2rem 2.5rem;max-width:900px;}
+  .page{padding-left:220px;padding-bottom:0;min-height:100vh;}
+  .content{padding:2.5rem 3rem;max-width:1100px;margin:0 auto;}
   .cols4{grid-template-columns:repeat(4,1fr);}
   .cols3{grid-template-columns:repeat(3,1fr);}
+  .fin-stats-grid{grid-template-columns:repeat(4,1fr);}
+  .sem-grid{grid-template-columns:repeat(6,1fr);}
 }
 .morosos-list{display:flex;flex-direction:column;gap:.8rem;}
 .moroso-card{background:#fff;border:1px solid var(--bdr);border-radius:4px;padding:1rem 1.2rem;
