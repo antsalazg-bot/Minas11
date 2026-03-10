@@ -1037,7 +1037,11 @@ function buildMorososUI(container){
 
   // Deptos con actividad en el año seleccionado o con adeudo
   const todosDeptos=[...new Set([...Object.keys(DATA.deptPagos||{}),..._morososData.map(r=>r.dept)])].sort((a,b)=>a.localeCompare(b,'es',{numeric:true}));
-  const cmRows=todosDeptos.filter(d=>mesesAno.some(m=>deptCMamt(d,m)>0)||_morososData.find(r=>r.dept===d));
+  const cmRows=todosDeptos.filter(d=>{
+    if(_morososData.find(r=>r.dept===d))return true;
+    const amts=mesesAno.map(m=>deptCMamt(d,m));
+    return amts.some(a=>a>0)&&amts.some(a=>a===0);
+  });
 
   // Eventos CE del año: extraer tipos únicos (CE-CIS-305 → clave "CE-CIS")
   const ceCols=[...new Set(
