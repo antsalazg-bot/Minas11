@@ -1210,7 +1210,10 @@ function rCobranza(){
   });
   const grandEsp=totPorMes.reduce((s,t)=>s+t.esperado,0);
   const grandPag=rows2.reduce((s,r)=>s+r.total,0);
-  const grandPend=grandEsp-grandPag;
+  // Pendiente: si hay datos de saldos usar total real (CM+CE+multas+adeudo), sino solo CM
+  const grandPend=_SALDOS_CACHE
+    ? _SALDOS_CACHE.reduce((s,d)=>s+Math.max(d.total||0,0),0)
+    : (grandEsp-grandPag);
 
   document.getElementById('cob-content').innerHTML=`
     ${yearSelHtml("curYear=this.value;rCobranza()")}
@@ -1224,9 +1227,13 @@ function rCobranza(){
     <div class="stitle"><h2>Estado por departamento</h2><span class="tag">${curYear==='todos'?'Todos los años':curYear}</span></div>
     <div class="panel" style="overflow-x:auto">
       <table>
-        <thead><tr><th>Depto</th><th>Cuota</th>${M.map(m=>`<th style="text-align:right;min-width:72px">${MS[m.mes]||m.mes}</th>`).join('')}<th style="text-align:right">Total pagado</th><th style="text-align:right">Pendiente</th></tr></thead>
+        <thead><tr><th>Depto</th><th>Cuota</th>${M.map(m=>`<th style="text-align:right;min-width:72px">${MS[m.mes]||m.mes}</th>`).join('')}<th style="text-align:right">Total pagado</th><th style="text-align:right" title="${_SALDOS_CACHE?'CM + CE + Multas + Adeudo anterior':'Solo cuotas CM del período (cargando saldos…)'}">Pendiente${_SALDOS_CACHE?'':' *'}</th></tr></thead>
         <tbody>${rows2.map(r=>{
-          const pend=r.resumen.reduce((s,m)=>s+(m.st==='sin_pago'?r.cuota:m.st==='parcial'?r.cuota-m.total:0),0);
+          const saldoRw=_SALDOS_CACHE?_SALDOS_CACHE.find(s=>s.depto===r.dept):null;
+          // Con datos de saldos: total real (CM+CE+multas+adeudo anterior); sin datos: solo CM del período
+          const pend=saldoRw!=null
+            ? Math.max(saldoRw.total||0,0)
+            : r.resumen.reduce((s,m)=>s+(m.st==='sin_pago'?r.cuota:m.st==='parcial'?r.cuota-m.total:0),0);
           return`<tr>
           <td><strong>${r.dept}</strong>${r.morosidad>0?` <span class="badge danger">mora</span>`:''}</td>
           <td class="td-muted">${fmt(r.cuota)}</td>
@@ -1634,6 +1641,7 @@ function _aplicarFiltDesg(){
 //  CUOTAS EXTRAS
 // ═══════════════════════════════════════════════
 let CE_SALDOS=[], CE_LIST=[];
+let _SALDOS_CACHE=null; // cache de saldos-admin para Cobranza
 
 async function initCuotasExtras(){
   const el=document.getElementById('ce-content');
@@ -2012,6 +2020,8 @@ async function rSaldos(){
 
 function renderSaldosTable(saldos){
   if(!saldos||!saldos.length){ document.getElementById('saldos-content').innerHTML='<p style="padding:1rem;color:rgba(24,18,10,.4)">No hay datos en la hoja Saldos. Ejecuta inicializarSaldos() primero.</p>'; return; }
+  _SALDOS_CACHE=saldos; // cachear para que rCobranza use datos completos (CE+multas+adeudo)
+  rCobranza();          // refrescar Cobranza con datos de saldos ya disponibles
   const conDeuda    = saldos.filter(s=>s.total>0).sort((a,b)=>b.total-a.total);
   const alCorriente = saldos.filter(s=>s.total<=0);
   const totalAdeudo = conDeuda.reduce((s,d)=>s+d.total,0);
