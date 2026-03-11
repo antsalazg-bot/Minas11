@@ -478,8 +478,8 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     var folioNum = folio.split('-')[2] || folio;
 
-    // Eliminar párrafo vacío inicial
-    if (body.getNumChildren() > 0) body.removeChild(body.getChild(0));
+    // Minimizar párrafo inicial (DocumentApp no permite eliminarlo)
+    body.getChild(0).asParagraph().editAsText().setFontSize(1);
 
     // ── 1. HEADER (fondo oscuro) ──────────────────────────────────────────
     var hTbl = body.appendTable([['', '']]);
