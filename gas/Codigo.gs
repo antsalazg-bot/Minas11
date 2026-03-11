@@ -478,14 +478,15 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     var folioNum = folio.split('-')[2] || folio;
 
-    // Minimizar párrafo inicial (DocumentApp no permite eliminarlo)
+    // Minimizar párrafo inicial — fondo oscuro para fundirse con el header
     var initP = body.getChild(0).asParagraph();
-    initP.editAsText().setFontSize(1);
+    initP.editAsText().setText(' ').setFontSize(1)
+      .setForegroundColor('#0d1b2a').setBackgroundColor('#0d1b2a');
     initP.setSpacingBefore(0); initP.setSpacingAfter(0); initP.setLineSpacing(1);
 
-    // Tamaño de página: Letter width = 612pt, altura recortada al contenido
+    // Tamaño de página ajustado al contenido (con QR ~640pt, sin QR ~520pt)
     body.setPageWidth(612);
-    body.setPageHeight(700);
+    body.setPageHeight(qrBlob ? 640 : 520);
 
     // ── 1. HEADER (fondo oscuro) ──────────────────────────────────────────
     var hTbl = body.appendTable([['', '']]);
@@ -660,12 +661,13 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     ftRp.editAsText().setText(folio)
       .setForegroundColor('#d4a017').setFontSize(9).setBold(true);
 
-    // Minimizar párrafos separadores entre tablas (eliminan espacios en blanco)
+    // Minimizar párrafos separadores — fondo oscuro para que no sean visibles
     for (var si = 0; si < body.getNumChildren(); si++) {
       var el = body.getChild(si);
       if (el.getType() === DocumentApp.ElementType.PARAGRAPH) {
         var sp = el.asParagraph();
-        sp.editAsText().setFontSize(1);
+        sp.editAsText().setText(' ').setFontSize(1)
+          .setForegroundColor('#0d1b2a').setBackgroundColor('#0d1b2a');
         sp.setSpacingBefore(0);
         sp.setSpacingAfter(0);
         sp.setLineSpacing(1);
