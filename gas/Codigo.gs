@@ -478,16 +478,15 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     var folioNum = folio.split('-')[2] || folio;
 
-    // Minimizar párrafo inicial al mínimo absoluto
+    // Párrafo inicial — fondo oscuro (solo este, no los separadores intermedios)
+    // Es seguro porque el único elemento siguiente es la tabla header también oscura
     var initP = body.getChild(0).asParagraph();
-    initP.editAsText().setFontSize(1);
-    initP.setSpacingBefore(0); initP.setSpacingAfter(0);
-    initP.setLineSpacing(0.5);
-    initP.setIndentStart(0); initP.setIndentEnd(0);
+    initP.editAsText().setFontSize(1).setForegroundColor('#0d1b2a').setBackgroundColor('#0d1b2a');
+    initP.setSpacingBefore(0); initP.setSpacingAfter(0); initP.setLineSpacing(0.5);
 
-    // Tamaño de página: contenido real ~625pt con QR, ~515pt sin QR
+    // Tamaño de página ajustado (contenido ~625pt QR / ~515pt sin QR, -11pt inferior)
     body.setPageWidth(612);
-    body.setPageHeight(qrBlob ? 660 : 545);
+    body.setPageHeight(qrBlob ? 649 : 534);
 
     // ── 1. HEADER (fondo oscuro) ──────────────────────────────────────────
     var hTbl = body.appendTable([['', '']]);
@@ -662,7 +661,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     ftRp.editAsText().setText(folio)
       .setForegroundColor('#d4a017').setFontSize(9).setBold(true);
 
-    // Minimizar párrafos separadores entre tablas
+    // Minimizar párrafos separadores (SIN background color para no contaminar celdas)
     for (var si = 0; si < body.getNumChildren(); si++) {
       var el = body.getChild(si);
       if (el.getType() === DocumentApp.ElementType.PARAGRAPH) {
@@ -670,8 +669,17 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
         sp.editAsText().setFontSize(1);
         sp.setSpacingBefore(0);
         sp.setSpacingAfter(0);
-        sp.setLineSpacing(1);
+        sp.setLineSpacing(0.5);
       }
+    }
+    // Párrafo final — también fondo oscuro (solo este, después del footer oscuro)
+    var lastEl = body.getChild(body.getNumChildren() - 1);
+    if (lastEl.getType() === DocumentApp.ElementType.PARAGRAPH) {
+      lastEl.asParagraph().editAsText()
+        .setFontSize(1).setForegroundColor('#0d1b2a').setBackgroundColor('#0d1b2a');
+      lastEl.asParagraph().setSpacingBefore(0);
+      lastEl.asParagraph().setSpacingAfter(0);
+      lastEl.asParagraph().setLineSpacing(0.5);
     }
 
     doc.saveAndClose();
