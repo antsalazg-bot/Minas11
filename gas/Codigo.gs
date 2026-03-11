@@ -921,6 +921,9 @@ function doPost(e) {
       if (!sheet) return json({ok: false, error: 'Hoja no encontrada: ' + mes});
       var rows = sheet.getDataRange().getValues();
       var generados = 0, omitidos = 0, errores = 0;
+      // Leer hoja Recibos UNA sola vez fuera del loop
+      var rs = ss.getSheetByName('Recibos');
+      var recibosCache = rs ? rs.getDataRange().getValues() : [];
       for (var i = 1; i < rows.length; i++) {
         var monto = rows[i][3];
         var idConc = String(rows[i][6] || '').trim();
@@ -930,16 +933,12 @@ function doPost(e) {
         if (!info) continue;
         var dept = info.dept;
         var concepto = info.concepto + ' · Depto ' + dept;
-        var rs = ss.getSheetByName('Recibos');
         var isDup = false;
-        if (rs) {
-          var recibos = rs.getDataRange().getValues();
-          for (var j = 1; j < recibos.length; j++) {
-            if (String(recibos[j][1]).toUpperCase() === dept &&
-                String(recibos[j][3]) === mes &&
-                String(recibos[j][7]) !== 'cancelado' &&
-                String(recibos[j][2]) === concepto) { isDup = true; break; }
-          }
+        for (var j = 1; j < recibosCache.length; j++) {
+          if (String(recibosCache[j][1]).toUpperCase() === dept &&
+              String(recibosCache[j][3]) === mes &&
+              String(recibosCache[j][7]) !== 'cancelado' &&
+              String(recibosCache[j][2]) === concepto) { isDup = true; break; }
         }
         if (isDup) { omitidos++; continue; }
         var nombre = getNombrePropietario(dept);

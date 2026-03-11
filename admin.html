@@ -981,11 +981,18 @@ async function generarRecibosDelMes(){
   btn.textContent = '⏳ Procesando…';
   result.style.display = 'none';
   try{
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5 * 60 * 1000); // 5 min
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
+      signal: ctrl.signal,
       body: JSON.stringify({accion:'generar-recibos-mes', mes, token:SESSION_TOKEN})
     });
-    const data = await res.json();
+    clearTimeout(tid);
+    if(!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch(je){ throw new Error('Respuesta inválida: ' + text.substring(0,200)); }
     if(data.ok){
       result.style.display = 'block';
       result.innerHTML = `
@@ -1004,7 +1011,8 @@ async function generarRecibosDelMes(){
     }
   }catch(e){
     result.style.display = 'block';
-    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error de conexión</div>';
+    const msg = e.name === 'AbortError' ? 'Tiempo agotado (>5 min). Los recibos pueden haberse generado — revisa Drive.' : e.message;
+    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error: ' + msg + '</div>';
   }
   btn.disabled = false;
   btn.textContent = '🧾 Generar Recibos';
