@@ -470,70 +470,186 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
       if (qrResp.getResponseCode() === 200) qrBlob = qrResp.getBlob().setName('qr.png');
     } catch(qrErr) { /* QR no disponible, continúa sin imagen */ }
 
-    // ── Crear Google Doc ──────────────────────────────────────────────────
+    // ── Crear Google Doc con diseño estilizado ────────────────────────────
     var doc = DocumentApp.create(folio);
     var body = doc.getBody();
-    body.setMarginTop(56); body.setMarginBottom(56);
-    body.setMarginLeft(72); body.setMarginRight(72);
+    body.setMarginTop(0); body.setMarginBottom(0);
+    body.setMarginLeft(0); body.setMarginRight(0);
 
-    // Encabezado
-    var tit = body.appendParagraph('Real de Minas 11');
-    tit.setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    tit.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    tit.editAsText().setFontSize(20).setBold(true);
+    var folioNum = folio.split('-')[2] || folio;
 
-    var sub = body.appendParagraph('Recibo de Pago de Mantenimiento');
-    sub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    sub.editAsText().setFontSize(11).setForegroundColor('#555555');
+    // Eliminar párrafo vacío inicial
+    if (body.getNumChildren() > 0) body.removeChild(body.getChild(0));
 
-    body.appendParagraph('').setSpacingAfter(4);
+    // ── 1. HEADER (fondo oscuro) ──────────────────────────────────────────
+    var hTbl = body.appendTable([['', '']]);
+    hTbl.setBorderWidth(0);
 
-    // Tabla de datos
-    var tabla = body.appendTable([
-      ['Folio',            folio],
-      ['Departamento',     dept],
-      ['Propietario',      nombre],
-      ['Concepto',         concepto],
-      ['Mes',              mes],
-      ['Fecha de pago',    fechaPago],
-      ['Fecha de emisión', fechaEmision],
-      ['Monto',            montoFmt]
-    ]);
-    tabla.setBorderColor('#cccccc');
-    for (var ri = 0; ri < tabla.getNumRows(); ri++) {
-      tabla.getCell(ri, 0).editAsText().setBold(true).setFontSize(10).setForegroundColor('#444444');
-      tabla.getCell(ri, 1).editAsText().setFontSize(10);
-      if (ri === tabla.getNumRows() - 1)
-        tabla.getCell(ri, 1).editAsText().setBold(true).setFontSize(13).setForegroundColor('#1a5c1a');
-    }
+    var hL = hTbl.getCell(0, 0);
+    hL.setBackgroundColor('#0d1b2a');
+    hL.setPaddingTop(16); hL.setPaddingBottom(16);
+    hL.setPaddingLeft(20); hL.setPaddingRight(8);
+    hL.getChild(0).asParagraph().editAsText()
+      .setText('Real de Minas 11').setForegroundColor('#d4a017').setFontSize(17).setBold(true);
+    hL.appendParagraph('Río San Ángel')
+      .editAsText().setForegroundColor('#aaaaaa').setFontSize(9);
+    hL.appendParagraph('Camino Real de Minas 11, Col. Lomas de los Ángeles Tetelpan')
+      .editAsText().setForegroundColor('#778899').setFontSize(8);
+    hL.appendParagraph('01790, Álvaro Obregón · Ciudad de México')
+      .editAsText().setForegroundColor('#778899').setFontSize(8);
 
-    body.appendParagraph('').setSpacingAfter(4);
+    var hR = hTbl.getCell(0, 1);
+    hR.setBackgroundColor('#0d1b2a');
+    hR.setPaddingTop(16); hR.setPaddingBottom(16); hR.setPaddingRight(20);
+    var hrp1 = hR.getChild(0).asParagraph();
+    hrp1.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    hrp1.editAsText().setText('F O L I O').setForegroundColor('#888888').setFontSize(8);
+    var hrp2 = hR.appendParagraph('#' + folioNum);
+    hrp2.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    hrp2.editAsText().setForegroundColor('#d4a017').setFontSize(26).setBold(true);
+    var hrp3 = hR.appendParagraph(folio);
+    hrp3.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    hrp3.editAsText().setForegroundColor('#888888').setFontSize(8);
 
-    // Sección QR
-    var qrTit = body.appendParagraph('— Verificación de autenticidad —');
-    qrTit.editAsText().setBold(true).setFontSize(9).setForegroundColor('#333333');
-    qrTit.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    // ── 2. BANNER VERDE ───────────────────────────────────────────────────
+    var bTbl = body.appendTable([['✓  PAGO VERIFICADO Y REGISTRADO']]);
+    bTbl.setBorderWidth(0);
+    var bCell = bTbl.getCell(0, 0);
+    bCell.setBackgroundColor('#2d6a4f');
+    bCell.setPaddingTop(9); bCell.setPaddingBottom(9); bCell.setPaddingLeft(20);
+    bCell.getChild(0).asParagraph().editAsText()
+      .setForegroundColor('#ffffff').setFontSize(10).setBold(true);
 
+    // ── 3. TÍTULO DEL COMPROBANTE ─────────────────────────────────────────
+    var cTbl = body.appendTable([['']]);
+    cTbl.setBorderWidth(0);
+    var cCell = cTbl.getCell(0, 0);
+    cCell.setBackgroundColor('#f7f7f7');
+    cCell.setPaddingTop(18); cCell.setPaddingBottom(2);
+    cCell.setPaddingLeft(28); cCell.setPaddingRight(28);
+    cCell.getChild(0).asParagraph().editAsText()
+      .setText('COMPROBANTE OFICIAL DE PAGO').setForegroundColor('#999999').setFontSize(8);
+    var recTxt = 'Recibo de Mantenimiento';
+    var rPar = cCell.appendParagraph(recTxt);
+    rPar.editAsText().setFontSize(22).setBold(true)
+      .setForegroundColor(0, 9, '#1a1a1a')
+      .setForegroundColor(10, recTxt.length - 1, '#c8860a');
+
+    // ── 4. LÍNEA DORADA ───────────────────────────────────────────────────
+    var lTbl = body.appendTable([['']]);
+    lTbl.setBorderWidth(0);
+    var lCell = lTbl.getCell(0, 0);
+    lCell.setBackgroundColor('#d4a017');
+    lCell.setPaddingTop(0); lCell.setPaddingBottom(0);
+    lCell.setPaddingLeft(0); lCell.setPaddingRight(0);
+    lCell.getChild(0).asParagraph().editAsText().setText('').setFontSize(2);
+
+    // ── 5. PROPIETARIO ────────────────────────────────────────────────────
+    var pTbl = body.appendTable([['']]);
+    pTbl.setBorderWidth(0);
+    var pCell = pTbl.getCell(0, 0);
+    pCell.setBackgroundColor('#f7f7f7');
+    pCell.setPaddingTop(14); pCell.setPaddingBottom(2);
+    pCell.setPaddingLeft(28); pCell.setPaddingRight(28);
+    pCell.getChild(0).asParagraph().editAsText()
+      .setText('PROPIETARIO').setForegroundColor('#999999').setFontSize(8);
+    pCell.appendParagraph(nombre).editAsText()
+      .setForegroundColor('#1a1a1a').setFontSize(15).setBold(true);
+
+    // ── 6. DEPTO + PERIODO ────────────────────────────────────────────────
+    var dpTbl = body.appendTable([['', '']]);
+    dpTbl.setBorderWidth(0);
+    var dpL = dpTbl.getCell(0, 0);
+    dpL.setBackgroundColor('#f7f7f7');
+    dpL.setPaddingTop(10); dpL.setPaddingBottom(2); dpL.setPaddingLeft(28);
+    dpL.getChild(0).asParagraph().editAsText()
+      .setText('DEPARTAMENTO').setForegroundColor('#999999').setFontSize(8);
+    dpL.appendParagraph(dept).editAsText()
+      .setForegroundColor('#1a1a1a').setFontSize(12);
+    var dpR = dpTbl.getCell(0, 1);
+    dpR.setBackgroundColor('#f7f7f7');
+    dpR.setPaddingTop(10); dpR.setPaddingBottom(2);
+    dpR.getChild(0).asParagraph().editAsText()
+      .setText('PERIODO').setForegroundColor('#999999').setFontSize(8);
+    dpR.appendParagraph(mes).editAsText()
+      .setForegroundColor('#1a1a1a').setFontSize(12);
+
+    // ── 7. FECHAS ─────────────────────────────────────────────────────────
+    var fTbl = body.appendTable([['', '']]);
+    fTbl.setBorderWidth(0);
+    var fL = fTbl.getCell(0, 0);
+    fL.setBackgroundColor('#f7f7f7');
+    fL.setPaddingTop(8); fL.setPaddingBottom(14); fL.setPaddingLeft(28);
+    fL.getChild(0).asParagraph().editAsText()
+      .setText('FECHA DE PAGO').setForegroundColor('#999999').setFontSize(8);
+    fL.appendParagraph(fechaPago).editAsText()
+      .setForegroundColor('#1a1a1a').setFontSize(12);
+    var fR = fTbl.getCell(0, 1);
+    fR.setBackgroundColor('#f7f7f7');
+    fR.setPaddingTop(8); fR.setPaddingBottom(14);
+    fR.getChild(0).asParagraph().editAsText()
+      .setText('FECHA DE EMISIÓN').setForegroundColor('#999999').setFontSize(8);
+    fR.appendParagraph(fechaEmision).editAsText()
+      .setForegroundColor('#1a1a1a').setFontSize(12);
+
+    // ── 8. CAJA TOTAL (oscuro) ────────────────────────────────────────────
+    var tTbl = body.appendTable([['']]);
+    tTbl.setBorderWidth(0);
+    var tCell = tTbl.getCell(0, 0);
+    tCell.setBackgroundColor('#0d1b2a');
+    tCell.setPaddingTop(16); tCell.setPaddingBottom(16);
+    tCell.setPaddingLeft(28); tCell.setPaddingRight(28);
+    tCell.getChild(0).asParagraph().editAsText()
+      .setText('TOTAL PAGADO').setForegroundColor('#aaaaaa').setFontSize(9);
+    tCell.appendParagraph(montoFmt).editAsText()
+      .setForegroundColor('#d4a017').setFontSize(28).setBold(true);
+    tCell.appendParagraph(concepto).editAsText()
+      .setForegroundColor('#7a9bb5').setFontSize(9);
+
+    // ── 9. CAJA VERIFICACIÓN (crema) ──────────────────────────────────────
+    var vTbl = body.appendTable([['']]);
+    vTbl.setBorderWidth(0);
+    var vCell = vTbl.getCell(0, 0);
+    vCell.setBackgroundColor('#fef9ef');
+    vCell.setPaddingTop(14); vCell.setPaddingBottom(14);
+    vCell.setPaddingLeft(28); vCell.setPaddingRight(28);
+    vCell.getChild(0).asParagraph().editAsText()
+      .setText('Verificación de autenticidad')
+      .setForegroundColor('#1a1a1a').setFontSize(11).setBold(true);
+    vCell.appendParagraph('Recibo generado automáticamente por el sistema de administración del Condominio Real de Minas 11. Este documento es válido como comprobante de pago.')
+      .editAsText().setForegroundColor('#666666').setFontSize(8);
     if (qrBlob) {
-      var qrPara = body.appendParagraph('');
+      var qrPara = vCell.appendParagraph('');
       qrPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
       var qrImg = qrPara.appendInlineImage(qrBlob);
-      qrImg.setWidth(140).setHeight(140);
-      var qrSub = body.appendParagraph('Escanea para verificar que este recibo es auténtico y está vigente');
-      qrSub.editAsText().setFontSize(8).setForegroundColor('#888888').setItalic(true);
-      qrSub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+      qrImg.setWidth(110).setHeight(110);
     }
+    var badgePar = vCell.appendParagraph('  ' + folio + '  ');
+    badgePar.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    badgePar.editAsText()
+      .setForegroundColor('#ffffff').setFontSize(10).setBold(true)
+      .setBackgroundColor('#0d1b2a');
+    vCell.appendParagraph(verificarUrl)
+      .editAsText().setForegroundColor('#aaaaaa').setFontSize(7).setItalic(true);
 
-    var qrUrlPar = body.appendParagraph(verificarUrl);
-    qrUrlPar.editAsText().setFontSize(7).setForegroundColor('#aaaaaa');
-    qrUrlPar.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-
-    body.appendParagraph('').setSpacingAfter(4);
-
-    // Pie
-    var pie = body.appendParagraph('Comprobante oficial emitido por la administración de Real de Minas 11.');
-    pie.editAsText().setFontSize(8).setForegroundColor('#aaaaaa').setItalic(true);
-    pie.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    // ── 10. FOOTER (oscuro) ───────────────────────────────────────────────
+    var ftTbl = body.appendTable([['', '']]);
+    ftTbl.setBorderWidth(0);
+    var ftL = ftTbl.getCell(0, 0);
+    ftL.setBackgroundColor('#0d1b2a');
+    ftL.setPaddingTop(10); ftL.setPaddingBottom(10); ftL.setPaddingLeft(20);
+    ftL.getChild(0).asParagraph().editAsText()
+      .setText('© ' + year + ' Real de Minas 11 · Todos los derechos reservados')
+      .setForegroundColor('#777777').setFontSize(8);
+    ftL.appendParagraph('Developed by Antonio Salazar')
+      .editAsText().setForegroundColor('#555555').setFontSize(7);
+    var ftR = ftTbl.getCell(0, 1);
+    ftR.setBackgroundColor('#0d1b2a');
+    ftR.setPaddingTop(10); ftR.setPaddingBottom(10); ftR.setPaddingRight(20);
+    var ftRp = ftR.getChild(0).asParagraph();
+    ftRp.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
+    ftRp.editAsText().setText(folio)
+      .setForegroundColor('#d4a017').setFontSize(9).setBold(true);
 
     doc.saveAndClose();
 
