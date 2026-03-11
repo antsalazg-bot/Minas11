@@ -417,6 +417,14 @@ function getConceptoYDepto(idConc) {
   return { dept: dept, concepto: conceptos[tipo] || tipo };
 }
 // ═══════════════════════════════════════════════
+//  Token de verificación de recibos
+// ═══════════════════════════════════════════════
+function generateReciboToken(folio, depto, mes, monto) {
+  var raw = folio + ':' + depto + ':' + mes + ':' + Number(monto).toFixed(2) + ':minas11-recibo-2025';
+  var digest = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw, Utilities.Charset.UTF_8);
+  return digest.map(function(b){ return (b < 0 ? b + 256 : b).toString(16).padStart(2,'0'); }).join('').substring(0, 16);
+}
+// ═══════════════════════════════════════════════
 //  generarRecibo
 // ═══════════════════════════════════════════════
 function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
@@ -425,15 +433,30 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     var rs = ss.getSheetByName('Recibos');
     if (!rs) {
       rs = ss.insertSheet('Recibos');
-      rs.appendRow(['Folio','Depto','Nombre','Mes','Fecha','Monto','Link','Estado']);
+      rs.appendRow(['Folio','Depto','Nombre','Mes','Fecha','Monto','Link','Estado','Token']);
     }
+    // Asegurar encabezado columna Token
+    if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
+
     var year = new Date().getFullYear();
     var count = rs.getLastRow();
     var folio = 'REC-' + year + '-' + String(count).padStart(4,'0');
     var montoFmt = '$' + Number(monto).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
     var fechaEmision = Utilities.formatDate(new Date(), 'America/Mexico_City', 'dd/MM/yyyy');
 
-    // ── Crear Google Doc temporal y exportar como PDF ─────────────────────
+    // ── Token de verificación ─────────────────────────────────────────────
+    var token = generateReciboToken(folio, dept, mes, monto);
+    var verificarUrl = 'https://antsalazg-bot.github.io/Minas11/verificar.html?f='
+      + encodeURIComponent(folio) + '&t=' + token;
+
+    // ── Obtener imagen QR (si falla → no guardar recibo) ─────────────────
+    var qrApiUrl = 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl='
+      + encodeURIComponent(verificarUrl) + '&choe=UTF-8&chld=M|2';
+    var qrResp = UrlFetchApp.fetch(qrApiUrl, {muteHttpExceptions: true});
+    if (qrResp.getResponseCode() !== 200) throw new Error('No se pudo generar el código QR (HTTP ' + qrResp.getResponseCode() + ')');
+    var qrBlob = qrResp.getBlob().setName('qr.png');
+
+    // ── Crear Google Doc ──────────────────────────────────────────────────
     var doc = DocumentApp.create(folio);
     var body = doc.getBody();
     body.setMarginTop(56); body.setMarginBottom(56);
@@ -453,29 +476,48 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // Tabla de datos
     var tabla = body.appendTable([
-      ['Folio',          folio],
-      ['Departamento',   dept],
-      ['Propietario',    nombre],
-      ['Concepto',       concepto],
-      ['Mes',            mes],
-      ['Fecha de pago',  fechaPago],
+      ['Folio',            folio],
+      ['Departamento',     dept],
+      ['Propietario',      nombre],
+      ['Concepto',         concepto],
+      ['Mes',              mes],
+      ['Fecha de pago',    fechaPago],
       ['Fecha de emisión', fechaEmision],
-      ['Monto',          montoFmt]
+      ['Monto',            montoFmt]
     ]);
     tabla.setBorderColor('#cccccc');
     for (var ri = 0; ri < tabla.getNumRows(); ri++) {
       tabla.getCell(ri, 0).editAsText().setBold(true).setFontSize(10).setForegroundColor('#444444');
       tabla.getCell(ri, 1).editAsText().setFontSize(10);
-      if (ri === tabla.getNumRows() - 1) {
+      if (ri === tabla.getNumRows() - 1)
         tabla.getCell(ri, 1).editAsText().setBold(true).setFontSize(13).setForegroundColor('#1a5c1a');
-      }
     }
 
     body.appendParagraph('').setSpacingAfter(4);
 
+    // Sección QR
+    var qrTit = body.appendParagraph('— Verificación de autenticidad —');
+    qrTit.editAsText().setBold(true).setFontSize(9).setForegroundColor('#333333');
+    qrTit.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    var qrPara = body.appendParagraph('');
+    qrPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    var qrImg = qrPara.appendInlineImage(qrBlob);
+    qrImg.setWidth(140).setHeight(140);
+
+    var qrSub = body.appendParagraph('Escanea para verificar que este recibo es auténtico y está vigente');
+    qrSub.editAsText().setFontSize(8).setForegroundColor('#888888').setItalic(true);
+    qrSub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    var qrUrlPar = body.appendParagraph(verificarUrl);
+    qrUrlPar.editAsText().setFontSize(7).setForegroundColor('#aaaaaa');
+    qrUrlPar.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    body.appendParagraph('').setSpacingAfter(4);
+
     // Pie
-    var pie = body.appendParagraph('Este documento es un comprobante oficial de pago emitido por la administración de Real de Minas 11.');
-    pie.editAsText().setFontSize(8).setForegroundColor('#888888').setItalic(true);
+    var pie = body.appendParagraph('Comprobante oficial emitido por la administración de Real de Minas 11.');
+    pie.editAsText().setFontSize(8).setForegroundColor('#aaaaaa').setItalic(true);
     pie.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
 
     doc.saveAndClose();
@@ -489,11 +531,10 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     var pdfFile = folder.createFile(pdfBlob);
     pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
-    // Eliminar Google Doc temporal
     docFile.setTrashed(true);
 
     var link = pdfFile.getUrl();
-    rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo']);
+    rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo', token]);
     return {ok:true, folio:folio, link:link};
   } catch(e) {
     return {ok:false, error:e.toString()};
@@ -557,6 +598,29 @@ function doPost(e) {
         })};
       });
       return json({ok: true, table: {rows: rows}});
+    }
+    if (data.accion === 'verificar-recibo') {
+      // Acción pública — no requiere token de sesión
+      var vFolio = String(data.folio || '').trim();
+      var vToken = String(data.token || '').trim();
+      if (!vFolio || !vToken) return json({ok:false, error:'Datos incompletos'});
+      var vRs = ss.getSheetByName('Recibos');
+      if (!vRs) return json({ok:true, valido:false, mensaje:'Sin registros de recibos'});
+      var vRows = vRs.getDataRange().getValues();
+      for (var vi = 1; vi < vRows.length; vi++) {
+        if (String(vRows[vi][0]).trim() !== vFolio) continue;
+        var storedTok = String(vRows[vi][8] || '').trim();
+        if (!storedTok) return json({ok:true, valido:false, mensaje:'Este recibo no tiene verificación QR'});
+        if (storedTok !== vToken) return json({ok:true, valido:false, mensaje:'Token de verificación inválido'});
+        var vEstado = String(vRows[vi][7] || 'activo').trim().toLowerCase();
+        var vFecha = vRows[vi][4];
+        if (vFecha instanceof Date) vFecha = Utilities.formatDate(vFecha, 'America/Mexico_City', 'dd/MM/yyyy');
+        return json({ok:true, valido: vEstado === 'activo', estado: vEstado,
+          folio: String(vRows[vi][0]), depto: String(vRows[vi][1]),
+          nombre: String(vRows[vi][2]), mes: String(vRows[vi][3]),
+          fecha: String(vFecha), monto: Number(vRows[vi][5])});
+      }
+      return json({ok:true, valido:false, mensaje:'Folio no encontrado'});
     }
     if (data.accion === 'mis-recibos') {
       if (!data.token) return json({ok: false, error: 'No autorizado'});
