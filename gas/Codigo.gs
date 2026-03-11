@@ -6,6 +6,7 @@ var ADMIN_PASS = 'Minas2025';
 var ONESIGNAL_APP_ID  = 'e6b778b4-c510-4ded-886e-1b3821b6a14a';
 var ONESIGNAL_API_KEY = 'os_v2_app_423xrngfcbg63cdodm4cdnvbjinrrz5cdutuwnes7ccsmxl7zqb4tzj43qdo4d6uiohwmvoddrd4wosj576gxsaipzc4jqd2malobqy';
 var RECIBOS_FOLDER_ID = '1-4PtEcnhDD6V0VNlZstguFBbARiBywUW';
+var ENVIAR_CORREOS    = false; // cambiar a true cuando estés listo para producción
 // ═══════════════════════════════════════════════
 //  AUTH
 // ═══════════════════════════════════════════════
@@ -396,6 +397,17 @@ function getNombrePropietario(dept) {
   }
   return dept;
 }
+// col K (índice 10) de la hoja Saldos
+function getEmailPropietario(dept) {
+  var sh = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Saldos');
+  if (!sh) return '';
+  var rows = sh.getDataRange().getValues();
+  var d = normDept(dept);
+  for (var i = 1; i < rows.length; i++) {
+    if (normDept(String(rows[i][0]||'')) === d) return String(rows[i][10]||'').trim();
+  }
+  return '';
+}
 // ═══════════════════════════════════════════════
 //  getConceptoYDepto
 // ═══════════════════════════════════════════════
@@ -527,14 +539,44 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     var pdfBlob = docFile.getAs('application/pdf');
     pdfBlob.setName(folio + '.pdf');
 
-    var folder = DriveApp.getFolderById(RECIBOS_FOLDER_ID);
-    var pdfFile = folder.createFile(pdfBlob);
+    // ── Carpeta del año dentro de RECIBOS_FOLDER_ID ──────────────────────
+    var mainFolder = DriveApp.getFolderById(RECIBOS_FOLDER_ID);
+    var yearStr = String(year);
+    var yearFolders = mainFolder.getFoldersByName(yearStr);
+    var yearFolder = yearFolders.hasNext() ? yearFolders.next() : mainFolder.createFolder(yearStr);
+
+    var pdfFile = yearFolder.createFile(pdfBlob);
     pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
     docFile.setTrashed(true);
 
     var link = pdfFile.getUrl();
     rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo', token]);
+
+    // ── Envío de correo (solo si ENVIAR_CORREOS = true y hay email) ───────
+    if (ENVIAR_CORREOS) {
+      var emailDest = getEmailPropietario(dept);
+      if (emailDest) {
+        try {
+          MailApp.sendEmail({
+            to: emailDest,
+            subject: 'Recibo de pago · ' + mes + ' · Real de Minas 11',
+            body: 'Estimado(a) ' + nombre + ',\n\n' +
+              'Adjunto encontrará su recibo de pago correspondiente al mes de ' + mes + '.\n\n' +
+              'Folio: ' + folio + '\n' +
+              'Monto: ' + montoFmt + '\n' +
+              'Fecha de pago: ' + fechaPago + '\n\n' +
+              'También puede verificar la autenticidad de su recibo escaneando el código QR incluido en el documento.\n\n' +
+              'Administración · Real de Minas 11',
+            attachments: [pdfFile.getAs('application/pdf')]
+          });
+        } catch(mailErr) {
+          // El correo falló pero el recibo ya fue guardado — no interrumpir
+          Logger.log('Error enviando correo a ' + emailDest + ': ' + mailErr.toString());
+        }
+      }
+    }
+
     return {ok:true, folio:folio, link:link};
   } catch(e) {
     return {ok:false, error:e.toString()};
