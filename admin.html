@@ -2248,22 +2248,48 @@ async function guardarEgreso(){
 function limpiarPago(){document.getElementById('p-monto').value='';document.getElementById('p-conc').value='';updCuota();}
 function limpiarEgreso(){document.getElementById('e-monto').value='';document.getElementById('e-desc').value='';}
 
-// ─── Cancelar pago ───────────────────────────────────────────────────────────
-async function cancelarPago(hoja, rowIdx, concepto, monto){
-  const motivo=prompt(`Cancelar pago: ${concepto} · ${fmt(monto)}\n\nMotivo de cancelación (requerido):`);
-  if(!motivo||!motivo.trim()){return;}
-  if(!confirm(`¿Confirmar cancelación del pago de ${fmt(monto)}?\n\nEsto también cancelará el recibo asociado si ya fue emitido.\n\nEsta acción no elimina el registro, solo lo marca como cancelado.`)){return;}
+// ─── Cancelar pago / egreso ──────────────────────────────────────────────────
+// tipo: 'ing' = ingreso (cuota de residente) | 'egr' = egreso (gasto)
+async function cancelarPago(hoja, rowIdx, concepto, monto, tipo){
+  const esIngreso = tipo === 'ing';
+  const tipoLabel = esIngreso ? 'pago' : 'egreso';
+  const motivo=prompt(`Cancelar ${tipoLabel}: ${concepto} · ${fmt(monto)}\n\nMotivo de cancelación (requerido):`);
+  if(!motivo||!motivo.trim()) return;
+  const confirmMsg = esIngreso
+    ? `¿Confirmar cancelación del pago de ${fmt(monto)}?\n\nEsto también cancelará el recibo asociado si ya fue emitido.\nEsta acción no elimina el registro, solo lo marca como cancelado.`
+    : `¿Confirmar cancelación del egreso de ${fmt(monto)}?\n\nEsta acción no elimina el registro, solo lo marca como cancelado.`;
+  if(!confirm(confirmMsg)) return;
   try{
     const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
       accion:'cancelar-pago',token:SESSION_TOKEN,hoja,rowIdx,motivo:motivo.trim()
     })});
     const data=await res.json();
     if(!data.ok){toast('Error: '+data.error,'err');return;}
-    let msg='✓ Pago cancelado';
+    let msg=`✓ ${esIngreso?'Pago':'Egreso'} cancelado`;
     if(data.foliosCancelados&&data.foliosCancelados.length)
       msg+=' · Recibo(s) cancelado(s): '+data.foliosCancelados.join(', ');
     toast(msg);
-    toast('⚠ Corre "Verificar ahora" en Saldos para actualizar los saldos del depto.','warn');
+    // Solo ingresos: ofrecer registrar devolución al residente
+    if(esIngreso){
+      if(confirm(`¿Se realizó una devolución de dinero al residente?\n\nSi aceptas, se registrará automáticamente un egreso de devolución en ${hoja}.`)){
+        const montoDevStr=prompt('Monto a devolver:', monto);
+        const montoDev=parseFloat(montoDevStr);
+        if(!montoDev||montoDev<=0){
+          toast('Monto inválido — devolución no registrada','warn');
+        } else {
+          const hoy=new Date();
+          const fechaStr=`${String(hoy.getDate()).padStart(2,'0')}/${String(hoy.getMonth()+1).padStart(2,'0')}/${hoy.getFullYear()}`;
+          const descDev=`Devolución - ${concepto}`;
+          const resEgr=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+            hoja, fila:[fechaStr,null,descDev,null,montoDev,null,null,'ME-DEV'], token:SESSION_TOKEN
+          })});
+          const dataEgr=await resEgr.json();
+          if(dataEgr.ok) toast(`✓ Egreso de devolución registrado · ${fmt(montoDev)}`);
+          else toast('Error al registrar devolución: '+dataEgr.error,'err');
+        }
+      }
+      toast('⚠ Corre "Verificar ahora" en Saldos para actualizar los saldos del depto.','warn');
+    }
     await loadAll(); renderAll();
   }catch(e){toast('Error de conexión','err');}
 }
@@ -2577,8 +2603,9 @@ function renderEstadoMesTable(mes,rawRows){
       <td></td>
     </tr>`;
     const _montoMov=r.ing||r.egr;
+    const _tipoMov=r.ing>0?'ing':'egr';
     const cancelBtn=_montoMov>0&&puedeHacer('cancelar-pago')
-      ?`<button class="btn-cancelar-pago" onclick="cancelarPago('${mes}',${r.i},'${r.concepto.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${_montoMov})">🚫 Cancelar</button>`
+      ?`<button class="btn-cancelar-pago" onclick="cancelarPago('${mes}',${r.i},'${r.concepto.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${_montoMov},'${_tipoMov}')">🚫 Cancelar</button>`
       :'';
     return`<tr class="em-${tipo||''}">
       <td class="td-muted" style="white-space:nowrap">${r.fecha}</td>
