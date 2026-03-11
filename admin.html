@@ -2576,8 +2576,9 @@ function renderEstadoMesTable(mes,rawRows){
       <td>${CAT[badgeId]||''}</td>
       <td></td>
     </tr>`;
-    const cancelBtn=r.ing>0&&puedeHacer('cancelar-pago')
-      ?`<button class="btn-cancelar-pago" onclick="cancelarPago('${mes}',${r.i},'${r.concepto.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${r.ing})">🚫 Cancelar</button>`
+    const _montoMov=r.ing||r.egr;
+    const cancelBtn=_montoMov>0&&puedeHacer('cancelar-pago')
+      ?`<button class="btn-cancelar-pago" onclick="cancelarPago('${mes}',${r.i},'${r.concepto.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${_montoMov})">🚫 Cancelar</button>`
       :'';
     return`<tr class="em-${tipo||''}">
       <td class="td-muted" style="white-space:nowrap">${r.fecha}</td>
