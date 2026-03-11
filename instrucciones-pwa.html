@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Instrucciones Portal Minas 11</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #f5f3ef;
+    color: #1a1a1a;
+  }
+
+  /* ── PÁGINA ── */
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto 20px;
+    background: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: #0d1b2a;
+    padding: 28px 36px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .header-left h1 {
+    color: #d4a017;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+  }
+  .header-left p {
+    color: #7a9bb5;
+    font-size: 11px;
+    margin-top: 3px;
+  }
+  .header-badge {
+    background: #1a2f44;
+    border: 1px solid #d4a017;
+    border-radius: 8px;
+    padding: 8px 16px;
+    text-align: center;
+  }
+  .header-badge span {
+    display: block;
+    color: #aaaaaa;
+    font-size: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .header-badge strong {
+    color: #d4a017;
+    font-size: 11px;
+  }
+
+  /* ── OS BANNER ── */
+  .os-banner {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 36px;
+    border-bottom: 2px solid #f0ede8;
+  }
+  .os-banner.ios  { background: #f0f5ff; border-left: 6px solid #007AFF; }
+  .os-banner.android { background: #f0fff4; border-left: 6px solid #34A853; }
+  .os-icon { font-size: 32px; }
+  .os-title { font-size: 18px; font-weight: 800; }
+  .os-banner.ios .os-title { color: #007AFF; }
+  .os-banner.android .os-title { color: #34A853; }
+  .os-sub { font-size: 11px; color: #666; margin-top: 2px; }
+
+  /* ── CONTENT ── */
+  .content { padding: 24px 36px 28px; }
+
+  /* ── ALERTA ── */
+  .alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 12px;
+  }
+  .alert.warn { background: #fff8e1; border: 1px solid #f0c040; color: #7a5800; }
+  .alert.info { background: #e8f4fd; border: 1px solid #90caf9; color: #1565c0; }
+  .alert-icon { font-size: 16px; flex-shrink: 0; }
+
+  /* ── STEPS ── */
+  .steps { display: flex; flex-direction: column; gap: 14px; }
+
+  .step {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .step-num {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 15px;
+    flex-shrink: 0;
+  }
+  .ios  .step-num { background: #007AFF; color: #fff; }
+  .android .step-num { background: #34A853; color: #fff; }
+
+  .step-body { flex: 1; padding-top: 5px; }
+  .step-body strong { font-size: 13px; font-weight: 700; color: #1a1a1a; }
+  .step-body p { font-size: 11.5px; color: #555; margin-top: 2px; line-height: 1.5; }
+
+  /* ── PHONE MOCKUP ── */
+  .phones-row {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    margin: 20px 0 16px;
+  }
+  .phone-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .phone-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: #888;
+  }
+  .step-num-inline {
+    display: inline-flex;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    font-size: 11px; font-weight: 800;
+    align-items: center; justify-content: center;
+    color: #fff;
+    margin-right: 3px;
+    vertical-align: middle;
+  }
+  .c-ios { background:#007AFF; }
+  .c-and { background:#34A853; }
+
+  /* ── RESULTADO ── */
+  .result-box {
+    background: linear-gradient(135deg, #0d1b2a, #1a2f44);
+    border-radius: 12px;
+    padding: 18px 22px;
+    margin-top: 20px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .result-icon { font-size: 36px; }
+  .result-text h3 { color: #d4a017; font-size: 14px; font-weight: 700; }
+  .result-text ul {
+    margin-top: 6px;
+    padding-left: 14px;
+    color: #aec6d8;
+    font-size: 11px;
+    line-height: 1.9;
+  }
+
+  /* ── FOOTER ── */
+  .footer {
+    background: #0d1b2a;
+    padding: 12px 36px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+  }
+  .footer span { color: #555; font-size: 9px; }
+  .footer strong { color: #d4a017; font-size: 9px; }
+
+  .url-box {
+    background: #f7f7f7;
+    border: 1.5px dashed #ccc;
+    border-radius: 8px;
+    padding: 10px 16px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .url-box span { font-size: 10px; color: #888; display: block; margin-bottom: 2px; }
+  .url-box strong { font-size: 13px; color: #0d1b2a; font-family: monospace; }
+
+  /* ── PRINT ── */
+  @media print {
+    body { background: #fff; }
+    .page { margin: 0; width: 100%; box-shadow: none; }
+    .page-break { page-break-after: always; }
+  }
+  @media screen {
+    body { padding: 20px 0 40px; }
+    .page { box-shadow: 0 4px 32px rgba(0,0,0,.12); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     PÁGINA 1 — iOS
+══════════════════════════════════════════ -->
+<div class="page page-break">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>Real de Minas 11</h1>
+      <p>Instrucciones de instalación · Portal de Condóminos</p>
+    </div>
+    <div class="header-badge">
+      <span>Instala la app</span>
+      <strong>en tu celular</strong>
+    </div>
+  </div>
+
+  <div class="os-banner ios">
+    <div class="os-icon">🍎</div>
+    <div>
+      <div class="os-title">iPhone &amp; iPad</div>
+      <div class="os-sub">iOS 14 o superior</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="url-box">
+      <span>Dirección del portal</span>
+      <strong>https://antsalazg-bot.github.io/Minas11/portal.html</strong>
+    </div>
+
+    <div class="alert warn">
+      <span class="alert-icon">⚠️</span>
+      <div><strong>Importante:</strong> Debes usar <strong>Safari</strong> para instalar el portal. Si usas Chrome, Firefox u otro navegador, la opción de instalación no aparece.</div>
+    </div>
+
+    <div class="steps ios">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Abre Safari e ingresa la dirección del portal</strong>
+          <p>Escribe o pega la URL en la barra de direcciones de Safari y presiona Ir.</p>
+        </div>
+      </div>
+
+      <div class="phones-row">
+        <!-- iPhone con ⋯ resaltado -->
+        <div class="phone-card">
+          <div class="phone-label"><span class="step-num-inline c-ios">2</span> Toca los tres puntos</div>
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="5" width="140" height="190" rx="18" fill="#1a1a1a"/>
+            <rect x="14" y="9" width="132" height="182" rx="15" fill="#f2f2f7"/>
+            <text x="25" y="21" font-family="sans-serif" font-size="7" fill="#333">9:41</text>
+            <rect x="14" y="25" width="132" height="30" fill="#e5e5ea"/>
+            <rect x="24" y="31" width="88" height="18" rx="9" fill="#fff"/>
+            <text x="30" y="43" font-family="monospace" font-size="6.5" fill="#666">antsalazg-bot.github.io</text>
+            <rect x="14" y="55" width="132" height="100" fill="#0d1b2a"/>
+            <text x="80" y="85" font-family="sans-serif" font-size="10" fill="#d4a017" text-anchor="middle" font-weight="bold">Real de Minas 11</text>
+            <text x="80" y="98" font-family="sans-serif" font-size="7" fill="#7a9bb5" text-anchor="middle">Portal de Condóminos</text>
+            <rect x="44" y="110" width="72" height="22" rx="6" fill="#d4a017"/>
+            <text x="80" y="124" font-family="sans-serif" font-size="8" fill="#0d1b2a" text-anchor="middle" font-weight="bold">Iniciar sesión</text>
+            <!-- Barra inferior Safari -->
+            <rect x="14" y="155" width="132" height="36" fill="#f2f2f7"/>
+            <rect x="14" y="155" width="132" height="1" fill="#c7c7cc"/>
+            <text x="30" y="177" font-family="sans-serif" font-size="14" fill="#c7c7cc" text-anchor="middle">‹</text>
+            <text x="52" y="177" font-family="sans-serif" font-size="14" fill="#c7c7cc" text-anchor="middle">›</text>
+            <!-- Share (normal, sin resaltar) -->
+            <rect x="70" y="163" width="8" height="9" rx="1" fill="none" stroke="#aaa" stroke-width="1.2"/>
+            <polyline points="74,163 74,159" stroke="#aaa" stroke-width="1.2" stroke-linecap="round"/>
+            <polyline points="71.5,161 74,158.5 76.5,161" stroke="#aaa" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="107" y="177" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">⊡</text>
+            <!-- TRES PUNTOS resaltado -->
+            <rect x="121" y="160" width="24" height="26" rx="5" fill="#007AFF" opacity=".15"/>
+            <rect x="121" y="160" width="24" height="26" rx="5" stroke="#007AFF" stroke-width="1.5"/>
+            <circle cx="129" cy="173" r="2" fill="#007AFF"/>
+            <circle cx="133" cy="173" r="2" fill="#007AFF"/>
+            <circle cx="137" cy="173" r="2" fill="#007AFF"/>
+            <!-- Flecha indicadora -->
+            <text x="133" y="155" font-family="sans-serif" font-size="9" fill="#007AFF" text-anchor="middle">↓</text>
+            <rect x="55" y="9" width="50" height="8" rx="4" fill="#1a1a1a"/>
+          </svg>
+        </div>
+
+        <!-- Menú contextual con Compartir resaltado -->
+        <div class="phone-card">
+          <div class="phone-label"><span class="step-num-inline c-ios">3</span> Toca Compartir</div>
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="5" width="140" height="190" rx="18" fill="#1a1a1a"/>
+            <rect x="14" y="9" width="132" height="182" rx="15" fill="#f2f2f7"/>
+            <!-- Fondo oscurecido -->
+            <rect x="14" y="9" width="132" height="146" fill="#0d1b2a" opacity=".55"/>
+            <!-- Barra inferior -->
+            <rect x="14" y="155" width="132" height="36" fill="#f2f2f7"/>
+            <rect x="14" y="155" width="132" height="1" fill="#c7c7cc"/>
+            <text x="30" y="177" font-family="sans-serif" font-size="14" fill="#c7c7cc" text-anchor="middle">‹</text>
+            <text x="52" y="177" font-family="sans-serif" font-size="14" fill="#c7c7cc" text-anchor="middle">›</text>
+            <text x="107" y="177" font-family="sans-serif" font-size="11" fill="#888" text-anchor="middle">⊡</text>
+            <circle cx="129" cy="173" r="2" fill="#888"/>
+            <circle cx="133" cy="173" r="2" fill="#888"/>
+            <circle cx="137" cy="173" r="2" fill="#888"/>
+            <!-- Menú popup -->
+            <rect x="66" y="90" width="80" height="68" rx="10" fill="#fff"/>
+            <rect x="66" y="90" width="80" height="68" rx="10" stroke="#ddd" stroke-width="1"/>
+            <!-- COMPARTIR resaltado -->
+            <rect x="66" y="90" width="80" height="24" rx="10" fill="#007AFF" opacity=".1"/>
+            <rect x="66" y="104" width="80" height="10" fill="#007AFF" opacity=".1"/>
+            <!-- ícono share pequeño -->
+            <rect x="74" y="99" width="5" height="6" rx="1" fill="none" stroke="#007AFF" stroke-width="1.2"/>
+            <polyline points="76.5,99 76.5,96" stroke="#007AFF" stroke-width="1.2" stroke-linecap="round"/>
+            <polyline points="74.5,97.5 76.5,95.5 78.5,97.5" stroke="#007AFF" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <text x="84" y="107" font-family="sans-serif" font-size="9.5" fill="#007AFF" font-weight="bold">Compartir</text>
+            <!-- Flecha señalando -->
+            <text x="140" y="107" font-family="sans-serif" font-size="10" fill="#007AFF">←</text>
+            <rect x="66" y="114" width="80" height="1" fill="#e5e5ea"/>
+            <text x="74" y="127" font-family="sans-serif" font-size="8.5" fill="#555">⟳  Recargar</text>
+            <rect x="66" y="132" width="80" height="1" fill="#e5e5ea"/>
+            <text x="74" y="146" font-family="sans-serif" font-size="8.5" fill="#555">🔖  Añadir marcador</text>
+            <rect x="55" y="9" width="50" height="8" rx="4" fill="#1a1a1a"/>
+          </svg>
+        </div>
+
+        <!-- Share sheet: Agregar a pantalla de inicio -->
+        <div class="phone-card">
+          <div class="phone-label"><span class="step-num-inline c-ios">4</span> Toca esta opción</div>
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="5" width="140" height="190" rx="18" fill="#1a1a1a"/>
+            <rect x="14" y="9" width="132" height="182" rx="15" fill="#f2f2f7"/>
+            <!-- Share sheet -->
+            <rect x="14" y="78" width="132" height="113" rx="12" fill="#fff"/>
+            <rect x="14" y="78" width="132" height="113" rx="12" stroke="#e5e5ea" stroke-width="1"/>
+            <text x="80" y="96" font-family="sans-serif" font-size="8" fill="#999" text-anchor="middle">antsalazg-bot.github.io</text>
+            <rect x="20" y="104" width="120" height="1" fill="#e5e5ea"/>
+            <text x="28" y="120" font-family="sans-serif" font-size="9" fill="#333">✉️  Correo</text>
+            <rect x="20" y="126" width="120" height="1" fill="#e5e5ea"/>
+            <text x="28" y="141" font-family="sans-serif" font-size="9" fill="#333">💬  Mensajes</text>
+            <rect x="20" y="147" width="120" height="1" fill="#e5e5ea"/>
+            <!-- AGREGAR A PANTALLA resaltado -->
+            <rect x="14" y="147" width="132" height="24" fill="#007AFF" opacity=".08"/>
+            <text x="28" y="163" font-family="sans-serif" font-size="9" fill="#007AFF" font-weight="bold">➕  Agregar a pantalla de inicio</text>
+            <text x="128" y="163" font-family="sans-serif" font-size="12" fill="#007AFF" text-anchor="middle">←</text>
+            <rect x="20" y="171" width="120" height="1" fill="#e5e5ea"/>
+            <text x="28" y="182" font-family="sans-serif" font-size="9" fill="#333">🔖  Añadir a marcadores</text>
+            <!-- Fondo oscuro arriba -->
+            <rect x="14" y="9" width="132" height="70" fill="#0d1b2a" opacity=".5"/>
+            <rect x="55" y="9" width="50" height="8" rx="4" fill="#1a1a1a"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Toca los tres puntos (•••) en la esquina inferior derecha</strong>
+          <p>En la barra inferior de Safari, el botón <strong>•••</strong> está a la derecha del todo. Al tocarlo aparece un menú rápido.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Toca "Compartir" en el menú que aparece</strong>
+          <p>Aparece un menú pequeño con opciones — selecciona <strong>Compartir</strong> (ícono de flecha hacia arriba).</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Desliza el menú y toca "Agregar a pantalla de inicio"</strong>
+          <p>Puede que tengas que deslizar hacia abajo dentro del menú para encontrar esta opción.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Toca "Agregar" en la esquina superior derecha</strong>
+          <p>Aparece un cuadro de confirmación con el ícono del portal — toca <strong>Agregar</strong> y listo.</p>
+        </div>
+      </div>
+
+    </div><!-- /steps -->
+
+    <div class="result-box">
+      <div class="result-icon">🏠</div>
+      <div class="result-text">
+        <h3>¡Listo! El portal ya está en tu pantalla de inicio</h3>
+        <ul>
+          <li>Se abre sin barra del navegador, como cualquier app</li>
+          <li>Puedes consultar tu saldo, historial y recibos</li>
+          <li>Tu sesión se mantiene activa</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <div class="footer">
+    <span>© 2026 Real de Minas 11 · Administración</span>
+    <strong>Página 1 de 2</strong>
+  </div>
+
+</div><!-- /page iOS -->
+
+
+<!-- ══════════════════════════════════════════
+     PÁGINA 2 — Android
+══════════════════════════════════════════ -->
+<div class="page">
+
+  <div class="header">
+    <div class="header-left">
+      <h1>Real de Minas 11</h1>
+      <p>Instrucciones de instalación · Portal de Condóminos</p>
+    </div>
+    <div class="header-badge">
+      <span>Instala la app</span>
+      <strong>en tu celular</strong>
+    </div>
+  </div>
+
+  <div class="os-banner android">
+    <div class="os-icon">🤖</div>
+    <div>
+      <div class="os-title">Android</div>
+      <div class="os-sub">Android 8 o superior · Chrome recomendado</div>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <div class="url-box">
+      <span>Dirección del portal</span>
+      <strong>https://antsalazg-bot.github.io/Minas11/portal.html</strong>
+    </div>
+
+    <div class="alert info">
+      <span class="alert-icon">💡</span>
+      <div>Puedes usar <strong>Chrome</strong> u otro navegador. En algunos celulares aparece automáticamente un mensaje en la parte inferior de la pantalla para instalar — solo toca <strong>"Instalar"</strong>.</div>
+    </div>
+
+    <div class="steps android">
+
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Abre Chrome e ingresa la dirección del portal</strong>
+          <p>Escribe o pega la URL en la barra de direcciones y presiona Ir.</p>
+        </div>
+      </div>
+
+      <div class="phones-row">
+
+        <!-- Android menú tres puntos -->
+        <div class="phone-card">
+          <div class="phone-label"><span class="step-num-inline c-and">2</span> Toca los tres puntos</div>
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Cuerpo Android -->
+            <rect x="10" y="5" width="140" height="190" rx="14" fill="#1a1a1a"/>
+            <rect x="14" y="9" width="132" height="182" rx="11" fill="#f1f3f4"/>
+            <!-- Barra Chrome -->
+            <rect x="14" y="9" width="132" height="32" fill="#fff"/>
+            <rect x="14" y="9" width="132" height="32" rx="11" fill="#fff"/>
+            <rect x="14" y="30" width="132" height="11" fill="#fff"/>
+            <!-- URL bar -->
+            <rect x="18" y="14" width="104" height="16" rx="8" fill="#f1f3f4"/>
+            <text x="26" y="25" font-family="monospace" font-size="6" fill="#5f6368">antsalazg-bot.github.io</text>
+            <!-- TRES PUNTOS (resaltado) -->
+            <rect x="126" y="12" width="18" height="20" rx="4" fill="#34A853" opacity=".15"/>
+            <rect x="126" y="12" width="18" height="20" rx="4" stroke="#34A853" stroke-width="1.5"/>
+            <circle cx="135" cy="18" r="1.5" fill="#34A853"/>
+            <circle cx="135" cy="23" r="1.5" fill="#34A853"/>
+            <circle cx="135" cy="28" r="1.5" fill="#34A853"/>
+            <!-- Flecha -->
+            <text x="135" y="10" font-family="sans-serif" font-size="8" fill="#34A853" text-anchor="middle">↓</text>
+            <!-- Contenido web -->
+            <rect x="14" y="41" width="132" height="150" fill="#0d1b2a"/>
+            <text x="80" y="70" font-family="sans-serif" font-size="10" fill="#d4a017" text-anchor="middle" font-weight="bold">Real de Minas 11</text>
+            <text x="80" y="83" font-family="sans-serif" font-size="7" fill="#7a9bb5" text-anchor="middle">Portal de Condóminos</text>
+            <rect x="44" y="95" width="72" height="22" rx="6" fill="#d4a017"/>
+            <text x="80" y="109" font-family="sans-serif" font-size="8" fill="#0d1b2a" text-anchor="middle" font-weight="bold">Iniciar sesión</text>
+          </svg>
+        </div>
+
+        <!-- Menú desplegable -->
+        <div class="phone-card">
+          <div class="phone-label"><span class="step-num-inline c-and">3</span> Toca esta opción</div>
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="5" width="140" height="190" rx="14" fill="#1a1a1a"/>
+            <rect x="14" y="9" width="132" height="182" rx="11" fill="#f1f3f4"/>
+            <!-- Contenido oscuro detrás -->
+            <rect x="14" y="9" width="132" height="182" rx="11" fill="#0d1b2a"/>
+            <!-- Menú desplegable -->
+            <rect x="60" y="9" width="86" height="182" rx="8" fill="#fff"/>
+            <rect x="60" y="9" width="86" height="182" rx="8" stroke="#e0e0e0" stroke-width="1"/>
+            <!-- Opciones del menú -->
+            <text x="70" y="30" font-family="sans-serif" font-size="8.5" fill="#333">☆  Nueva pestaña</text>
+            <rect x="60" y="36" width="86" height="1" fill="#f0f0f0"/>
+            <text x="70" y="52" font-family="sans-serif" font-size="8.5" fill="#333">⟳  Recargar</text>
+            <rect x="60" y="58" width="86" height="1" fill="#f0f0f0"/>
+            <!-- AGREGAR A PANTALLA resaltado -->
+            <rect x="60" y="58" width="86" height="24" fill="#34A853" opacity=".1"/>
+            <text x="70" y="73" font-family="sans-serif" font-size="8" fill="#34A853" font-weight="bold">➕  Agregar a pantalla</text>
+            <text x="78" y="82" font-family="sans-serif" font-size="8" fill="#34A853" font-weight="bold">   de inicio</text>
+            <rect x="60" y="84" width="86" height="1" fill="#f0f0f0"/>
+            <text x="70" y="98" font-family="sans-serif" font-size="8.5" fill="#333">⤓  Descargar</text>
+            <rect x="60" y="104" width="86" height="1" fill="#f0f0f0"/>
+            <text x="70" y="118" font-family="sans-serif" font-size="8.5" fill="#333">⚙  Configuración</text>
+            <!-- Flecha -->
+            <text x="136" y="72" font-family="sans-serif" font-size="11" fill="#34A853" text-anchor="middle">←</text>
+          </svg>
+        </div>
+
+        <!-- Diálogo instalar -->
+        <div class="phone-card">
+          <div class="phone-label"><span class="step-num-inline c-and">4</span> Toca "Instalar"</div>
+          <svg width="160" height="200" viewBox="0 0 160 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="10" y="5" width="140" height="190" rx="14" fill="#1a1a1a"/>
+            <rect x="14" y="9" width="132" height="182" rx="11" fill="#0d1b2a"/>
+            <!-- Diálogo inferior -->
+            <rect x="14" y="110" width="132" height="81" rx="12" fill="#fff"/>
+            <!-- Ícono -->
+            <rect x="62" y="98" width="36" height="36" rx="10" fill="#0d1b2a" stroke="#fff" stroke-width="2"/>
+            <text x="80" y="122" font-family="sans-serif" font-size="16" fill="#d4a017" text-anchor="middle">⬡</text>
+            <!-- Texto -->
+            <text x="80" y="148" font-family="sans-serif" font-size="10" fill="#333" text-anchor="middle" font-weight="bold">Real de Minas 11</text>
+            <text x="80" y="160" font-family="sans-serif" font-size="8" fill="#999" text-anchor="middle">antsalazg-bot.github.io</text>
+            <!-- Botones -->
+            <text x="55" y="182" font-family="sans-serif" font-size="9" fill="#5f6368" text-anchor="middle">Cancelar</text>
+            <!-- Botón instalar resaltado -->
+            <rect x="88" y="170" width="50" height="20" rx="6" fill="#34A853"/>
+            <text x="113" y="183" font-family="sans-serif" font-size="9.5" fill="#fff" text-anchor="middle" font-weight="bold">Instalar</text>
+            <!-- Flecha -->
+            <text x="113" y="165" font-family="sans-serif" font-size="10" fill="#34A853" text-anchor="middle">↓</text>
+          </svg>
+        </div>
+
+      </div>
+
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Toca los tres puntos (⋮) en la esquina superior derecha</strong>
+          <p>Se abre el menú de opciones de Chrome.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Toca "Agregar a pantalla de inicio"</strong>
+          <p>Si ves "Instalar app" en lugar de esa opción, toca esa — es lo mismo.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Toca "Instalar" o "Agregar" en el cuadro que aparece</strong>
+          <p>En algunos celulares el botón dice "Añadir". Confirma y listo.</p>
+        </div>
+      </div>
+
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Busca el ícono en tu pantalla de inicio o cajón de apps</strong>
+          <p>En algunos Android el ícono se guarda en el cajón de aplicaciones, no directo en la pantalla principal.</p>
+        </div>
+      </div>
+
+    </div><!-- /steps -->
+
+    <div class="result-box">
+      <div class="result-icon">🏠</div>
+      <div class="result-text">
+        <h3>¡Listo! El portal ya está instalado como app</h3>
+        <ul>
+          <li>Se abre sin barra del navegador, como cualquier app</li>
+          <li>Puedes consultar tu saldo, historial y recibos</li>
+          <li>Tu sesión se mantiene activa</li>
+        </ul>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <div class="footer">
+    <span>© 2026 Real de Minas 11 · Administración</span>
+    <strong>Página 2 de 2</strong>
+  </div>
+
+</div><!-- /page Android -->
+
+</body>
+</html>

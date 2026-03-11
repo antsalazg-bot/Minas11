@@ -21,7 +21,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0ece4;color:var(--ink);min-he
 
 /* MOBILE */
 @media(max-width:768px){
-  .sidebar{position:fixed;left:-240px;top:56px;bottom:0;z-index:150;transition:left .25s ease;box-shadow:none;}
+  .sidebar{position:fixed;left:-240px;top:56px;bottom:0;z-index:150;transition:left .25s ease;box-shadow:none;overflow-y:auto;-webkit-overflow-scrolling:touch;}
   .sidebar.open{left:0;box-shadow:4px 0 20px rgba(24,18,10,.15);}
   .sidebar-overlay{display:none;position:fixed;inset:0;top:56px;background:rgba(24,18,10,.35);z-index:140;}
   .sidebar-overlay.open{display:block;}
@@ -98,7 +98,7 @@ body{font-family:'DM Sans',sans-serif;background:#f0ece4;color:var(--ink);min-he
 /* LAYOUT */
 .app-body{display:flex;flex:1;min-height:calc(100vh - 56px);}
 .sidebar{width:220px;background:#fff;border-right:1px solid var(--bdr);flex-shrink:0;
-  display:flex;flex-direction:column;padding:1.5rem 0;}
+  display:flex;flex-direction:column;padding:1.5rem 0;overflow-y:auto;}
 .sb-section{padding:0 1rem;margin-bottom:.3rem;}
 .sb-lbl{font-size:.6rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
   color:rgba(24,18,10,.28);padding:.5rem .6rem;margin-bottom:.2rem;}
@@ -476,6 +476,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
         <button class="slink" data-view="importar-mes" onclick="sv('importar-mes',this)"><span class="ic">📥</span>Importar Mes</button>
       </div>
       <div id="sb-user-info" style="margin-top:auto;padding:.6rem .9rem;font-size:.65rem;color:rgba(24,18,10,.38);border-top:1px solid var(--bdr);letter-spacing:.05em"></div>
+      <div style="padding:.5rem .9rem .9rem;font-size:.58rem;color:rgba(24,18,10,.22);line-height:1.55;text-align:center">© 2026 Real de Minas 11<br>Todos los derechos reservados.<br>Developed by Antonio Salazar</div>
     </aside>
 
     <main class="main-content">
