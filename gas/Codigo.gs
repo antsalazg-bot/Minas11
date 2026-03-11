@@ -461,12 +461,14 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     var verificarUrl = 'https://antsalazg-bot.github.io/Minas11/verificar.html?f='
       + encodeURIComponent(folio) + '&t=' + token;
 
-    // ── Obtener imagen QR (si falla → no guardar recibo) ─────────────────
-    var qrApiUrl = 'https://quickchart.io/qr?text='
-      + encodeURIComponent(verificarUrl) + '&size=200&format=png';
-    var qrResp = UrlFetchApp.fetch(qrApiUrl, {muteHttpExceptions: true});
-    if (qrResp.getResponseCode() !== 200) throw new Error('No se pudo generar el código QR (HTTP ' + qrResp.getResponseCode() + ')');
-    var qrBlob = qrResp.getBlob().setName('qr.png');
+    // ── Obtener imagen QR (opcional — si falla se omite la imagen) ────────
+    var qrBlob = null;
+    try {
+      var qrApiUrl = 'https://quickchart.io/qr?text='
+        + encodeURIComponent(verificarUrl) + '&size=200&format=png';
+      var qrResp = UrlFetchApp.fetch(qrApiUrl, {muteHttpExceptions: true});
+      if (qrResp.getResponseCode() === 200) qrBlob = qrResp.getBlob().setName('qr.png');
+    } catch(qrErr) { /* QR no disponible, continúa sin imagen */ }
 
     // ── Crear Google Doc ──────────────────────────────────────────────────
     var doc = DocumentApp.create(folio);
@@ -512,14 +514,15 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     qrTit.editAsText().setBold(true).setFontSize(9).setForegroundColor('#333333');
     qrTit.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
 
-    var qrPara = body.appendParagraph('');
-    qrPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
-    var qrImg = qrPara.appendInlineImage(qrBlob);
-    qrImg.setWidth(140).setHeight(140);
-
-    var qrSub = body.appendParagraph('Escanea para verificar que este recibo es auténtico y está vigente');
-    qrSub.editAsText().setFontSize(8).setForegroundColor('#888888').setItalic(true);
-    qrSub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    if (qrBlob) {
+      var qrPara = body.appendParagraph('');
+      qrPara.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+      var qrImg = qrPara.appendInlineImage(qrBlob);
+      qrImg.setWidth(140).setHeight(140);
+      var qrSub = body.appendParagraph('Escanea para verificar que este recibo es auténtico y está vigente');
+      qrSub.editAsText().setFontSize(8).setForegroundColor('#888888').setItalic(true);
+      qrSub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    }
 
     var qrUrlPar = body.appendParagraph(verificarUrl);
     qrUrlPar.editAsText().setFontSize(7).setForegroundColor('#aaaaaa');
