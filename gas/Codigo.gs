@@ -478,14 +478,16 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     var folioNum = folio.split('-')[2] || folio;
 
-    // Minimizar párrafo inicial
+    // Minimizar párrafo inicial al mínimo absoluto
     var initP = body.getChild(0).asParagraph();
     initP.editAsText().setFontSize(1);
-    initP.setSpacingBefore(0); initP.setSpacingAfter(0); initP.setLineSpacing(1);
+    initP.setSpacingBefore(0); initP.setSpacingAfter(0);
+    initP.setLineSpacing(0.5);
+    initP.setIndentStart(0); initP.setIndentEnd(0);
 
-    // Tamaño de página ajustado al contenido
+    // Tamaño de página: contenido real ~625pt con QR, ~515pt sin QR
     body.setPageWidth(612);
-    body.setPageHeight(qrBlob ? 600 : 490);
+    body.setPageHeight(qrBlob ? 660 : 545);
 
     // ── 1. HEADER (fondo oscuro) ──────────────────────────────────────────
     var hTbl = body.appendTable([['', '']]);
