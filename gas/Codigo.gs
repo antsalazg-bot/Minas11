@@ -430,20 +430,69 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     var year = new Date().getFullYear();
     var count = rs.getLastRow();
     var folio = 'REC-' + year + '-' + String(count).padStart(4,'0');
-    var html = '<html><body style="font-family:Arial;padding:2rem;">' +
-      '<h2>Recibo de Pago · Real de Minas 11</h2>' +
-      '<p><strong>Folio:</strong> ' + folio + '</p>' +
-      '<p><strong>Departamento:</strong> ' + dept + '</p>' +
-      '<p><strong>Propietario:</strong> ' + nombre + '</p>' +
-      '<p><strong>Concepto:</strong> ' + concepto + '</p>' +
-      '<p><strong>Mes:</strong> ' + mes + '</p>' +
-      '<p><strong>Fecha de pago:</strong> ' + fechaPago + '</p>' +
-      '<p><strong>Monto:</strong> $' + Number(monto).toFixed(2) + '</p>' +
-      '</body></html>';
-    var blob = Utilities.newBlob(html, 'text/html', folio + '.html');
+    var montoFmt = '$' + Number(monto).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
+    var fechaEmision = Utilities.formatDate(new Date(), 'America/Mexico_City', 'dd/MM/yyyy');
+
+    // ── Crear Google Doc temporal y exportar como PDF ─────────────────────
+    var doc = DocumentApp.create(folio);
+    var body = doc.getBody();
+    body.setMarginTop(56); body.setMarginBottom(56);
+    body.setMarginLeft(72); body.setMarginRight(72);
+
+    // Encabezado
+    var tit = body.appendParagraph('Real de Minas 11');
+    tit.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    tit.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    tit.editAsText().setFontSize(20).setBold(true);
+
+    var sub = body.appendParagraph('Recibo de Pago de Mantenimiento');
+    sub.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+    sub.editAsText().setFontSize(11).setForegroundColor('#555555');
+
+    body.appendParagraph('').setSpacingAfter(4);
+
+    // Tabla de datos
+    var tabla = body.appendTable([
+      ['Folio',          folio],
+      ['Departamento',   dept],
+      ['Propietario',    nombre],
+      ['Concepto',       concepto],
+      ['Mes',            mes],
+      ['Fecha de pago',  fechaPago],
+      ['Fecha de emisión', fechaEmision],
+      ['Monto',          montoFmt]
+    ]);
+    tabla.setBorderColor('#cccccc');
+    for (var ri = 0; ri < tabla.getNumRows(); ri++) {
+      tabla.getCell(ri, 0).editAsText().setBold(true).setFontSize(10).setForegroundColor('#444444');
+      tabla.getCell(ri, 1).editAsText().setFontSize(10);
+      if (ri === tabla.getNumRows() - 1) {
+        tabla.getCell(ri, 1).editAsText().setBold(true).setFontSize(13).setForegroundColor('#1a5c1a');
+      }
+    }
+
+    body.appendParagraph('').setSpacingAfter(4);
+
+    // Pie
+    var pie = body.appendParagraph('Este documento es un comprobante oficial de pago emitido por la administración de Real de Minas 11.');
+    pie.editAsText().setFontSize(8).setForegroundColor('#888888').setItalic(true);
+    pie.setAlignment(DocumentApp.HorizontalAlignment.CENTER);
+
+    doc.saveAndClose();
+
+    // Exportar a PDF
+    var docFile = DriveApp.getFileById(doc.getId());
+    var pdfBlob = docFile.getAs('application/pdf');
+    pdfBlob.setName(folio + '.pdf');
+
     var folder = DriveApp.getFolderById(RECIBOS_FOLDER_ID);
-    var file = folder.createFile(blob);
-    var link = file.getUrl();
+    var pdfFile = folder.createFile(pdfBlob);
+    pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+
+    // Eliminar Google Doc temporal
+    docFile.setTrashed(true);
+
+    var link = pdfFile.getUrl();
     rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo']);
     return {ok:true, folio:folio, link:link};
   } catch(e) {
