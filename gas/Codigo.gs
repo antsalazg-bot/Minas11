@@ -605,6 +605,8 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
       .setForegroundColor('#d4a017').setFontSize(28).setBold(true);
     tCell.appendParagraph(concepto).editAsText()
       .setForegroundColor('#7a9bb5').setFontSize(9);
+    tCell.appendParagraph('El importe de este recibo no extingue adeudos ni pagos vencidos.')
+      .editAsText().setForegroundColor('#556677').setFontSize(8).setItalic(true);
 
     // ── 9. CAJA VERIFICACIÓN (crema) ──────────────────────────────────────
     var vTbl = body.appendTable([['']]);
@@ -650,6 +652,18 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     ftRp.setAlignment(DocumentApp.HorizontalAlignment.RIGHT);
     ftRp.editAsText().setText(folio)
       .setForegroundColor('#d4a017').setFontSize(9).setBold(true);
+
+    // Minimizar párrafos separadores entre tablas (eliminan espacios en blanco)
+    for (var si = 0; si < body.getNumChildren(); si++) {
+      var el = body.getChild(si);
+      if (el.getType() === DocumentApp.ElementType.PARAGRAPH) {
+        var sp = el.asParagraph();
+        sp.editAsText().setFontSize(1);
+        sp.setSpacingBefore(0);
+        sp.setSpacingAfter(0);
+        sp.setLineSpacing(1);
+      }
+    }
 
     doc.saveAndClose();
 
