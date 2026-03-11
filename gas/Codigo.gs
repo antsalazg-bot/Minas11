@@ -462,8 +462,8 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
       + encodeURIComponent(folio) + '&t=' + token;
 
     // ── Obtener imagen QR (si falla → no guardar recibo) ─────────────────
-    var qrApiUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data='
-      + encodeURIComponent(verificarUrl);
+    var qrApiUrl = 'https://quickchart.io/qr?text='
+      + encodeURIComponent(verificarUrl) + '&size=200&format=png';
     var qrResp = UrlFetchApp.fetch(qrApiUrl, {muteHttpExceptions: true});
     if (qrResp.getResponseCode() !== 200) throw new Error('No se pudo generar el código QR (HTTP ' + qrResp.getResponseCode() + ')');
     var qrBlob = qrResp.getBlob().setName('qr.png');
