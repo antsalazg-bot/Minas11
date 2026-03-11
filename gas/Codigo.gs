@@ -479,11 +479,18 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     var folioNum = folio.split('-')[2] || folio;
 
     // Minimizar párrafo inicial (DocumentApp no permite eliminarlo)
-    body.getChild(0).asParagraph().editAsText().setFontSize(1);
+    var initP = body.getChild(0).asParagraph();
+    initP.editAsText().setFontSize(1);
+    initP.setSpacingBefore(0); initP.setSpacingAfter(0); initP.setLineSpacing(1);
+
+    // Tamaño de página: Letter width = 612pt, altura recortada al contenido
+    body.setPageWidth(612);
+    body.setPageHeight(700);
 
     // ── 1. HEADER (fondo oscuro) ──────────────────────────────────────────
     var hTbl = body.appendTable([['', '']]);
     hTbl.setBorderWidth(0);
+    hTbl.setColumnWidth(0, 420); hTbl.setColumnWidth(1, 192);
 
     var hL = hTbl.getCell(0, 0);
     hL.setBackgroundColor('#0d1b2a');
@@ -513,7 +520,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 2. BANNER VERDE ───────────────────────────────────────────────────
     var bTbl = body.appendTable([['✓  PAGO VERIFICADO Y REGISTRADO']]);
-    bTbl.setBorderWidth(0);
+    bTbl.setBorderWidth(0); bTbl.setColumnWidth(0, 612);
     var bCell = bTbl.getCell(0, 0);
     bCell.setBackgroundColor('#2d6a4f');
     bCell.setPaddingTop(9); bCell.setPaddingBottom(9); bCell.setPaddingLeft(20);
@@ -522,7 +529,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 3. TÍTULO DEL COMPROBANTE ─────────────────────────────────────────
     var cTbl = body.appendTable([['']]);
-    cTbl.setBorderWidth(0);
+    cTbl.setBorderWidth(0); cTbl.setColumnWidth(0, 612);
     var cCell = cTbl.getCell(0, 0);
     cCell.setBackgroundColor('#f7f7f7');
     cCell.setPaddingTop(18); cCell.setPaddingBottom(2);
@@ -537,7 +544,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 4. LÍNEA DORADA ───────────────────────────────────────────────────
     var lTbl = body.appendTable([['']]);
-    lTbl.setBorderWidth(0);
+    lTbl.setBorderWidth(0); lTbl.setColumnWidth(0, 612);
     var lCell = lTbl.getCell(0, 0);
     lCell.setBackgroundColor('#d4a017');
     lCell.setPaddingTop(0); lCell.setPaddingBottom(0);
@@ -546,7 +553,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 5. PROPIETARIO ────────────────────────────────────────────────────
     var pTbl = body.appendTable([['']]);
-    pTbl.setBorderWidth(0);
+    pTbl.setBorderWidth(0); pTbl.setColumnWidth(0, 612);
     var pCell = pTbl.getCell(0, 0);
     pCell.setBackgroundColor('#f7f7f7');
     pCell.setPaddingTop(14); pCell.setPaddingBottom(2);
@@ -558,7 +565,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 6. DEPTO + PERIODO ────────────────────────────────────────────────
     var dpTbl = body.appendTable([['', '']]);
-    dpTbl.setBorderWidth(0);
+    dpTbl.setBorderWidth(0); dpTbl.setColumnWidth(0, 306); dpTbl.setColumnWidth(1, 306);
     var dpL = dpTbl.getCell(0, 0);
     dpL.setBackgroundColor('#f7f7f7');
     dpL.setPaddingTop(10); dpL.setPaddingBottom(2); dpL.setPaddingLeft(28);
@@ -576,7 +583,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 7. FECHAS ─────────────────────────────────────────────────────────
     var fTbl = body.appendTable([['', '']]);
-    fTbl.setBorderWidth(0);
+    fTbl.setBorderWidth(0); fTbl.setColumnWidth(0, 306); fTbl.setColumnWidth(1, 306);
     var fL = fTbl.getCell(0, 0);
     fL.setBackgroundColor('#f7f7f7');
     fL.setPaddingTop(8); fL.setPaddingBottom(14); fL.setPaddingLeft(28);
@@ -594,7 +601,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 8. CAJA TOTAL (oscuro) ────────────────────────────────────────────
     var tTbl = body.appendTable([['']]);
-    tTbl.setBorderWidth(0);
+    tTbl.setBorderWidth(0); tTbl.setColumnWidth(0, 612);
     var tCell = tTbl.getCell(0, 0);
     tCell.setBackgroundColor('#0d1b2a');
     tCell.setPaddingTop(16); tCell.setPaddingBottom(16);
@@ -606,11 +613,11 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     tCell.appendParagraph(concepto).editAsText()
       .setForegroundColor('#7a9bb5').setFontSize(9);
     tCell.appendParagraph('El importe de este recibo no extingue adeudos ni pagos vencidos.')
-      .editAsText().setForegroundColor('#556677').setFontSize(8).setItalic(true);
+      .editAsText().setForegroundColor('#aec6d8').setFontSize(8).setItalic(true);
 
     // ── 9. CAJA VERIFICACIÓN (crema) ──────────────────────────────────────
     var vTbl = body.appendTable([['']]);
-    vTbl.setBorderWidth(0);
+    vTbl.setBorderWidth(0); vTbl.setColumnWidth(0, 612);
     var vCell = vTbl.getCell(0, 0);
     vCell.setBackgroundColor('#fef9ef');
     vCell.setPaddingTop(14); vCell.setPaddingBottom(14);
@@ -636,7 +643,7 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     // ── 10. FOOTER (oscuro) ───────────────────────────────────────────────
     var ftTbl = body.appendTable([['', '']]);
-    ftTbl.setBorderWidth(0);
+    ftTbl.setBorderWidth(0); ftTbl.setColumnWidth(0, 420); ftTbl.setColumnWidth(1, 192);
     var ftL = ftTbl.getCell(0, 0);
     ftL.setBackgroundColor('#0d1b2a');
     ftL.setPaddingTop(10); ftL.setPaddingBottom(10); ftL.setPaddingLeft(20);
