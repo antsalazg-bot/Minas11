@@ -60,6 +60,17 @@ function hasPermiso(userInfo, accion) {
 // ═══════════════════════════════════════════════
 var MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio',
              'Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+/**
+ * Google Sheets auto-convierte "Diciembre 2025" → Date en locale español.
+ * Esta función normaliza el valor almacenado en la columna Periodo/Mes
+ * a un string "Mes Año" para poder comparar con el parámetro mes.
+ */
+function periodoAMes(val) {
+  if (val instanceof Date) {
+    return MESES[val.getMonth()] + ' ' + val.getFullYear();
+  }
+  return String(val).trim();
+}
 function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -478,13 +489,6 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
 
     var folioNum = folio.split('-')[2] || folio;
 
-    // Párrafo inicial — fondo oscuro (solo este, no los separadores intermedios)
-    // Es seguro porque el único elemento siguiente es la tabla header también oscura
-    var initP = body.getChild(0).asParagraph();
-    initP.editAsText().setFontSize(1).setForegroundColor('#0d1b2a').setBackgroundColor('#0d1b2a');
-    initP.setSpacingBefore(0); initP.setSpacingAfter(0); initP.setLineSpacing(0.5);
-
-    // Tamaño de página ajustado (contenido ~625pt QR / ~515pt sin QR, -11pt inferior)
     body.setPageWidth(612);
     body.setPageHeight(qrBlob ? 649 : 534);
 
@@ -672,16 +676,6 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
         sp.setLineSpacing(0.5);
       }
     }
-    // Párrafo final — también fondo oscuro (solo este, después del footer oscuro)
-    var lastEl = body.getChild(body.getNumChildren() - 1);
-    if (lastEl.getType() === DocumentApp.ElementType.PARAGRAPH) {
-      lastEl.asParagraph().editAsText()
-        .setFontSize(1).setForegroundColor('#0d1b2a').setBackgroundColor('#0d1b2a');
-      lastEl.asParagraph().setSpacingBefore(0);
-      lastEl.asParagraph().setSpacingAfter(0);
-      lastEl.asParagraph().setLineSpacing(0.5);
-    }
-
     doc.saveAndClose();
 
     // Exportar a PDF
@@ -769,10 +763,52 @@ function doPost(e) {
         var cellDept = String(values[i][0] || '').trim();
         var cellPass = String(values[i][1] || '').trim();
         var norm = cellDept.replace(/^Depto\s*/i, '').replace(/-/g, '').trim().toUpperCase();
-        if ((norm === dept || cellDept.toUpperCase() === dept) && cellPass === pass)
+        if ((norm === dept || cellDept.toUpperCase() === dept) && cellPass === pass) {
+          // ── Registrar acceso en hoja Logs ────────────────────────────────
+          try {
+            var logSh = ss.getSheetByName('Logs');
+            if (!logSh) {
+              logSh = ss.insertSheet('Logs');
+              logSh.appendRow(['Timestamp','Depto','Acción','Dispositivo','Resultado']);
+              logSh.getRange(1,1,1,5).setFontWeight('bold');
+              logSh.setFrozenRows(1);
+            }
+            var ua = String(data.userAgent || '').trim();
+            var dispositivo = ua.indexOf('iPhone') !== -1 ? 'iPhone' :
+                              ua.indexOf('iPad')   !== -1 ? 'iPad'   :
+                              ua.indexOf('Android') !== -1 ? 'Android' :
+                              ua.indexOf('Mac')    !== -1 ? 'Mac'    :
+                              ua.indexOf('Windows')!== -1 ? 'Windows' : 'Otro';
+            logSh.appendRow([new Date(), cellDept, 'login', dispositivo, 'ok']);
+          } catch(le) { /* no bloquear el login por error de log */ }
           return json({ok: true, token: generateToken(dept, pass)});
+        }
       }
+      // Registrar intento fallido
+      try {
+        var logShF = ss.getSheetByName('Logs');
+        if (logShF) logShF.appendRow([new Date(), dept, 'login', '', 'fallido']);
+      } catch(le2) {}
       return json({ok: false, error: 'Credenciales incorrectas'});
+    }
+    if (data.accion === 'get-logs') {
+      if (!getUserFromToken(data.token, ss)) return json({ok:false, error:'No autorizado'});
+      var logSh2 = ss.getSheetByName('Logs');
+      if (!logSh2) return json({ok:true, logs:[]});
+      var logRows = logSh2.getDataRange().getValues();
+      var logs = [];
+      for (var li = 1; li < logRows.length; li++) {
+        var ts = logRows[li][0];
+        logs.push({
+          ts:    ts instanceof Date ? Utilities.formatDate(ts,'America/Mexico_City','dd/MM/yyyy HH:mm') : String(ts),
+          depto: String(logRows[li][1]||''),
+          accion:String(logRows[li][2]||'login'),
+          disp:  String(logRows[li][3]||''),
+          res:   String(logRows[li][4]||'ok')
+        });
+      }
+      logs.reverse(); // más recientes primero
+      return json({ok:true, logs:logs});
     }
     // ── Resolver usuario de admin portal desde token ──────────────────────
     var currentUser = getUserFromToken(data.token, ss);
@@ -967,9 +1003,9 @@ function doPost(e) {
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
           if (String(recibosCache[j][1]).toUpperCase() === dept &&
-              String(recibosCache[j][3]) === mes &&
+              periodoAMes(recibosCache[j][3]) === mes &&
               String(recibosCache[j][7]) !== 'cancelado' &&
-              String(recibosCache[j][2]) === concepto) { isDup = true; break; }
+              Number(recibosCache[j][5]).toFixed(2) === Number(monto).toFixed(2)) { isDup = true; break; }
         }
         if (isDup) { omitidos++; continue; }
         var nombre = getNombrePropietario(dept);
@@ -983,7 +1019,16 @@ function doPost(e) {
           } else { fechaStr = String(fecha); }
         } catch(ex) { fechaStr = String(fecha); }
         var result = generarRecibo(dept, nombre, mes, fechaStr, monto, concepto);
-        if (result.ok) generados++; else errores++;
+        if (result.ok) {
+          generados++;
+        } else {
+          errores++;
+          // Cuota de Google Docs agotada — no tiene caso seguir, retornar de inmediato
+          if (result.error && result.error.indexOf('too many times') !== -1) {
+            return json({ok: true, generados: generados, omitidos: omitidos, errores: errores,
+              advertencia: 'Cuota diaria de Google Docs agotada. Reintentar mañana.'});
+          }
+        }
       }
       return json({ok: true, generados: generados, omitidos: omitidos, errores: errores});
     }
@@ -1015,10 +1060,14 @@ function doPost(e) {
       if (!pwdSheet) throw new Error('Hoja Contraseñas no encontrada');
       var values = pwdSheet.getDataRange().getValues();
       var found = false;
+      // Normalizar: quitar "Depto", guiones, espacios, convertir a mayúsculas → solo alfanumérico
+      var dvNorm = String(data.dept).toUpperCase().replace(/[^A-Z0-9]/g, '');
       for (var i = 0; i < values.length; i++) {
-        var cv = String(values[i][0]).trim(), dv = String(data.dept).trim();
-        if (cv === dv || cv === 'Depto ' + dv || cv.replace('Depto ','').replace('-','') === dv.replace('-','')) {
-          pwdSheet.getRange(i+1, 2).setValue(data.pwd); found = true; break;
+        var cvNorm = String(values[i][0]).toUpperCase()
+          .replace(/^DEPTO/i, '').replace(/[^A-Z0-9]/g, '');
+        if (cvNorm && cvNorm === dvNorm) {
+          pwdSheet.getRange(i+1, 2).setValue(data.pwd);
+          found = true; break;
         }
       }
       if (!found) pwdSheet.appendRow(['Depto ' + data.dept, data.pwd]);
@@ -1385,4 +1434,145 @@ function testDeptMatch() {
     }
     if (encontrados === 0) Logger.log('  ✗ Ninguna fila matcheó "101"');
   }
+}
+// ═══════════════════════════════════════════════
+//  debugRecibosExistentes — DIAGNÓSTICO
+//  Muestra en los logs exactamente qué hay en la
+//  hoja Recibos para entender por qué duplica.
+// ═══════════════════════════════════════════════
+function debugRecibosExistentes() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var rs = ss.getSheetByName('Recibos');
+  if (!rs) { Logger.log('Hoja Recibos no existe'); return; }
+  var rows = rs.getDataRange().getValues();
+  Logger.log('Total filas en Recibos (incl. header): ' + rows.length);
+  Logger.log('HEADER: ' + JSON.stringify(rows[0]));
+  for (var i = 1; i < rows.length; i++) {
+    Logger.log('Fila ' + (i+1) + ' | dept=[' + rows[i][1] + '] mes=[' + rows[i][3] +
+      '] monto=[' + rows[i][5] + '] tipo=' + typeof rows[i][5] +
+      ' estado=[' + rows[i][7] + '] folio=[' + rows[i][0] + ']');
+  }
+}
+// ═══════════════════════════════════════════════
+//  generarRecibosHistoricos — FUNCIÓN TEMPORAL
+//  Genera recibos de Dic 2025 a la fecha actual.
+//  Ejecutar manualmente desde el editor GAS.
+//  NO envía correos (ENVIAR_CORREOS = false).
+// ═══════════════════════════════════════════════
+function generarRecibosHistoricos() {
+  var MESES_HISTORICOS = [
+    'Diciembre 2025',
+    'Enero 2026',
+    'Febrero 2026',
+    'Marzo 2026'
+  ];
+
+  var ss  = SpreadsheetApp.getActiveSpreadsheet();
+  var resumen = [];
+
+  for (var m = 0; m < MESES_HISTORICOS.length; m++) {
+    var mes   = MESES_HISTORICOS[m];
+    var sheet = ss.getSheetByName(mes);
+
+    if (!sheet) {
+      var msg = '⚠️  Hoja no encontrada: ' + mes + ' — se omite';
+      Logger.log(msg);
+      resumen.push(msg);
+      continue;
+    }
+
+    var rows = sheet.getDataRange().getValues();
+    var generados = 0, omitidos = 0, errores = 0;
+
+    // Leer cache de Recibos UNA vez por mes (se recarga después de cada generación)
+    var rs = ss.getSheetByName('Recibos');
+    var recibosCache = rs ? rs.getDataRange().getValues() : [];
+
+    for (var i = 1; i < rows.length; i++) {
+      var monto  = rows[i][3];
+      var idConc = String(rows[i][6] || '').trim();
+
+      if (!monto || isNaN(monto) || Number(monto) <= 0) continue;
+      if (!idConc) continue;
+
+      var info = getConceptoYDepto(idConc);
+      if (!info) continue;
+
+      var dept     = info.dept;
+      var concepto = info.concepto + ' · Depto ' + dept;
+
+      // Duplicado: mismo depto + mes + monto activo
+      // Usamos toFixed(2) para evitar problemas de punto flotante en monto
+      var montoCheck = Number(monto).toFixed(2);
+      var isDup = false;
+      for (var j = 1; j < recibosCache.length; j++) {
+        var rDept   = String(recibosCache[j][1]).trim().toUpperCase();
+        var rMes    = periodoAMes(recibosCache[j][3]); // convierte Date → "Mes Año"
+        var rMonto  = Number(recibosCache[j][5]).toFixed(2);
+        var rEstado = String(recibosCache[j][7]).trim().toLowerCase();
+        if (rDept === dept && rMes === mes && rEstado !== 'cancelado' && rMonto === montoCheck) {
+          isDup = true;
+          Logger.log('  SKIP dup: ' + dept + ' ' + mes + ' $' + montoCheck + ' → ' + recibosCache[j][0]);
+          break;
+        }
+      }
+      if (!isDup) {
+        Logger.log('  CHECK: dept=[' + dept + '] mes=[' + mes + '] monto=[' + montoCheck +
+          '] — cache tiene ' + (recibosCache.length - 1) + ' registros, NO encontró dup');
+      }
+      if (isDup) { omitidos++; continue; }
+
+      var nombre = getNombrePropietario(dept);
+
+      // Formatear fecha de pago
+      var fechaStr = '';
+      try {
+        var fecha = rows[i][0];
+        if (fecha instanceof Date) {
+          fechaStr = Utilities.formatDate(fecha, 'America/Mexico_City', 'dd/MM/yyyy');
+        } else if (typeof fecha === 'number') {
+          fechaStr = Utilities.formatDate(
+            new Date((fecha - 25569) * 86400 * 1000), 'America/Mexico_City', 'dd/MM/yyyy');
+        } else {
+          fechaStr = String(fecha);
+        }
+      } catch(ex) { fechaStr = String(rows[i][0]); }
+
+      var result = generarRecibo(dept, nombre, mes, fechaStr, monto, concepto);
+      if (result.ok) {
+        generados++;
+        Logger.log('✓  ' + mes + ' · Depto ' + dept + ' → ' + result.folio);
+        // Recargar cache para que el siguiente recibo ya vea este registro
+        rs = ss.getSheetByName('Recibos');
+        recibosCache = rs ? rs.getDataRange().getValues() : [];
+      } else {
+        errores++;
+        Logger.log('✗  ' + mes + ' · Depto ' + dept + ' · ERROR: ' + result.error);
+        // Si es error de cuota de Google Docs, no tiene caso seguir intentando
+        if (result.error && result.error.indexOf('too many times') !== -1) {
+          Logger.log('🚫 CUOTA AGOTADA — Se detiene. La cuota de Google Docs se resetea a medianoche.');
+          Logger.log('   Los recibos ya generados están guardados. Vuelve a correr mañana para continuar.');
+          resumen.push(mes + ': ' + generados + ' generados, ' + omitidos + ' omitidos (DETENIDO por cuota)');
+          Logger.log('═══════════════════════════════════════');
+          Logger.log('RESUMEN PARCIAL:');
+          for (var r = 0; r < resumen.length; r++) Logger.log(resumen[r]);
+          Logger.log('═══════════════════════════════════════');
+          return;
+        }
+      }
+
+      // Pequeña pausa para no saturar quickchart.io (QR)
+      Utilities.sleep(300);
+    }
+
+    var linea = mes + ': ' + generados + ' generados, ' + omitidos + ' omitidos, ' + errores + ' errores';
+    Logger.log('📋 ' + linea);
+    resumen.push(linea);
+  }
+
+  Logger.log('═══════════════════════════════════════');
+  Logger.log('RESUMEN FINAL — Recibos Históricos');
+  Logger.log('═══════════════════════════════════════');
+  for (var r = 0; r < resumen.length; r++) Logger.log(resumen[r]);
+  Logger.log('═══════════════════════════════════════');
 }

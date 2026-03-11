@@ -171,6 +171,10 @@ tbody td{padding:.75rem 1rem;}
 .row-cancelado .badge-cancelado{text-decoration:none;font-size:.6rem;font-weight:700;background:#fef2f2;color:var(--red);padding:.1rem .4rem;border-radius:2px;white-space:nowrap;}
 .btn-cancelar-pago{padding:.2rem .55rem;font-size:.65rem;font-weight:600;border:1px solid rgba(139,26,26,.3);background:#fff8f8;color:var(--red);border-radius:2px;cursor:pointer;white-space:nowrap;}
 .btn-cancelar-pago:hover{background:#fef2f2;}
+.traf-ok{color:#166534;background:#dcfce7;padding:.1rem .4rem;border-radius:2px;font-size:.65rem;font-weight:700;}
+.traf-fail{color:#991b1b;background:#fee2e2;padding:.1rem .4rem;border-radius:2px;font-size:.65rem;font-weight:700;}
+.traf-disp{font-size:.75rem;color:rgba(24,18,10,.5);}
+.traf-row:hover td{background:#fafaf8;}
 
 /* BADGES */
 .badge{display:inline-block;padding:.2rem .6rem;border-radius:2px;font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
@@ -390,6 +394,14 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
 .sin-pago-alert{color:var(--red);font-weight:600;font-size:.78rem;animation:blink-red 1.2s ease-in-out infinite;}
 @keyframes blink-red{0%,100%{opacity:1;}50%{opacity:.25;}}
 </style>
+<!-- Google Analytics 4 -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-DRDX34YCZ3"></script>
+<script>
+  window.dataLayer=window.dataLayer||[];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js',new Date());
+  gtag('config','G-DRDX34YCZ3');
+</script>
 </head>
 <body>
 
@@ -474,6 +486,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
         <div class="sb-lbl">Configuración</div>
         <button class="slink" data-view="tarifas" onclick="sv('tarifas',this)"><span class="ic">💲</span>Tarifas</button>
         <button class="slink" data-view="importar-mes" onclick="sv('importar-mes',this)"><span class="ic">📥</span>Importar Mes</button>
+        <button class="slink" data-view="trafico" onclick="sv('trafico',this)"><span class="ic">📈</span>Tráfico</button>
       </div>
       <div id="sb-user-info" style="margin-top:auto;padding:.6rem .9rem;font-size:.65rem;color:rgba(24,18,10,.38);border-top:1px solid var(--bdr);letter-spacing:.05em"></div>
       <div style="padding:.5rem .9rem .9rem;font-size:.58rem;color:rgba(24,18,10,.22);line-height:1.55;text-align:center">© 2026 Real de Minas 11<br>Todos los derechos reservados.<br>Developed by Antonio Salazar</div>
@@ -711,6 +724,67 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
         </div>
       </div>
 
+      <!-- ── TRÁFICO ─────────────────────────────────────────── -->
+      <div id="view-trafico" class="view">
+        <div class="content fade-in">
+          <div class="page-hdr"><h1>Tráfico del Portal</h1><p>Historial de accesos de condóminos</p></div>
+
+          <!-- KPIs rápidos -->
+          <div class="kpi-row c4" id="trafico-kpis" style="margin-bottom:1.5rem"></div>
+
+          <!-- Filtros -->
+          <div class="panel panel-pad" style="margin-bottom:1rem">
+            <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:flex-end">
+              <div>
+                <label class="form-lbl">Filtrar por depto</label>
+                <input id="traf-depto" class="form-input" style="width:140px" placeholder="Ej: 101, PH1…" oninput="renderTrafico()"/>
+              </div>
+              <div>
+                <label class="form-lbl">Resultado</label>
+                <select id="traf-res" class="form-input" style="width:130px" onchange="renderTrafico()">
+                  <option value="">Todos</option>
+                  <option value="ok">Exitosos</option>
+                  <option value="fallido">Fallidos</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-lbl">Dispositivo</label>
+                <select id="traf-disp" class="form-input" style="width:130px" onchange="renderTrafico()">
+                  <option value="">Todos</option>
+                  <option value="iPhone">iPhone</option>
+                  <option value="iPad">iPad</option>
+                  <option value="Android">Android</option>
+                  <option value="Mac">Mac</option>
+                  <option value="Windows">Windows</option>
+                </select>
+              </div>
+              <button class="btn-primary" onclick="loadTrafico()" style="padding:.5rem 1rem">🔄 Actualizar</button>
+              <a id="traf-ga4-link" href="https://analytics.google.com/analytics/web/#/p" target="_blank"
+                 class="btn-sec" style="padding:.5rem 1rem;text-decoration:none">📊 Ver en GA4</a>
+            </div>
+          </div>
+
+          <!-- Tabla de accesos -->
+          <div class="panel" style="overflow-x:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:.82rem" id="trafico-tabla">
+              <thead>
+                <tr style="background:#f7f4ef;border-bottom:2px solid var(--bdr)">
+                  <th style="padding:.7rem 1rem;text-align:left;font-size:.68rem;font-weight:700;color:rgba(24,18,10,.4);letter-spacing:.08em;text-transform:uppercase">Fecha y hora</th>
+                  <th style="padding:.7rem 1rem;text-align:left;font-size:.68rem;font-weight:700;color:rgba(24,18,10,.4);letter-spacing:.08em;text-transform:uppercase">Depto</th>
+                  <th style="padding:.7rem 1rem;text-align:left;font-size:.68rem;font-weight:700;color:rgba(24,18,10,.4);letter-spacing:.08em;text-transform:uppercase">Dispositivo</th>
+                  <th style="padding:.7rem 1rem;text-align:left;font-size:.68rem;font-weight:700;color:rgba(24,18,10,.4);letter-spacing:.08em;text-transform:uppercase">Resultado</th>
+                </tr>
+              </thead>
+              <tbody id="trafico-tbody"><tr><td colspan="4" style="padding:2rem;text-align:center;color:#aaa">Cargando…</td></tr></tbody>
+            </table>
+          </div>
+          <p style="font-size:.68rem;color:rgba(24,18,10,.35);margin-top:.75rem">
+            Mostrando hasta 500 accesos más recientes · Para análisis avanzado usa
+            <a href="https://analytics.google.com" target="_blank" style="color:inherit">Google Analytics</a>
+          </p>
+        </div>
+      </div>
+
     </main>
   </div>
 </div>
@@ -944,6 +1018,7 @@ const MENU_ROLES={
   'cancelar-recibo':['admin','operaciones'],
   'tarifas':        ['admin'],
   'importar-mes':   ['admin','operaciones'],
+  'trafico':        ['admin','operaciones'],
 };
 function puedeHacer(accion){
   // Usado en el frontend para mostrar/ocultar botones de escritura
@@ -1073,6 +1148,7 @@ function sv(name,btn){
   if(name==='tarifas') rTarifas();
   if(name==='importar-mes') initImportMes();
   if(name==='cuotas-extras') initCuotasExtras();
+  if(name==='trafico') loadTrafico();
 }
 
 // ═══════════════════════════════════════════════
@@ -2872,6 +2948,69 @@ document.addEventListener('DOMContentLoaded', function() {
   const passInput = document.getElementById('i-pass');
   if(passInput) passInput.addEventListener('keydown', function(e){ if(e.key==='Enter') doLogin(); });
 });
+
+// ═══════════════════════════════════════════════
+//  TRÁFICO — Logs de acceso al portal
+// ═══════════════════════════════════════════════
+let LOGS_DATA = [];
+
+async function loadTrafico(){
+  const tbody = document.getElementById('trafico-tbody');
+  if(!tbody) return;
+  tbody.innerHTML='<tr><td colspan="4" style="padding:2rem;text-align:center;color:#aaa">Cargando accesos…</td></tr>';
+  try{
+    const res = await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'get-logs',token:SESSION_TOKEN})});
+    const data = await res.json();
+    if(!data.ok){ tbody.innerHTML=`<tr><td colspan="4" style="padding:1rem;color:var(--red)">${data.error||'Error'}</td></tr>`; return; }
+    LOGS_DATA = data.logs || [];
+    renderTrafico();
+    renderTraficoKpis();
+  }catch(e){ tbody.innerHTML='<tr><td colspan="4" style="padding:1rem;color:var(--red)">Error de conexión</td></tr>'; }
+}
+
+function renderTraficoKpis(){
+  const el = document.getElementById('trafico-kpis');
+  if(!el) return;
+  const ok     = LOGS_DATA.filter(l=>l.res==='ok');
+  const deptos = [...new Set(ok.map(l=>l.depto))].length;
+  const hoy    = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'}).replace(/\//g,'/');
+  const hoyStr = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const acHoy  = ok.filter(l=>l.ts.startsWith(hoyStr.split('/').reverse().join('/'))||l.ts.slice(6,16)===hoyStr).length;
+  // Calcular accesos hoy con formato dd/mm/yyyy
+  const hoyFmt = `${String(new Date().getDate()).padStart(2,'0')}/${String(new Date().getMonth()+1).padStart(2,'0')}/${new Date().getFullYear()}`;
+  const acHoy2 = ok.filter(l=>l.ts.startsWith(hoyFmt)).length;
+  el.innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">Total accesos</div><div class="kpi-val">${ok.length}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Deptos activos</div><div class="kpi-val">${deptos}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Accesos hoy</div><div class="kpi-val">${acHoy2}</div></div>
+    <div class="kpi-card"><div class="kpi-label">Intentos fallidos</div><div class="kpi-val" style="color:var(--red)">${LOGS_DATA.filter(l=>l.res==='fallido').length}</div></div>`;
+}
+
+function renderTrafico(){
+  const tbody = document.getElementById('trafico-tbody');
+  if(!tbody) return;
+  const fDepto = (document.getElementById('traf-depto')||{}).value||'';
+  const fRes   = (document.getElementById('traf-res')||{}).value||'';
+  const fDisp  = (document.getElementById('traf-disp')||{}).value||'';
+  let filtered = LOGS_DATA;
+  if(fDepto) filtered = filtered.filter(l=>l.depto.toUpperCase().includes(fDepto.toUpperCase()));
+  if(fRes)   filtered = filtered.filter(l=>l.res===fRes);
+  if(fDisp)  filtered = filtered.filter(l=>l.disp===fDisp);
+  const MAX=500; filtered=filtered.slice(0,MAX);
+  if(!filtered.length){
+    tbody.innerHTML='<tr><td colspan="4" style="padding:2rem;text-align:center;color:#aaa">Sin resultados</td></tr>';
+    return;
+  }
+  const dispIcon={iPhone:'📱',iPad:'📱',Android:'🤖',Mac:'💻',Windows:'🖥️',Otro:'❓'};
+  tbody.innerHTML=filtered.map(l=>`
+    <tr class="traf-row">
+      <td style="padding:.6rem 1rem;border-bottom:1px solid var(--bdr);font-size:.8rem;color:rgba(24,18,10,.6)">${l.ts}</td>
+      <td style="padding:.6rem 1rem;border-bottom:1px solid var(--bdr);font-weight:600">${l.depto}</td>
+      <td style="padding:.6rem 1rem;border-bottom:1px solid var(--bdr)" class="traf-disp">${dispIcon[l.disp]||'❓'} ${l.disp||'—'}</td>
+      <td style="padding:.6rem 1rem;border-bottom:1px solid var(--bdr)"><span class="${l.res==='ok'?'traf-ok':'traf-fail'}">${l.res==='ok'?'✓ ok':'✗ fallido'}</span></td>
+    </tr>`).join('');
+}
+
 </script>
 <script>
 if('serviceWorker' in navigator){
