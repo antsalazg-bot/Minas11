@@ -2521,7 +2521,11 @@ async function guardarPwd(dept){
     });
     const data = await res.json();
     if(data.ok){
-      toast(`✓ Contraseña de ${dept} actualizada`);
+      if(data.found === false){
+        toast(`⚠️ No se encontró Depto ${dept} en la hoja — se creó un nuevo registro`, 'err');
+      } else {
+        toast(`✓ Contraseña de ${dept} actualizada`);
+      }
       btn.textContent = '✓ Guardado'; btn.classList.add('saved');
       setTimeout(() => { btn.textContent = 'Guardar'; btn.classList.remove('saved'); }, 2000);
     } else { toast('Error: ' + (data.error || 'desconocido'), 'err'); }
