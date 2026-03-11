@@ -980,20 +980,33 @@ async function generarRecibosDelMes(){
   btn.disabled = true;
   btn.textContent = '⏳ Procesando…';
   result.style.display = 'none';
+
+  // Timeout duro: restaura el botón pase lo que pase (incluso si fetch se cuelga)
+  const hardTid = setTimeout(() => {
+    btn.disabled = false;
+    btn.textContent = '🧾 Generar Recibos';
+    result.style.display = 'block';
+    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">⏱ Tiempo agotado (3 min). El proceso puede seguir en segundo plano — revisa la hoja Recibos en unos minutos.</div>';
+  }, 3 * 60 * 1000);
+
   try{
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 5 * 60 * 1000); // 5 min
+    const tid = setTimeout(() => ctrl.abort(), 3 * 60 * 1000);
     const res = await fetch(SCRIPT_URL, {
       method:'POST',
       signal: ctrl.signal,
       body: JSON.stringify({accion:'generar-recibos-mes', mes, token:SESSION_TOKEN})
     });
     clearTimeout(tid);
+    clearTimeout(hardTid);
     if(!res.ok) throw new Error('HTTP ' + res.status);
     const text = await res.text();
     let data;
     try { data = JSON.parse(text); } catch(je){ throw new Error('Respuesta inválida: ' + text.substring(0,200)); }
     if(data.ok){
+      const advertencia = data.advertencia
+        ? `<div style="margin-top:.5rem;padding:.5rem;background:#fff8e1;border:1px solid #f0c040;border-radius:4px;font-size:.78rem;color:#7a5800;">⚠️ ${data.advertencia}</div>`
+        : '';
       result.style.display = 'block';
       result.innerHTML = `
         <div style="background:#f0faf0;border:1px solid #cce8cc;border-radius:4px;padding:1rem;">
@@ -1003,6 +1016,7 @@ async function generarRecibosDelMes(){
             <div>⏭️ Ya existían: <strong>${data.omitidos}</strong></div>
             <div>❌ Errores: <strong>${data.errores}</strong></div>
           </div>
+          ${advertencia}
         </div>`;
       showToast(data.generados + ' recibos generados');
     } else {
@@ -1010,10 +1024,12 @@ async function generarRecibosDelMes(){
       result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error: ' + data.error + '</div>';
     }
   }catch(e){
+    clearTimeout(hardTid);
     result.style.display = 'block';
-    const msg = e.name === 'AbortError' ? 'Tiempo agotado (>5 min). Los recibos pueden haberse generado — revisa Drive.' : e.message;
-    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error: ' + msg + '</div>';
+    const msg = e.name === 'AbortError' ? 'Tiempo agotado (>3 min). Los recibos pueden haberse generado — revisa la hoja Recibos.' : e.message;
+    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">⚠️ ' + msg + '</div>';
   }
+  clearTimeout(hardTid);
   btn.disabled = false;
   btn.textContent = '🧾 Generar Recibos';
 }
