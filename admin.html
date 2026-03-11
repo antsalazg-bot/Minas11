@@ -166,6 +166,11 @@ tbody td{padding:.75rem 1rem;}
 .td-num.pos{color:var(--sage);}
 .td-num.neg{color:var(--red);}
 .td-muted{color:rgba(24,18,10,.42);font-size:.78rem;}
+/* Pagos cancelados */
+.row-cancelado td{opacity:.42;text-decoration:line-through;}
+.row-cancelado .badge-cancelado{text-decoration:none;font-size:.6rem;font-weight:700;background:#fef2f2;color:var(--red);padding:.1rem .4rem;border-radius:2px;white-space:nowrap;}
+.btn-cancelar-pago{padding:.2rem .55rem;font-size:.65rem;font-weight:600;border:1px solid rgba(139,26,26,.3);background:#fff8f8;color:var(--red);border-radius:2px;cursor:pointer;white-space:nowrap;}
+.btn-cancelar-pago:hover{background:#fef2f2;}
 
 /* BADGES */
 .badge{display:inline-block;padding:.2rem .6rem;border-radius:2px;font-size:.62rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;}
@@ -441,35 +446,36 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
     <aside class="sidebar">
       <div class="sb-section">
         <div class="sb-lbl">General</div>
-        <button class="slink active" onclick="sv('resumen',this)"><span class="ic">📊</span>Resumen General</button>
-        <button class="slink" onclick="sv('cobranza',this)"><span class="ic">💰</span>Cobranza</button>
-        <button class="slink" onclick="sv('egresos',this)"><span class="ic">📉</span>Egresos</button>
+        <button class="slink active" data-view="resumen" onclick="sv('resumen',this)"><span class="ic">📊</span>Resumen General</button>
+        <button class="slink" data-view="cobranza" onclick="sv('cobranza',this)"><span class="ic">💰</span>Cobranza</button>
+        <button class="slink" data-view="egresos" onclick="sv('egresos',this)"><span class="ic">📉</span>Egresos</button>
       </div>
       <div class="sb-section" style="margin-top:.5rem">
         <div class="sb-lbl">Departamentos</div>
-        <button class="slink" onclick="sv('depto',this)"><span class="ic">🏠</span>Por Departamento</button>
-        <button class="slink" onclick="sv('morosos',this)"><span class="ic">⚠️</span>Morosos</button>
-        <button class="slink" onclick="sv('saldos',this)"><span class="ic">📊</span>Saldos</button>
+        <button class="slink" data-view="depto" onclick="sv('depto',this)"><span class="ic">🏠</span>Por Departamento</button>
+        <button class="slink" data-view="morosos" onclick="sv('morosos',this)"><span class="ic">⚠️</span>Morosos</button>
+        <button class="slink" data-view="saldos" onclick="sv('saldos',this)"><span class="ic">📊</span>Saldos</button>
       </div>
       <div class="sb-section" style="margin-top:.5rem">
         <div class="sb-lbl">Operaciones</div>
-        <button class="slink" onclick="sv('estado-mes',this)"><span class="ic">📝</span>Estado del Mes</button>
-        <button class="slink" onclick="sv('contrasenas',this)"><span class="ic">🔑</span>Contraseñas</button>
-        <button class="slink" onclick="sv('avisos',this)"><span class="ic">📢</span>Avisos</button>
-        <button class="slink" onclick="sv('nuevo-pago',this)"><span class="ic">➕</span>Registrar Pago</button>
-        <button class="slink" onclick="sv('nuevo-egreso',this)"><span class="ic">📋</span>Registrar Egreso</button>
-        <button class="slink" onclick="sv('cuotas-extras',this)"><span class="ic">⚡</span>Cuotas Extras</button>
+        <button class="slink" data-view="estado-mes" onclick="sv('estado-mes',this)"><span class="ic">📝</span>Estado del Mes</button>
+        <button class="slink" data-view="contrasenas" onclick="sv('contrasenas',this)"><span class="ic">🔑</span>Contraseñas</button>
+        <button class="slink" data-view="avisos" onclick="sv('avisos',this)"><span class="ic">📢</span>Avisos</button>
+        <button class="slink" data-view="nuevo-pago" onclick="sv('nuevo-pago',this)"><span class="ic">➕</span>Registrar Pago</button>
+        <button class="slink" data-view="nuevo-egreso" onclick="sv('nuevo-egreso',this)"><span class="ic">📋</span>Registrar Egreso</button>
+        <button class="slink" data-view="cuotas-extras" onclick="sv('cuotas-extras',this)"><span class="ic">⚡</span>Cuotas Extras</button>
       </div>
       <div class="sb-section" style="margin-top:.5rem">
         <div class="sb-lbl">Recibos</div>
-        <button class="slink" onclick="sv('generar-recibos',this)"><span class="ic">🧾</span>Generar Recibos</button>
-        <button class="slink" onclick="sv('cancelar-recibo',this)"><span class="ic">❌</span>Cancelar Recibo</button>
+        <button class="slink" data-view="generar-recibos" onclick="sv('generar-recibos',this)"><span class="ic">🧾</span>Generar Recibos</button>
+        <button class="slink" data-view="cancelar-recibo" onclick="sv('cancelar-recibo',this)"><span class="ic">❌</span>Cancelar Recibo</button>
       </div>
       <div class="sb-section" style="margin-top:.5rem">
         <div class="sb-lbl">Configuración</div>
-        <button class="slink" onclick="sv('tarifas',this)"><span class="ic">💲</span>Tarifas</button>
-        <button class="slink" onclick="sv('importar-mes',this)"><span class="ic">📥</span>Importar Mes</button>
+        <button class="slink" data-view="tarifas" onclick="sv('tarifas',this)"><span class="ic">💲</span>Tarifas</button>
+        <button class="slink" data-view="importar-mes" onclick="sv('importar-mes',this)"><span class="ic">📥</span>Importar Mes</button>
       </div>
+      <div id="sb-user-info" style="margin-top:auto;padding:.6rem .9rem;font-size:.65rem;color:rgba(24,18,10,.38);border-top:1px solid var(--bdr);letter-spacing:.05em"></div>
     </aside>
 
     <main class="main-content">
@@ -745,6 +751,8 @@ const ADMIN_USER = 'admin';
 
 // Token de sesión en memoria (nunca se guarda en el código)
 let SESSION_TOKEN = null;
+let USER_ROL    = 'consulta'; // admin | editor | operaciones | consulta
+let USER_NOMBRE = '';
 
 // ── Genera automáticamente todos los meses desde Enero 2025 hasta el mes actual ──
 const _MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -830,18 +838,22 @@ async function doLogin(){
     const data = await res.json();
     if(data.ok && data.token){
       SESSION_TOKEN = data.token;
+      USER_ROL    = data.rol    || 'admin';
+      USER_NOMBRE = data.nombre || '';
       try{
         const exp = new Date(Date.now()+10*365*24*60*60*1000).toUTCString();
         document.cookie = `minas11_admin=1;expires=${exp};path=/`;
         document.cookie = `minas11_token=${encodeURIComponent(data.token)};expires=${exp};path=/`;
         localStorage.setItem('minas11_admin','1');
         localStorage.setItem('minas11_token', data.token);
+        localStorage.setItem('minas11_rol',    USER_ROL);
+        localStorage.setItem('minas11_nombre', USER_NOMBRE);
       }catch(e){}
       err.style.display='none';
       loadAll().then(()=>{
         document.getElementById('login-screen').style.display='none';
         document.getElementById('app').style.display='flex';
-        initForms(); renderAll();
+        aplicarPermisos(); initForms(); renderAll();
       }).catch(()=>{
         btn.disabled=false; btn.textContent='Ingresar'; bar.style.display='none';
         err.textContent='Error al conectar con Google Sheets.'; err.style.display='block';
@@ -862,7 +874,7 @@ function getCookie(name){
   const m = document.cookie.match('(?:^|; )'+name+'=([^;]*)');
   return m ? decodeURIComponent(m[1]) : null;
 }
-(function autoLoginAdmin(){
+(async function autoLoginAdmin(){
   try{
     const saved = getCookie('minas11_admin') || localStorage.getItem('minas11_admin');
     const savedToken = getCookie('minas11_token') || localStorage.getItem('minas11_token');
@@ -871,10 +883,17 @@ function getCookie(name){
       const passEl=document.getElementById('i-pass'); if(passEl) passEl.value='        ';
       const btn=document.getElementById('login-btn'), bar=document.getElementById('lbar');
       btn.disabled=true; btn.textContent='Cargando datos...'; bar.style.display='block';
+      // Obtener rol/nombre actuales desde GAS (respeta cambios en hoja Usuarios)
+      try{
+        const uiRes=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({accion:'get-user-info',token:savedToken})});
+        const uiData=await uiRes.json();
+        if(uiData.ok){ USER_ROL=uiData.rol; USER_NOMBRE=uiData.nombre; }
+        else{ USER_ROL=localStorage.getItem('minas11_rol')||'admin'; USER_NOMBRE=localStorage.getItem('minas11_nombre')||''; }
+      }catch(e){ USER_ROL=localStorage.getItem('minas11_rol')||'admin'; USER_NOMBRE=localStorage.getItem('minas11_nombre')||''; }
       loadAll().then(()=>{
         document.getElementById('login-screen').style.display='none';
         document.getElementById('app').style.display='flex';
-        initForms(); renderAll();
+        aplicarPermisos(); initForms(); renderAll();
       }).catch(()=>{
         SESSION_TOKEN=null;
         btn.disabled=false; btn.textContent='Ingresar'; bar.style.display='none';
@@ -888,7 +907,10 @@ function doLogout(){
     document.cookie = 'minas11_admin=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
     document.cookie = 'minas11_token=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/';
     localStorage.removeItem('minas11_admin');
-    localStorage.removeItem('minas11_token'); SESSION_TOKEN=null;
+    localStorage.removeItem('minas11_token');
+    localStorage.removeItem('minas11_rol');
+    localStorage.removeItem('minas11_nombre');
+    SESSION_TOKEN=null; USER_ROL='consulta'; USER_NOMBRE='';
   }catch(e){}
   DATA=null; Object.values(charts).forEach(c=>{if(c)c.destroy();}); charts={};
   document.getElementById('app').style.display='none';
@@ -901,6 +923,49 @@ function doLogout(){
   document.getElementById('lbar').style.display='none';
 }
 
+// ═══════════════════════════════════════════════
+//  PERMISOS POR ROL
+// ═══════════════════════════════════════════════
+const MENU_ROLES={
+  'resumen':        ['admin','editor','operaciones','consulta'],
+  'cobranza':       ['admin','editor','operaciones','consulta'],
+  'egresos':        ['admin','editor','operaciones','consulta'],
+  'depto':          ['admin','editor','operaciones','consulta'],
+  'morosos':        ['admin','editor','operaciones','consulta'],
+  'saldos':         ['admin','editor','operaciones','consulta'],
+  'estado-mes':     ['admin','editor','operaciones'],
+  'contrasenas':    ['admin'],
+  'avisos':         ['admin','operaciones'],
+  'nuevo-pago':     ['admin','editor'],
+  'nuevo-egreso':   ['admin','editor'],
+  'cuotas-extras':  ['admin','editor'],
+  'generar-recibos':['admin','operaciones'],
+  'cancelar-recibo':['admin','operaciones'],
+  'tarifas':        ['admin'],
+  'importar-mes':   ['admin','operaciones'],
+};
+function puedeHacer(accion){
+  // Usado en el frontend para mostrar/ocultar botones de escritura
+  const escribir=['admin','editor'];
+  const operar  =['admin','operaciones'];
+  if(accion==='editar')  return escribir.includes(USER_ROL);
+  if(accion==='cancelar-pago') return escribir.includes(USER_ROL);
+  if(accion==='operar')  return operar.includes(USER_ROL);
+  return USER_ROL==='admin';
+}
+function aplicarPermisos(){
+  // Mostrar/ocultar items de menú
+  document.querySelectorAll('.slink[data-view]').forEach(btn=>{
+    const v=btn.dataset.view;
+    btn.style.display=(MENU_ROLES[v]||[]).includes(USER_ROL)?'':'none';
+  });
+  // Badge de usuario en sidebar
+  const info=document.getElementById('sb-user-info');
+  if(info) info.textContent=`${USER_NOMBRE||'Admin'} · ${USER_ROL}`;
+  // Si la vista activa no está permitida, ir a resumen
+  const av=document.querySelector('.view.active');
+  if(av){const vid=av.id.replace('view-',''); if(!(MENU_ROLES[vid]||[]).includes(USER_ROL)) sv('resumen');}
+}
 // ═══════════════════════════════════════════════
 //  NAV
 // ═══════════════════════════════════════════════
@@ -2183,6 +2248,26 @@ async function guardarEgreso(){
 function limpiarPago(){document.getElementById('p-monto').value='';document.getElementById('p-conc').value='';updCuota();}
 function limpiarEgreso(){document.getElementById('e-monto').value='';document.getElementById('e-desc').value='';}
 
+// ─── Cancelar pago ───────────────────────────────────────────────────────────
+async function cancelarPago(hoja, rowIdx, concepto, monto){
+  const motivo=prompt(`Cancelar pago: ${concepto} · ${fmt(monto)}\n\nMotivo de cancelación (requerido):`);
+  if(!motivo||!motivo.trim()){return;}
+  if(!confirm(`¿Confirmar cancelación del pago de ${fmt(monto)}?\n\nEsto también cancelará el recibo asociado si ya fue emitido.\n\nEsta acción no elimina el registro, solo lo marca como cancelado.`)){return;}
+  try{
+    const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify({
+      accion:'cancelar-pago',token:SESSION_TOKEN,hoja,rowIdx,motivo:motivo.trim()
+    })});
+    const data=await res.json();
+    if(!data.ok){toast('Error: '+data.error,'err');return;}
+    let msg='✓ Pago cancelado';
+    if(data.foliosCancelados&&data.foliosCancelados.length)
+      msg+=' · Recibo(s) cancelado(s): '+data.foliosCancelados.join(', ');
+    toast(msg);
+    toast('⚠ Corre "Verificar ahora" en Saldos para actualizar los saldos del depto.','warn');
+    await loadAll(); renderAll();
+  }catch(e){toast('Error de conexión','err');}
+}
+
 // ═══════════════════════════════════════════════
 //  AVISOS
 // ═══════════════════════════════════════════════
@@ -2456,8 +2541,9 @@ function renderEstadoMesTable(mes,rawRows){
     const sal = typeof row[5] === 'number' ? row[5] : null;
     const idC = row[6] || '';
     const idE = row[7] || '';
-    if(!isTotal){ tIng += ing; tEgr += egr; }
-    dataRows.push({ i, fecha: fechaNorm, id: row[1] || '', concepto: row[2] || '', ing, egr, saldo: sal, idC, idE, isTotal });
+    const cancelado = String(row[9]||'').toUpperCase() === 'CANCELADO';
+    if(!isTotal && !cancelado){ tIng += ing; tEgr += egr; }
+    dataRows.push({ i, fecha: fechaNorm, id: row[1]||'', concepto: row[2]||'', ing, egr, saldo: sal, idC, idE, isTotal, cancelado });
   });
 
   // Update stats
@@ -2479,6 +2565,20 @@ function renderEstadoMesTable(mes,rawRows){
     const tipo=r.ing>0?'ing':r.egr>0?'egr':'';
     const badgeId=r.idC||r.idE;
     const badgeType=r.idC?'cm':r.idE?'eg':'oi';
+    if(r.cancelado) return`<tr class="row-cancelado">
+      <td class="td-muted" style="white-space:nowrap">${r.fecha}</td>
+      <td class="td-muted">${r.id}</td>
+      <td>${r.concepto} <span class="badge-cancelado">CANCELADO</span></td>
+      <td class="em-ing-val" style="text-align:right">${r.ing>0?fmtD(r.ing):''}</td>
+      <td class="em-egr-val" style="text-align:right">${r.egr>0?fmtD(r.egr):''}</td>
+      <td class="em-saldo" style="text-align:right">${r.saldo!=null?fmt(r.saldo):''}</td>
+      <td>${badgeId?`<span class="em-badge ${badgeType}">${badgeId}</span>`:''}</td>
+      <td>${CAT[badgeId]||''}</td>
+      <td></td>
+    </tr>`;
+    const cancelBtn=r.ing>0&&puedeHacer('cancelar-pago')
+      ?`<button class="btn-cancelar-pago" onclick="cancelarPago('${mes}',${r.i},'${r.concepto.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',${r.ing})">🚫 Cancelar</button>`
+      :'';
     return`<tr class="em-${tipo||''}">
       <td class="td-muted" style="white-space:nowrap">${r.fecha}</td>
       <td class="td-muted">${r.id}</td>
@@ -2488,7 +2588,7 @@ function renderEstadoMesTable(mes,rawRows){
       <td class="em-saldo" style="text-align:right">${r.saldo!=null?fmt(r.saldo):''}</td>
       <td>${badgeId?`<span class="em-badge ${badgeType}">${badgeId}</span>`:''}</td>
       <td>${CAT[badgeId]||''}</td>
-      <td><button class="em-edit-btn" onclick="openModal(${r.i},'${mes}')">✏️ Editar</button></td>
+      <td><button class="em-edit-btn" onclick="openModal(${r.i},'${mes}')">✏️ Editar</button> ${cancelBtn}</td>
     </tr>`;
   }).join('');
 
