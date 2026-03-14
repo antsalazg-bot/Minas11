@@ -3,7 +3,16 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>Caseta – Paquetería</title>
+<title>Caseta – Minas 11</title>
+<meta name="description" content="Sistema de Paquetería, Visitantes y Turnos — Real de Minas 11">
+<meta name="theme-color" content="#8b3a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Caseta Minas 11">
+<link rel="manifest" href="manifest-caseta.json">
+<link rel="apple-touch-icon" href="icons/icon-caseta-192.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-caseta-192.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -2056,7 +2065,17 @@ function cerrarScanCam(){
   document.getElementById('trackingManual').addEventListener('keydown', function(e){
     if(e.key==='Enter' && this.value.trim()) wizardStep(3);
   });
+  // Registrar Service Worker para PWA
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('sw-caseta.js').catch(()=>{});
+  }
 })();
 </script>
+
+<!-- Copyright -->
+<div style="display:none" id="app-credits">
+  Desarrollado por Antonio Salazar · Real de Minas 11 · 2025-2026
+</div>
+
 </body>
 </html>

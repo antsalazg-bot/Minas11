@@ -1,0 +1,25 @@
+{
+  "name": "Caseta Minas 11",
+  "short_name": "Caseta",
+  "description": "Sistema de Paquetería, Visitantes y Turnos — Real de Minas 11",
+  "start_url": "/Minas11/caseta.html",
+  "scope": "/Minas11/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f8f4ed",
+  "theme_color": "#8b3a0f",
+  "icons": [
+    {
+      "src": "icons/icon-caseta-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-caseta-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
