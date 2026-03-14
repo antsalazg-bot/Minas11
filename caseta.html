@@ -286,7 +286,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
     </div>
     <div class="field">
       <label>Contraseña</label>
-      <input id="loginPass" type="password" placeholder="••••••" autocomplete="current-password">
+      <div style="position:relative">
+        <input id="loginPass" type="password" placeholder="••••••" autocomplete="current-password" style="width:100%;padding-right:42px">
+        <button type="button" onclick="togglePassVer()" style="position:absolute;right:0;top:0;height:100%;width:40px;background:none;border:none;cursor:pointer;color:#9e8a73;font-size:1rem" id="btnVerPass" title="Ver contraseña">👁</button>
+      </div>
     </div>
     <button class="btn-primary" onclick="doLogin()">Ingresar</button>
   </div>
@@ -988,6 +991,12 @@ function processScan(raw){
 document.getElementById('loginPass').addEventListener('keydown', e => {
   if(e.key === 'Enter') doLogin();
 });
+function togglePassVer(){
+  const inp = document.getElementById('loginPass');
+  const btn = document.getElementById('btnVerPass');
+  if(inp.type === 'password'){ inp.type='text';  btn.textContent='🙈'; }
+  else                       { inp.type='password'; btn.textContent='👁'; }
+}
 
 async function doLogin(){
   const user = document.getElementById('loginUser').value.trim();
