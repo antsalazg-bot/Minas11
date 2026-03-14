@@ -452,3 +452,12 @@ function inicializarHojas() {
   Logger.log('✅ Hojas inicializadas correctamente');
   Logger.log('👤 Usuario por defecto: guardia01 / Caseta2025');
 }
+
+// ── Ejecutar UNA VEZ para autorizar acceso a Drive ──────────────
+// Después de ejecutar y aceptar permisos, puedes borrar esta función
+function autorizarDrive() {
+  var nombre  = 'Firmas_Paqueteria_Minas11';
+  var folders = DriveApp.getFoldersByName(nombre);
+  var folder  = folders.hasNext() ? folders.next() : DriveApp.createFolder(nombre);
+  Logger.log('✅ Drive autorizado — carpeta: ' + folder.getName() + ' (' + folder.getId() + ')');
+}
