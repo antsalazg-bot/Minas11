@@ -461,7 +461,12 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     // Asegurar encabezado columna Token
     if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
 
+    // Usar el año del PERIODO del recibo, no el año actual de impresión
     var year = new Date().getFullYear();
+    var mesParts = String(mes).trim().split(' ');
+    if (mesParts.length >= 2 && /^\d{4}$/.test(mesParts[mesParts.length - 1])) {
+      year = parseInt(mesParts[mesParts.length - 1]);
+    }
     var count = rs.getLastRow();
     var folio = 'REC-' + year + '-' + String(count).padStart(4,'0');
     var montoFmt = '$' + Number(monto).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});

@@ -1370,7 +1370,7 @@ function applyHistFilters(){
     document.getElementById('hist-summary').innerHTML='Sin resultados.';return;}
   empty.style.display='none';
   tbody.innerHTML=filtered.map(p=>{
-    const recibo=_recibos.find(r=>r.mes===p.mes&&r.estado!=='cancelado');
+    const recibo=_recibos.find(r=>r.mes.toLowerCase()===p.mes.toLowerCase()&&r.estado!=='cancelado');
     const reciboBtn=recibo&&recibo.link
       ?`<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--gold);color:var(--ink);border-radius:3px;font-size:.85rem;text-decoration:none;flex-shrink:0;" title="Ver recibo">📄</a>`
       :`<span style="color:rgba(24,18,10,.15);font-size:.82rem;display:block;text-align:center;">—</span>`;
