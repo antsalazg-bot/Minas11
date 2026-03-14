@@ -674,7 +674,6 @@ async function api(action, payload={}){
   const body = { action, token: state.token, ...payload };
   const r = await fetch(state.apiUrl, {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
     body: JSON.stringify(body)
   });
   if(!r.ok) throw new Error('Error HTTP ' + r.status);
@@ -778,7 +777,6 @@ async function doLogin(){
   try {
     const r = await fetch(state.apiUrl, {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
       body: JSON.stringify({ action:'login', user, pass })
     });
     const data = await r.json();
