@@ -29,6 +29,7 @@ function doPost(e) {
 
     // ── Acciones protegidas ───────────────────────────────────
     } else if (accion === 'registrar-paquete')   { resultado = registrarPaquete(data, ss);
+    } else if (accion === 'solicitar-otp')       { resultado = solicitarOtp(data, ss);
     } else if (accion === 'entregar-paquete')    { resultado = entregarPaquete(data, ss);
     } else if (accion === 'paquetes-pendientes') { resultado = getPaquetesPendientes(data, ss);
     } else if (accion === 'paquetes-admin')      { resultado = getPaquetesAdmin(data, ss);
@@ -262,15 +263,86 @@ function registrarPaquete(data, ss) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// ENTREGAR PAQUETE
+// SOLICITAR OTP — genera código y lo manda por WhatsApp al residente
+// ════════════════════════════════════════════════════════════════
+function solicitarOtp(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var dept   = String(data.departamento || '').trim();
+  var folios = data.folios;
+  if (!dept || !folios || !folios.length) return { error: 'Faltan datos' };
+
+  var contacto = getContactoWA(dept, ss);
+  if (!contacto || !contacto.telefono || !contacto.apikey) {
+    return { ok: true, sinContacto: true };
+  }
+
+  // Generar OTP de 6 dígitos
+  var otp = String(Math.floor(100000 + Math.random() * 900000));
+  var expiry = Date.now() + 10 * 60 * 1000; // 10 minutos
+
+  // Guardar OTP en PropertiesService con clave por depto
+  var props = PropertiesService.getScriptProperties();
+  props.setProperty('otp_' + dept, JSON.stringify({
+    otp: otp, expiry: expiry, folios: folios
+  }));
+
+  // Enviar por WhatsApp al residente
+  var msg = '🔐 *Código de entrega de paquete*\n'
+    + 'Depto: *' + dept + '*\n\n'
+    + 'Tu código es: *' + otp + '*\n\n'
+    + '⏱ Válido por 10 minutos.\n'
+    + 'Muéstraselo al guardia para recibir tu(s) paquete(s).';
+
+  var waStatus = sendWhatsApp(contacto.telefono, contacto.apikey, msg);
+
+  return { ok: true, waStatus: waStatus };
+}
+
+// ════════════════════════════════════════════════════════════════
+// ENTREGAR PAQUETE — requiere OTP válido (o sinOtp para deptos sin WA)
 // ════════════════════════════════════════════════════════════════
 function entregarPaquete(data, ss) {
   var u = checkAuth(data.token);
   if (!u) return { error: 'No autorizado' };
 
-  var folios = data.folios;
+  var folios  = data.folios;
+  var otp     = String(data.otp || '').trim();
+  var sinOtp  = data.sinOtp === true;
+
   if (!folios || !folios.length) return { error: 'Se requiere al menos un folio' };
 
+  // ── Validar OTP (si no es entrega directa) ──────────────────
+  if (!sinOtp) {
+    // Obtener el depto del primer folio para buscar el OTP
+    var shP   = getOAsegurarHojaPaqueteria(ss);
+    var filasP = shP.getDataRange().getValues();
+    var dept  = '';
+    for (var x = 1; x < filasP.length; x++) {
+      if (String(filasP[x][0]).trim() === folios[0]) {
+        dept = String(filasP[x][1]).trim(); break;
+      }
+    }
+
+    var props  = PropertiesService.getScriptProperties();
+    var rawOtp = props.getProperty('otp_' + dept);
+    if (!rawOtp) return { error: 'Código no encontrado o ya usado. Solicita uno nuevo.' };
+
+    var otpData = JSON.parse(rawOtp);
+    if (Date.now() > otpData.expiry) {
+      props.deleteProperty('otp_' + dept);
+      return { error: 'El código ha expirado. Solicita uno nuevo.' };
+    }
+    if (otpData.otp !== otp) {
+      return { error: 'Código incorrecto.' };
+    }
+
+    // OTP válido — eliminarlo para que no se reutilice
+    props.deleteProperty('otp_' + dept);
+  }
+
+  // ── Marcar como entregados ───────────────────────────────────
   var sh      = getOAsegurarHojaPaqueteria(ss);
   var filas   = sh.getDataRange().getValues();
   var ahora   = new Date();
@@ -283,10 +355,11 @@ function entregarPaquete(data, ss) {
     var folio = String(filas[i][0]).trim();
     if (folios.indexOf(folio) >= 0 &&
         String(filas[i][8]).trim().toLowerCase() === 'pendiente') {
+      var metodo = sinOtp ? u.nombre + ' (manual)' : u.nombre + ' (OTP ✓)';
       sh.getRange(i+1,  9).setValue('entregado');
       sh.getRange(i+1, 10).setValue(fecha);
       sh.getRange(i+1, 11).setValue(hora);
-      sh.getRange(i+1, 12).setValue(u.nombre);
+      sh.getRange(i+1, 12).setValue(metodo);
       entDept = String(filas[i][1]).trim();
       marcados++;
     }
@@ -294,20 +367,7 @@ function entregarPaquete(data, ss) {
 
   if (marcados === 0) return { error: 'No se encontraron paquetes pendientes con esos folios' };
 
-  // WhatsApp confirmación de entrega
-  var waStatus = 'sin-contacto';
-  if (entDept) {
-    var contacto = getContactoWA(entDept, ss);
-    if (contacto && contacto.telefono && contacto.apikey) {
-      var msg2 = '✅ *Paquete(s) entregados*\n'
-        + 'Depto: *' + entDept + '*\n'
-        + marcados + ' paquete(s) entregados el ' + fecha + ' a las ' + hora.slice(0,5) + '\n'
-        + 'Entregó: ' + u.nombre;
-      waStatus = sendWhatsApp(contacto.telefono, contacto.apikey, msg2);
-    }
-  }
-
-  return { ok: true, marcados: marcados, whatsapp: waStatus };
+  return { ok: true, marcados: marcados };
 }
 
 // ════════════════════════════════════════════════════════════════

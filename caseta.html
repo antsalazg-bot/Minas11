@@ -203,6 +203,15 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .modal-sheet h3{font-size:1rem;font-weight:700;margin-bottom:16px;color:var(--ink)}
 .modal-close{float:right;cursor:pointer;background:none;border:none;font-size:1.2rem;color:#9e8a73;line-height:1}
 
+/* ── OTP ── */
+.otp-box{display:flex;justify-content:center;margin:20px 0 8px}
+#otpInput{width:180px;text-align:center;font-size:2rem;font-weight:800;letter-spacing:.3em;
+  padding:14px 10px;border:2px solid var(--border);border-radius:8px;
+  background:var(--warm);color:var(--ink);outline:none;font-family:monospace}
+#otpInput:focus{border-color:var(--gold);background:#fff}
+.otp-nota{font-size:.75rem;color:#9e8a73;text-align:center;margin-top:4px}
+#otpTimer{color:var(--rust);font-weight:600}
+
 /* ── SCANNER INPUT GLOBAL ── */
 #scannerCapture{position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0}
 
@@ -416,20 +425,47 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         </div>
         <div class="pkg-list" id="pkgList"></div>
       </div>
-      <button class="btn-entregar" id="btnEntregarFinal" onclick="confirmarEntrega()" disabled>
-        ✓ Confirmar Entrega
+      <button class="btn-entregar" id="btnSolicitarOtp" onclick="solicitarOtp()" disabled>
+        📲 Enviar código al residente
       </button>
     </div>
 
-    <!-- Éxito entrega -->
+    <!-- Paso E3: Validar OTP -->
     <div id="es3" style="display:none">
+      <div class="ent-dept-info">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        <div>
+          <div class="ent-dept-name" id="otpDeptName">Depto —</div>
+          <div class="ent-dept-sub" id="otpTimer">Código válido por 10 minutos</div>
+        </div>
+      </div>
+      <div class="wizard-card">
+        <h3>🔐 Código de Verificación</h3>
+        <p class="hint">El residente recibió un código por WhatsApp. Pídeselo y escríbelo aquí.</p>
+        <div class="otp-box">
+          <input id="otpInput" type="text" inputmode="numeric" pattern="[0-9]*"
+            maxlength="6" placeholder="· · · · · ·" autocomplete="off"
+            oninput="this.value=this.value.replace(/\D/g,''); updateOtpBtn()">
+        </div>
+        <p class="otp-nota">⚠️ Solo el residente recibe este código en su WhatsApp</p>
+      </div>
+      <button class="btn-entregar" id="btnValidarOtp" onclick="validarOtp()" disabled>
+        ✓ Validar y Entregar
+      </button>
+      <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="reenviarOtp()">
+        🔄 Reenviar código
+      </button>
+    </div>
+
+    <!-- Paso E4: Éxito entrega -->
+    <div id="es4" style="display:none">
       <div class="suc-card">
         <div class="suc-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
         <h3>¡Entrega Confirmada!</h3>
         <p id="sucEntText">— paquetes entregados</p>
-        <div class="suc-wa" id="sucEntWa" style="display:none">
+        <div class="suc-wa" style="display:flex">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <span>Notificación enviada al residente</span>
+          <span>Validado con código OTP del residente ✓</span>
         </div>
         <button class="btn-nuevo" onclick="entStep(1)">Entregar Otro</button>
       </div>
@@ -979,13 +1015,15 @@ function nuevoRegistro(){
 // ENTREGAR
 // ════════════════════════════════════════════════
 function entStep(n){
-  ['es1','es2','es3'].forEach((id,i) => {
+  ['es1','es2','es3','es4'].forEach((id,i) => {
     document.getElementById(id).style.display = i+1===n ? 'block' : 'none';
   });
   if(n===1){
     state.entDept = '';
     state.entPkgs = [];
+    state.otpFolios = [];
     state.scanMode = 'ent';
+    clearOtpTimer();
     document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>b.classList.remove('selected'));
   }
 }
@@ -1018,7 +1056,7 @@ function renderPkgList(){
     list.innerHTML = `<div class="pkg-empty">
       <svg viewBox="0 0 24 24"><path d="M22 12H2"/><path d="M12 2v10"/><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       <p>Sin paquetes pendientes</p></div>`;
-    document.getElementById('btnEntregarFinal').disabled = true;
+    document.getElementById('btnSolicitarOtp').disabled = true;
     return;
   }
   list.innerHTML = state.entPkgs.map((p,i) => `
@@ -1031,26 +1069,113 @@ function renderPkgList(){
         <div class="pkg-folio">Folio: ${p.Folio||'—'}</div>
       </div>
     </div>`).join('');
-  document.getElementById('btnEntregarFinal').disabled = false;
+  document.getElementById('btnSolicitarOtp').disabled = false;
 }
 
 function updateEntBtn(){
   const any = [...document.querySelectorAll('.pkg-checkbox')].some(c=>c.checked);
-  document.getElementById('btnEntregarFinal').disabled = !any;
+  document.getElementById('btnSolicitarOtp').disabled = !any;
 }
 
-async function confirmarEntrega(){
+// ── OTP TIMER ──
+let otpTimerInterval = null;
+let otpExpiry = null;
+function startOtpTimer(){
+  clearOtpTimer();
+  otpExpiry = Date.now() + 10 * 60 * 1000; // 10 min
+  otpTimerInterval = setInterval(() => {
+    const left = Math.max(0, otpExpiry - Date.now());
+    const m = String(Math.floor(left/60000)).padStart(2,'0');
+    const s = String(Math.floor((left%60000)/1000)).padStart(2,'0');
+    const el = document.getElementById('otpTimer');
+    if(el) el.textContent = left > 0 ? `Código válido: ${m}:${s}` : 'Código expirado — reenvía';
+    if(left === 0) clearOtpTimer();
+  }, 1000);
+}
+function clearOtpTimer(){
+  if(otpTimerInterval){ clearInterval(otpTimerInterval); otpTimerInterval = null; }
+}
+
+// ── SOLICITAR OTP ──
+async function solicitarOtp(){
   const checks = [...document.querySelectorAll('.pkg-checkbox')];
-  const folios = checks.filter(c=>c.checked).map(c=> state.entPkgs[c.dataset.idx].Folio);
+  const folios = checks.filter(c=>c.checked).map(c => state.entPkgs[c.dataset.idx].Folio);
   if(!folios.length){ showToast('Selecciona al menos un paquete','err'); return; }
+  state.otpFolios = folios;
+  showLoader('Enviando código al residente…');
+  try {
+    const r = await api('solicitar-otp', { departamento: state.entDept, folios });
+    hideLoader();
+    if(r.sinContacto){
+      // Sin WhatsApp registrado — ofrecer entrega directa con confirmación manual
+      if(confirm(`⚠️ El depto ${state.entDept} no tiene WhatsApp registrado.\n\n¿Confirmas que el residente está presente y entregaste los paquetes?`)){
+        await entregarDirecto(folios);
+      }
+      return;
+    }
+    document.getElementById('otpDeptName').textContent = 'Departamento ' + state.entDept;
+    document.getElementById('otpInput').value = '';
+    document.getElementById('btnValidarOtp').disabled = true;
+    entStep(3);
+    startOtpTimer();
+    showToast('Código enviado por WhatsApp ✓', 'ok');
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+// ── REENVIAR OTP ──
+async function reenviarOtp(){
+  showLoader('Reenviando código…');
+  try {
+    await api('solicitar-otp', { departamento: state.entDept, folios: state.otpFolios });
+    hideLoader();
+    document.getElementById('otpInput').value = '';
+    document.getElementById('btnValidarOtp').disabled = true;
+    startOtpTimer();
+    showToast('Código reenviado ✓', 'ok');
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+function updateOtpBtn(){
+  const v = document.getElementById('otpInput').value;
+  document.getElementById('btnValidarOtp').disabled = v.length !== 6;
+}
+
+// ── VALIDAR OTP Y ENTREGAR ──
+async function validarOtp(){
+  const otp = document.getElementById('otpInput').value.trim();
+  if(otp.length !== 6){ showToast('Ingresa el código de 6 dígitos','err'); return; }
+  showLoader('Validando código…');
+  try {
+    const r = await api('entregar-paquete', { folios: state.otpFolios, otp });
+    hideLoader();
+    clearOtpTimer();
+    document.getElementById('sucEntText').textContent =
+      state.otpFolios.length + ' paquete(s) entregado(s) — validado con OTP ✓';
+    entStep(4);
+    loadDashBanner();
+  } catch(e){
+    hideLoader();
+    showToast('Código incorrecto o expirado', 'err');
+    document.getElementById('otpInput').value = '';
+    document.getElementById('btnValidarOtp').disabled = true;
+  }
+}
+
+// ── ENTREGA DIRECTA (sin WA registrado) ──
+async function entregarDirecto(folios){
   showLoader('Registrando entrega…');
   try {
-    const r = await api('entregar-paquete', { folios });
+    await api('entregar-paquete', { folios, sinOtp: true });
     hideLoader();
-    document.getElementById('sucEntText').textContent = folios.length + ' paquete(s) entregado(s) al residente';
-    const waEl = document.getElementById('sucEntWa');
-    waEl.style.display = (r.whatsapp === 'ok') ? 'flex' : 'none';
-    entStep(3);
+    document.getElementById('sucEntText').textContent =
+      folios.length + ' paquete(s) entregado(s) — confirmación manual';
+    entStep(4);
     loadDashBanner();
   } catch(e){
     hideLoader();
