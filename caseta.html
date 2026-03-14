@@ -142,6 +142,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .btn-entregar{width:100%;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .15s}
 .btn-entregar:disabled{opacity:.45;cursor:not-allowed}
 .btn-reg-visita{width:100%;padding:14px;background:var(--rust);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;position:sticky;bottom:calc(var(--nav-h) + 8px);z-index:10;box-shadow:0 -2px 8px rgba(24,18,10,.12);margin-top:4px}
+#vv-reg{padding-bottom:80px}
 .ent-dept-info{background:#fff;border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
 .ent-dept-info svg{width:28px;height:28px;stroke:var(--sage);flex-shrink:0}
 .ent-dept-name{font-size:.88rem;font-weight:700;color:var(--ink)}
@@ -1664,6 +1665,9 @@ function setVisType(tipo){
   document.getElementById('vtProveedor').classList.toggle('active', tipo==='proveedor');
   document.getElementById('visDeptoSection').style.display = tipo==='residente' ? 'block' : 'none';
   document.getElementById('visProvSection').style.display = tipo==='proveedor' ? 'block' : 'none';
+  // Ocultar campo Empresa cuando es proveedor (ya se identifica por tipo)
+  const empresaField = document.getElementById('visEmpresaField');
+  if(empresaField) empresaField.style.display = tipo==='residente' ? 'block' : 'none';
   // Reset selecciones
   if(tipo==='residente'){
     state.visDept = '';
@@ -1672,7 +1676,6 @@ function setVisType(tipo){
     document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>b.classList.remove('selected'));
   } else {
     document.querySelectorAll('#provGrid .prov-btn').forEach(b=>b.classList.remove('selected'));
-    // Para proveedor, limpiar nombre para que el guardia lo llene
     document.getElementById('visNombre').value = '';
   }
 }
