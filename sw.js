@@ -1,7 +1,7 @@
 // Import OneSignal SW
 importScripts("https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.sw.js");
 
-const CACHE = 'minas11-v4';
+const CACHE = 'minas11-v5';
 const ASSETS = [
   '/Minas11/portal.html',
   '/Minas11/admin.html'
@@ -20,6 +20,8 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // No interceptar POST ni peticiones a APIs externas
+  if(e.request.method !== 'GET') return;
   if(e.request.url.includes('google.com') || e.request.url.includes('onesignal.com')) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
