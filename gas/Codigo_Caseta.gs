@@ -38,6 +38,9 @@ function doPost(e) {
     } else if (accion === 'registrar-salida')       { resultado = registrarSalida(data, ss);
     } else if (accion === 'get-visitantes-activos') { resultado = getVisitantesActivos(data, ss);
     } else if (accion === 'get-visitantes-hist')    { resultado = getVisitantesHistorial(data, ss);
+    } else if (accion === 'registrar-entrada-turno'){ resultado = registrarEntradaTurno(data, ss);
+    } else if (accion === 'registrar-salida-turno') { resultado = registrarSalidaTurno(data, ss);
+    } else if (accion === 'get-turno-activo')       { resultado = getTurnoActivo(data, ss);
 
     } else {
       resultado = { error: 'Acción desconocida: ' + accion };
@@ -455,10 +458,11 @@ function getOAsegurarHojaVisitantes(ss) {
     sh.appendRow([
       'FolioVisita','NombreVisitante','Empresa','DeptVisitado',
       'FechaEntrada','HoraEntrada','FechaSalida','HoraSalida',
-      'GuardiaEntrada','GuardiaSalida','FotoID_URL','Estado','Notas'
+      'GuardiaEntrada','GuardiaSalida','FotoID_URL','Estado','Notas',
+      'Tipo','Proveedor'
     ]);
     sh.setFrozenRows(1);
-    sh.getRange(1,1,1,13).setFontWeight('bold')
+    sh.getRange(1,1,1,15).setFontWeight('bold')
       .setBackground('#1a3a5c').setFontColor('#ffffff');
     sh.setColumnWidth(1,  160);  // FolioVisita
     sh.setColumnWidth(2,  200);  // NombreVisitante
@@ -520,6 +524,9 @@ function registrarVisita(data, ss) {
     fotoUrl = guardarFotoEnDrive(foto, folio);
   }
 
+  var tipo      = String(data.tipo      || 'residente').trim();
+  var proveedor = String(data.proveedor || '').trim();
+
   sh.appendRow([
     folio,            // FolioVisita
     nombre,           // NombreVisitante
@@ -533,7 +540,9 @@ function registrarVisita(data, ss) {
     '',               // GuardiaSalida
     fotoUrl,          // FotoID_URL
     'adentro',        // Estado
-    ''                // Notas
+    '',               // Notas
+    tipo,             // Tipo
+    proveedor         // Proveedor
   ]);
 
   return { ok: true, folio: folio };
@@ -646,6 +655,125 @@ function getVisitantesHistorial(data, ss) {
   return { ok: true, visitantes: lista, total: filas.length - 1 };
 }
 
+// ════════════════════════════════════════════════
+// HOJA TURNOS
+// ════════════════════════════════════════════════
+function getOAsegurarHojaTurnos(ss) {
+  var sh = ss.getSheetByName('Turnos');
+  if (!sh) {
+    sh = ss.insertSheet('Turnos');
+    sh.appendRow([
+      'FolioTurno','Guardia','UsuarioLogin',
+      'FechaEntrada','HoraEntrada','FechaSalida','HoraSalida',
+      'Novedades','Estado'
+    ]);
+    sh.setFrozenRows(1);
+    sh.getRange(1,1,1,9).setFontWeight('bold')
+      .setBackground('#3a3a5c').setFontColor('#ffffff');
+    sh.setColumnWidth(1, 160);
+    sh.setColumnWidth(2, 180);
+    sh.setColumnWidth(8, 300);
+  }
+  return sh;
+}
+
+// ════════════════════════════════════════════════
+// REGISTRAR ENTRADA DE TURNO
+// ════════════════════════════════════════════════
+function registrarEntradaTurno(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var sh    = getOAsegurarHojaTurnos(ss);
+  var filas = sh.getDataRange().getValues();
+  var hdrs  = filas[0];
+
+  // Verificar si ya tiene un turno activo
+  for (var i = 1; i < filas.length; i++) {
+    var obj = {};
+    hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+    if (String(obj.UsuarioLogin).trim().toLowerCase() === u.user.toLowerCase() &&
+        String(obj.Estado).trim().toLowerCase() === 'activo') {
+      return { error: 'Ya tienes un turno activo. Ciérralo antes de iniciar uno nuevo.' };
+    }
+  }
+
+  var ahora = new Date();
+  var yy    = String(ahora.getFullYear()).slice(2);
+  var mm    = String(ahora.getMonth()+1).padStart(2,'0');
+  var dd    = String(ahora.getDate()).padStart(2,'0');
+  var seq   = String(Math.max(sh.getLastRow(), 1)).padStart(4,'0');
+  var folio = 'TRN-' + yy + mm + dd + '-' + seq;
+
+  sh.appendRow([
+    folio,
+    u.nombre,
+    u.user,
+    fmtFecha(ahora),
+    fmtHora(ahora),
+    '', '', '', 'activo'
+  ]);
+
+  var turno = {
+    FolioTurno: folio, Guardia: u.nombre,
+    FechaEntrada: fmtFecha(ahora), HoraEntrada: fmtHora(ahora),
+    Estado: 'activo'
+  };
+  return { ok: true, folio: folio, turno: turno };
+}
+
+// ════════════════════════════════════════════════
+// REGISTRAR SALIDA DE TURNO
+// ════════════════════════════════════════════════
+function registrarSalidaTurno(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var folio     = String(data.folioTurno || '').trim();
+  var novedades = String(data.novedades  || '').trim();
+
+  var sh    = getOAsegurarHojaTurnos(ss);
+  var filas = sh.getDataRange().getValues();
+  var hdrs  = filas[0];
+  var ahora = new Date();
+
+  for (var i = 1; i < filas.length; i++) {
+    var obj = {};
+    hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+    if (String(obj.FolioTurno).trim() === folio &&
+        String(obj.Estado).trim().toLowerCase() === 'activo') {
+      sh.getRange(i+1, hdrs.indexOf('FechaSalida')+1).setValue(fmtFecha(ahora));
+      sh.getRange(i+1, hdrs.indexOf('HoraSalida')+1).setValue(fmtHora(ahora));
+      sh.getRange(i+1, hdrs.indexOf('Novedades')+1).setValue(novedades);
+      sh.getRange(i+1, hdrs.indexOf('Estado')+1).setValue('cerrado');
+      return { ok: true };
+    }
+  }
+  return { error: 'No se encontró el turno activo: ' + folio };
+}
+
+// ════════════════════════════════════════════════
+// OBTENER TURNO ACTIVO DEL GUARDIA
+// ════════════════════════════════════════════════
+function getTurnoActivo(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var sh    = getOAsegurarHojaTurnos(ss);
+  var filas = sh.getDataRange().getValues();
+  var hdrs  = filas[0];
+
+  for (var i = filas.length - 1; i >= 1; i--) {
+    var obj = {};
+    hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+    if (String(obj.UsuarioLogin).trim().toLowerCase() === u.user.toLowerCase() &&
+        String(obj.Estado).trim().toLowerCase() === 'activo') {
+      return { ok: true, turno: obj };
+    }
+  }
+  return { ok: true, turno: null };
+}
+
 // ════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN MANUAL (ejecutar una vez desde el editor)
 // ════════════════════════════════════════════════════════════════
@@ -655,6 +783,7 @@ function inicializarHojas() {
   getOAsegurarHojaPaqueteria(ss);
   getOAsegurarHojaContactosWA(ss);
   getOAsegurarHojaVisitantes(ss);
+  getOAsegurarHojaTurnos(ss);
   Logger.log('✅ Hojas inicializadas correctamente');
   Logger.log('👤 Usuario por defecto: guardia01 / Caseta2025');
 }

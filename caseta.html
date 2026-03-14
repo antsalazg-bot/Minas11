@@ -141,6 +141,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .pkg-empty svg{width:48px;height:48px;stroke:var(--border);stroke-width:1.2;margin-bottom:10px}
 .btn-entregar{width:100%;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .15s}
 .btn-entregar:disabled{opacity:.45;cursor:not-allowed}
+.btn-reg-visita{width:100%;padding:14px;background:var(--rust);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;position:sticky;bottom:calc(var(--nav-h) + 8px);z-index:10;box-shadow:0 -2px 8px rgba(24,18,10,.12);margin-top:4px}
 .ent-dept-info{background:#fff;border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
 .ent-dept-info svg{width:28px;height:28px;stroke:var(--sage);flex-shrink:0}
 .ent-dept-name{font-size:.88rem;font-weight:700;color:var(--ink)}
@@ -237,6 +238,23 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .btn-capturar{background:rgba(255,255,255,.9);border:none;border-radius:50%;width:60px;height:60px;font-size:1.5rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 #fotoPreview{width:100%;border-radius:8px;border:1px solid var(--border);display:none}
 
+/* ── TIPO VISITA ── */
+.vis-type-selector{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:6px}
+.vis-type-btn{padding:12px 8px;border:1.5px solid var(--border);border-radius:var(--radius);font-size:.9rem;font-weight:600;background:#fff;color:#6b5a47;cursor:pointer;transition:all .15s;text-align:center}
+.vis-type-btn.active{background:var(--rust);color:#fff;border-color:var(--rust)}
+.prov-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:4px}
+.prov-btn{padding:10px 8px;background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);font-size:.82rem;font-weight:600;color:var(--ink);cursor:pointer;text-align:center;transition:all .15s}
+.prov-btn:active,.prov-btn.selected{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+/* ── TURNOS ── */
+.tur-status{background:#fff;border:1px solid var(--border);border-radius:6px;padding:18px 16px;box-shadow:var(--shadow);text-align:center}
+.tur-status-icon{font-size:2.2rem;margin-bottom:8px}
+.tur-status-label{font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9e8a73;margin-bottom:4px}
+.tur-status-val{font-size:1.1rem;font-weight:700;color:var(--ink)}
+.tur-status-sub{font-size:.78rem;color:#9e8a73;margin-top:4px}
+.tur-novedades{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:.9rem;background:var(--cream);color:var(--ink);outline:none;resize:vertical;min-height:80px;font-family:inherit}
+.tur-novedades:focus{border-color:var(--gold)}
+.btn-tur-iniciar{width:100%;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;position:sticky;bottom:calc(var(--nav-h)+8px);z-index:10;box-shadow:0 -2px 8px rgba(24,18,10,.12)}
+.btn-tur-cerrar{width:100%;padding:14px;background:#1a3a5c;color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;position:sticky;bottom:calc(var(--nav-h)+8px);z-index:10;box-shadow:0 -2px 8px rgba(24,18,10,.12)}
 /* ── SCAN CÁMARA (código barras paquetes) ── */
 #scanCamReader{width:100%;border-radius:8px;overflow:hidden}
 #scanCamReader video{border-radius:8px}
@@ -315,6 +333,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         <svg viewBox="0 0 24 24" style="stroke:#1a3a5c;stroke-width:1.6;width:36px;height:36px;fill:none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         <h3>Visitantes</h3>
         <p id="dashVisSub">Registro de acceso</p>
+      </div>
+      <div class="dash-card" style="grid-column:1/-1;cursor:pointer" onclick="goView('v-tur')" id="dashTurCard">
+        <svg viewBox="0 0 24 24" style="stroke:#6b5a47;stroke-width:1.6;width:36px;height:36px;fill:none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <h3>Turnos de Guardia</h3>
+        <p id="dashTurSub">Registrar entrada / salida de turno</p>
       </div>
     </div>
   </section>
@@ -590,30 +613,53 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
         Volver
       </button>
+
+      <!-- Tipo de visita -->
       <div class="wizard-card">
+        <h3>🚶 Tipo de visita</h3>
+        <div class="vis-type-selector">
+          <button class="vis-type-btn active" id="vtResidente" onclick="setVisType('residente')">👤 Residente</button>
+          <button class="vis-type-btn" id="vtProveedor" onclick="setVisType('proveedor')">🏢 Proveedor</button>
+        </div>
+      </div>
+
+      <!-- Sección Residente: selección de depto -->
+      <div id="visDeptoSection" class="wizard-card">
         <h3>🏠 Departamento a visitar</h3>
         <p class="hint">Selecciona el departamento que recibirá la visita</p>
         <div id="visRegDeptLabel" style="display:none;background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.9rem;font-weight:600;color:var(--sage);margin-bottom:8px"></div>
         <div class="dept-grid" id="deptGridVis"></div>
       </div>
+
+      <!-- Sección Proveedor: selección de tipo -->
+      <div id="visProvSection" class="wizard-card" style="display:none">
+        <h3>🏢 Tipo de proveedor</h3>
+        <p class="hint">Selecciona el proveedor correspondiente</p>
+        <div class="prov-grid" id="provGrid"></div>
+      </div>
+
+      <!-- Datos del visitante (siempre visible) -->
       <div class="wizard-card">
         <h3>👤 Datos del Visitante</h3>
         <div class="field">
           <label>Nombre completo *</label>
           <input id="visNombre" type="text" placeholder="Nombre del visitante">
         </div>
-        <div class="field">
+        <div class="field" id="visEmpresaField">
           <label>Empresa (opcional)</label>
           <input id="visEmpresa" type="text" placeholder="Nombre de la empresa">
         </div>
       </div>
+
+      <!-- Foto ID -->
       <div class="wizard-card">
         <h3>📷 Foto del ID (opcional)</h3>
         <p class="hint">Toma una foto de la identificación del visitante</p>
         <button class="btn-secondary" style="width:100%;margin-bottom:10px" onclick="abrirCamara()">📷 Tomar foto del ID</button>
         <img id="fotoPreview" src="" alt="Foto del ID">
       </div>
-      <button class="btn-primary" onclick="registrarEntrada()">✅ Registrar Entrada</button>
+
+      <button class="btn-reg-visita" onclick="registrarEntrada()">✅ Registrar Entrada</button>
     </div>
 
     <!-- Registro de salida -->
@@ -640,6 +686,29 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         <p style="text-align:center;color:#9e8a73;padding:24px">Cargando…</p>
       </div>
     </div>
+  </section>
+
+  <!-- ─── VISTA: TURNOS ─── -->
+  <section class="view" id="v-tur">
+    <button class="back-btn" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver al menú
+    </button>
+
+    <div class="tur-status" id="turStatusCard">
+      <div class="tur-status-icon">⏳</div>
+      <div class="tur-status-label">Estado del turno</div>
+      <div class="tur-status-val" id="turStatusVal">Cargando…</div>
+      <div class="tur-status-sub" id="turStatusSub"></div>
+    </div>
+
+    <div class="wizard-card" id="turNovedadesSection" style="display:none">
+      <h3>📝 Novedades del turno</h3>
+      <p class="hint">Anota cualquier incidencia o novedad antes de cerrar el turno</p>
+      <textarea class="tur-novedades" id="turNovedades" placeholder="Ej: Sin novedades. Todo en orden…"></textarea>
+    </div>
+
+    <button id="btnTurno" class="btn-tur-iniciar" onclick="accionTurno()" style="display:none"></button>
   </section>
 
   <!-- ── BOTTOM NAV ── -->
@@ -770,9 +839,14 @@ const COURIERS = [
   {id:'Amazon',    icon:'📦'},
   {id:'MercadoLibre', icon:'🟡'},
   {id:'UPS',       icon:'🟤'},
-  {id:'OXXO Pak',  icon:'🔴'},
+  {id:'MEXPOST',   icon:'🔴'},
   {id:'J&T',       icon:'🔵'},
   {id:'Otro',      icon:'📬'},
+];
+
+const PROVEEDORES = [
+  'Manto Elevadores','Manto Bombas','Administrador','CFE',
+  'Manto Planta de Luz','Extintores','Limpieza','Otro'
 ];
 
 // ════════════════════════════════════════════════
@@ -785,6 +859,9 @@ const state = {
   entDept: '', entPkgs: [],
   allPkgs: [], histFilter: 'todos', histPage: 0,
   apiUrl: localStorage.getItem('caseta_api') || 'https://script.google.com/macros/s/AKfycbwzLyGKqogM3k3N74p8BP93OpC5bTnMYgTLWWevY1Wwjn-5MXBt341P6QG_dx3s6xqt/exec',
+  visTipo: 'residente',
+  visProveedor: '',
+  turActivo: null,
 };
 
 // ════════════════════════════════════════════════
@@ -965,12 +1042,13 @@ function bootApp(){
   updateApiUrlDisplay();
   loadDashBanner();
   loadDashVisBanner();
+  loadTurnoActivo();
 }
 
 // ════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════
-const viewNavMap = { 'v-dash':'nav-dash','v-reg':'nav-reg','v-ent':'nav-ent','v-his':'nav-his','v-cfg':'','v-vis':'nav-vis' };
+const viewNavMap = { 'v-dash':'nav-dash','v-reg':'nav-reg','v-ent':'nav-ent','v-his':'nav-his','v-cfg':'','v-vis':'nav-vis','v-tur':'' };
 
 function goView(id){
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -1515,6 +1593,7 @@ function visStep(sub){
   state.scanMode = null;
   if(sub === 'reg'){
     state.visDept = '';
+    state.visProveedor = '';
     state.fotoIdB64 = '';
     document.getElementById('visNombre').value = '';
     document.getElementById('visEmpresa').value = '';
@@ -1523,6 +1602,8 @@ function visStep(sub){
     deptLbl.style.display = 'none';
     deptLbl.textContent = '';
     document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>b.classList.remove('selected'));
+    document.querySelectorAll('#provGrid .prov-btn').forEach(b=>b.classList.remove('selected'));
+    setVisType('residente');
     state.scanMode = null;
   }
   if(sub === 'sal'){
@@ -1555,6 +1636,43 @@ function buildDeptGridVis(){
       gridVisSal.appendChild(b);
     });
   }
+  const pg = document.getElementById('provGrid');
+  if(pg){
+    pg.innerHTML = '';
+    PROVEEDORES.forEach(p => {
+      const b = document.createElement('button');
+      b.className='prov-btn'; b.textContent=p; b.dataset.prov=p;
+      b.onclick = () => selectProveedor(p, b);
+      pg.appendChild(b);
+    });
+  }
+}
+
+function setVisType(tipo){
+  state.visTipo = tipo;
+  state.visProveedor = '';
+  document.getElementById('vtResidente').classList.toggle('active', tipo==='residente');
+  document.getElementById('vtProveedor').classList.toggle('active', tipo==='proveedor');
+  document.getElementById('visDeptoSection').style.display = tipo==='residente' ? 'block' : 'none';
+  document.getElementById('visProvSection').style.display = tipo==='proveedor' ? 'block' : 'none';
+  // Reset selecciones
+  if(tipo==='residente'){
+    state.visDept = '';
+    const lbl = document.getElementById('visRegDeptLabel');
+    lbl.style.display='none'; lbl.textContent='';
+    document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>b.classList.remove('selected'));
+  } else {
+    document.querySelectorAll('#provGrid .prov-btn').forEach(b=>b.classList.remove('selected'));
+    // Para proveedor, limpiar nombre para que el guardia lo llene
+    document.getElementById('visNombre').value = '';
+  }
+}
+
+function selectProveedor(prov, btn){
+  state.visProveedor = prov;
+  document.querySelectorAll('#provGrid .prov-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  showToast(prov + ' seleccionado','ok');
 }
 
 function selectVisDept(dept){
@@ -1572,11 +1690,20 @@ function selectVisDept(dept){
 async function registrarEntrada(){
   const nombre  = document.getElementById('visNombre').value.trim();
   const empresa = document.getElementById('visEmpresa').value.trim();
-  if(!state.visDept){ showToast('Selecciona el departamento visitado','err'); return; }
+  if(state.visTipo === 'residente'){
+    if(!state.visDept){ showToast('Selecciona el departamento visitado','err'); return; }
+  } else {
+    if(!state.visProveedor){ showToast('Selecciona el tipo de proveedor','err'); return; }
+  }
   if(!nombre){ showToast('Ingresa el nombre del visitante','err'); return; }
   showLoader('Registrando visita…');
   try {
-    const payload = { nombre, empresa, departamento: state.visDept };
+    const payload = {
+      nombre, empresa,
+      tipo: state.visTipo,
+      departamento: state.visTipo === 'residente' ? state.visDept : 'PROVEEDOR',
+      proveedor: state.visTipo === 'proveedor' ? state.visProveedor : ''
+    };
     if(state.fotoIdB64) payload.foto = state.fotoIdB64;
     const r = await api('registrar-visita', payload);
     hideLoader();
@@ -1684,6 +1811,89 @@ async function loadVisHist(){
       </div>`).join('');
   } catch(e){
     list.innerHTML = '<p style="text-align:center;color:var(--red);padding:24px">'+e.message+'</p>';
+  }
+}
+
+// ════════════════════════════════════════════════
+// TURNOS DE GUARDIA
+// ════════════════════════════════════════════════
+async function loadTurnoActivo(){
+  try {
+    const r = await api('get-turno-activo', {});
+    state.turActivo = r.turno || null;
+    renderTurnoStatus();
+    // Actualizar banner dashboard
+    const sub = document.getElementById('dashTurSub');
+    if(sub){
+      sub.textContent = state.turActivo
+        ? '🟢 Turno activo desde ' + (state.turActivo.HoraEntrada||'').slice(0,5)
+        : 'Sin turno activo — toca para registrar';
+    }
+  } catch(e){ /* silencioso */ }
+}
+
+function renderTurnoStatus(){
+  const icon  = document.getElementById('turStatusCard')?.querySelector('.tur-status-icon');
+  const val   = document.getElementById('turStatusVal');
+  const sub   = document.getElementById('turStatusSub');
+  const btn   = document.getElementById('btnTurno');
+  const novSec = document.getElementById('turNovedadesSection');
+  if(!val || !btn) return;
+
+  if(state.turActivo){
+    if(icon) icon.textContent = '🟢';
+    val.textContent = 'Turno activo';
+    sub.textContent = 'Guardia: ' + (state.turActivo.Guardia||'—') +
+      ' · Desde: ' + (state.turActivo.FechaEntrada||'') + ' ' + (state.turActivo.HoraEntrada||'').slice(0,5);
+    btn.textContent = '🔴 Cerrar Turno';
+    btn.className = 'btn-tur-cerrar';
+    btn.style.display = 'block';
+    if(novSec) novSec.style.display = 'block';
+  } else {
+    if(icon) icon.textContent = '⚪';
+    val.textContent = 'Sin turno activo';
+    sub.textContent = 'Presiona el botón para iniciar tu turno';
+    btn.textContent = '🟢 Iniciar Turno';
+    btn.className = 'btn-tur-iniciar';
+    btn.style.display = 'block';
+    if(novSec) novSec.style.display = 'none';
+  }
+}
+
+async function accionTurno(){
+  if(state.turActivo){
+    // Cerrar turno
+    const novedades = document.getElementById('turNovedades')?.value.trim() || '';
+    showLoader('Cerrando turno…');
+    try {
+      await api('registrar-salida-turno', {
+        folioTurno: state.turActivo.FolioTurno,
+        novedades
+      });
+      hideLoader();
+      state.turActivo = null;
+      document.getElementById('turNovedades').value = '';
+      renderTurnoStatus();
+      loadTurnoActivo();
+      showToast('Turno cerrado correctamente ✓','ok');
+    } catch(e){
+      hideLoader();
+      showToast('Error: ' + e.message,'err');
+    }
+  } else {
+    // Iniciar turno
+    showLoader('Iniciando turno…');
+    try {
+      const r = await api('registrar-entrada-turno', {});
+      hideLoader();
+      state.turActivo = r.turno || { FolioTurno: r.folio, Guardia: state.userName, HoraEntrada: new Date().toTimeString().slice(0,5), FechaEntrada: new Date().toLocaleDateString('es-MX') };
+      renderTurnoStatus();
+      loadTurnoActivo();
+      showToast('Turno iniciado ✓','ok');
+    } catch(e){
+      hideLoader();
+      showToast('Error: ' + e.message,'err');
+    }
   }
 }
 
