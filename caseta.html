@@ -206,7 +206,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 /* ── FIRMA DIGITAL ── */
 .firma-wrap{border:2px dashed var(--border);border-radius:8px;background:#fff;overflow:hidden;touch-action:none;position:relative}
 .firma-hint-bar{font-size:.78rem;color:#9e8a73;text-align:center;padding:7px;background:var(--warm);border-bottom:1px solid var(--border);pointer-events:none}
-#firmaCanvas{display:block;width:100%;height:150px;cursor:crosshair;touch-action:none;background:#fff}
+#firmaCanvas{display:block;width:100%;height:130px;cursor:crosshair;touch-action:none;background:#fff}
 .btn-limpiar{width:100%;padding:10px;background:var(--warm);color:var(--ink);border:1.5px solid var(--border);border-radius:var(--radius);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;transition:background .15s}
 .btn-limpiar:active{background:var(--border)}
 .firma-status{font-size:.75rem;text-align:center;color:#9e8a73;margin-top:6px;font-weight:600}
@@ -1020,8 +1020,20 @@ function entStep(n){
     state.entFolios = [];
     state.scanMode = 'ent';
     document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>b.classList.remove('selected'));
+    // Restaurar simulador si estaba activo
+    if(state._simWasOpen){ document.getElementById('simBar').classList.add('show'); state._simWasOpen=false; }
   }
-  if(n===3){ setTimeout(initFirmaCanvas, 80); } // pequeño delay para que el DOM sea visible
+  if(n===3){
+    // Ocultar simulador durante firma para que el botón sea accesible
+    const simBar = document.getElementById('simBar');
+    state._simWasOpen = simBar.classList.contains('show');
+    simBar.classList.remove('show');
+    setTimeout(() => {
+      initFirmaCanvas();
+      // Scroll al botón de confirmar para asegurar visibilidad
+      document.getElementById('btnConfirmarFirma').scrollIntoView({behavior:'smooth', block:'nearest'});
+    }, 100);
+  }
 }
 
 async function selectEntDept(dept){
@@ -1090,7 +1102,7 @@ function initFirmaCanvas(){
   // Resolución real × devicePixelRatio (pantallas retina)
   const dpr  = window.devicePixelRatio || 1;
   const cssW = fresh.offsetWidth  || 320;
-  const cssH = 150;
+  const cssH = 130;
   fresh.width  = cssW * dpr;
   fresh.height = cssH * dpr;
 
