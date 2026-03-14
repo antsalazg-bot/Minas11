@@ -206,7 +206,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 /* ── FIRMA DIGITAL ── */
 .firma-wrap{border:2px dashed var(--border);border-radius:8px;background:#fff;overflow:hidden;touch-action:none;position:relative}
 .firma-hint-bar{font-size:.78rem;color:#9e8a73;text-align:center;padding:7px;background:var(--warm);border-bottom:1px solid var(--border);pointer-events:none}
-#firmaCanvas{display:block;width:100%;cursor:crosshair;touch-action:none;background:#fff}
+#firmaCanvas{display:block;width:100%;height:150px;cursor:crosshair;touch-action:none;background:#fff}
 .btn-limpiar{width:100%;padding:10px;background:var(--warm);color:var(--ink);border:1.5px solid var(--border);border-radius:var(--radius);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;transition:background .15s}
 .btn-limpiar:active{background:var(--border)}
 .firma-status{font-size:.75rem;text-align:center;color:#9e8a73;margin-top:6px;font-weight:600}
@@ -443,7 +443,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         <p class="hint">El residente firma en pantalla para confirmar la recepción de sus paquetes.</p>
         <div class="firma-wrap">
           <div class="firma-hint-bar">↓ Firma aquí con el dedo o lápiz ↓</div>
-          <canvas id="firmaCanvas" height="200"></canvas>
+          <canvas id="firmaCanvas"></canvas>
         </div>
         <button class="btn-limpiar" onclick="limpiarFirma()">🗑 Limpiar y volver a firmar</button>
         <div class="firma-status" id="firmaStatus">Sin firma — dibuja en el recuadro</div>
@@ -1083,21 +1083,25 @@ let firmaTieneDatos = false;
 function initFirmaCanvas(){
   const canvas = document.getElementById('firmaCanvas');
   if(!canvas) return;
-  // Resolución real para buena calidad (el CSS la escala al ancho del div)
-  canvas.width  = 600;
-  canvas.height = 200;
-
-  // Limpiar listeners previos clonando el nodo
-  const fresh = canvas.cloneNode(true);
+  // Clonar primero para eliminar listeners previos
+  const fresh = canvas.cloneNode(false);
   canvas.parentNode.replaceChild(fresh, canvas);
 
+  // Resolución real × devicePixelRatio (pantallas retina)
+  const dpr  = window.devicePixelRatio || 1;
+  const cssW = fresh.offsetWidth  || 320;
+  const cssH = 150;
+  fresh.width  = cssW * dpr;
+  fresh.height = cssH * dpr;
+
   firmaCtx = fresh.getContext('2d');
+  firmaCtx.scale(dpr, dpr);           // escalar ctx para que 1 unidad = 1 px CSS
   firmaCtx.strokeStyle = '#18120a';
-  firmaCtx.lineWidth   = 2.8;
+  firmaCtx.lineWidth   = 2.2;
   firmaCtx.lineCap     = 'round';
   firmaCtx.lineJoin    = 'round';
   firmaCtx.fillStyle   = '#ffffff';
-  firmaCtx.fillRect(0, 0, fresh.width, fresh.height);
+  firmaCtx.fillRect(0, 0, cssW, cssH);
 
   firmaTieneDatos = false;
   document.getElementById('btnConfirmarFirma').disabled = true;
@@ -1106,11 +1110,9 @@ function initFirmaCanvas(){
   st.style.color = '#9e8a73';
 
   function getPos(e){
-    const rect   = fresh.getBoundingClientRect();
-    const scaleX = fresh.width  / rect.width;
-    const scaleY = fresh.height / rect.height;
-    const src    = e.touches ? e.touches[0] : e;
-    return { x:(src.clientX - rect.left)*scaleX, y:(src.clientY - rect.top)*scaleY };
+    const r   = fresh.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
   }
   function onStart(e){ e.preventDefault(); firmaDrawing=true; const p=getPos(e); firmaCtx.beginPath(); firmaCtx.moveTo(p.x,p.y); }
   function onMove(e) { e.preventDefault(); if(!firmaDrawing) return; const p=getPos(e); firmaCtx.lineTo(p.x,p.y); firmaCtx.stroke(); firmaTieneDatos=true; _updateFirmaBtn(); }
@@ -1138,7 +1140,7 @@ function limpiarFirma(){
   const canvas = document.getElementById('firmaCanvas');
   if(!firmaCtx || !canvas) return;
   firmaCtx.fillStyle = '#ffffff';
-  firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
+  firmaCtx.fillRect(0, 0, canvas.offsetWidth, canvas.offsetHeight);
   firmaTieneDatos = false;
   document.getElementById('btnConfirmarFirma').disabled = true;
   const st = document.getElementById('firmaStatus');
