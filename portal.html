@@ -527,6 +527,13 @@ let miSaldo = null; // Datos del saldo personal cargados desde backend
 
 // ── Genera automáticamente todos los meses desde Enero 2025 hasta el mes actual ──
 const _MESES_NOMBRES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+// Convierte fecha ISO o Date a formato "Mes Año" (ej: "2026-01-01T08:00:00Z" → "Enero 2026")
+function _isoAMesAnio(val){
+  if(!val) return '';
+  const d = new Date(val);
+  if(!isNaN(d.getTime())) return _MESES_NOMBRES[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  return String(val).trim(); // Si ya es texto como "enero 2026", lo devuelve igual
+}
 (function generarMeses(){
   const hoy = new Date();
   // Incluir hasta el mes siguiente para que hojas pre-creadas aparezcan
@@ -1382,7 +1389,7 @@ function applyHistFilters(){
     document.getElementById('hist-summary').innerHTML='Sin resultados.';return;}
   empty.style.display='none';
   tbody.innerHTML=filtered.map(p=>{
-    const recibo=_recibos.find(r=>(r.mes||'').toLowerCase().trim()===(p.mes||'').toLowerCase().trim()&&r.estado!=='cancelado');
+    const recibo=_recibos.find(r=>_isoAMesAnio(r.mes).toLowerCase()===(p.mes||'').toLowerCase()&&r.estado!=='cancelado');
     const reciboBtn=recibo&&recibo.link
       ?`<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--gold);color:var(--ink);border-radius:3px;font-size:.85rem;text-decoration:none;flex-shrink:0;" title="Ver recibo">📄</a>`
       :`<span style="color:rgba(24,18,10,.15);font-size:.82rem;display:block;text-align:center;">—</span>`;
