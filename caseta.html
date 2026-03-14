@@ -49,6 +49,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 
 /* ── VISTAS ── */
 .view{display:none;flex-direction:column;padding:16px;padding-bottom:calc(var(--nav-h)+16px);gap:16px;animation:fadeIn .2s}
+body.sim-visible .view{padding-bottom:calc(var(--nav-h)+120px)}
 .view.active{display:flex}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
@@ -232,6 +233,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .btn-capturar{background:rgba(255,255,255,.9);border:none;border-radius:50%;width:60px;height:60px;font-size:1.5rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
 #fotoPreview{width:100%;border-radius:8px;border:1px solid var(--border);display:none}
 
+/* ── SCAN CÁMARA (código barras paquetes) ── */
+#scanCamReader{width:100%;border-radius:8px;overflow:hidden}
+#scanCamReader video{border-radius:8px}
+.scan-cam-hint{font-size:.78rem;color:#9e8a73;text-align:center;margin-top:8px}
+.btn-scan-cam{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--rust);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px}
+.btn-scan-cam svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
+
 /* ── SCANNER INPUT GLOBAL ── */
 #scannerCapture{position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0}
 
@@ -353,24 +361,20 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
     <!-- Paso 1: Departamento -->
     <div class="wizard-card" id="ws1">
       <h3>🏠 Seleccionar Departamento</h3>
-      <p class="hint">Escanea la tarjeta del depto o selecciona manualmente</p>
-      <div class="scan-zone" id="scanZone1" onclick="focusScanner('dept')">
-        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
-        <p>Toca aquí y escanea la tarjeta del departamento</p>
-      </div>
-      <div class="or-divider">o selecciona</div>
+      <p class="hint">Selecciona el departamento donde se entregará el paquete</p>
       <div class="dept-grid" id="deptGrid"></div>
     </div>
 
     <!-- Paso 2: Tracking / Cédula -->
     <div class="wizard-card" id="ws2" style="display:none">
-      <h3>📦 Escanear Paquete</h3>
-      <p class="hint">Escanea el código de barras o QR del paquete / guía</p>
-      <div class="scan-zone" id="scanZone2" onclick="focusScanner('tracking')">
-        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="3" y2="20"/><line x1="7" y1="6" x2="7" y2="20"/><line x1="11" y1="6" x2="11" y2="20"/><line x1="15" y1="6" x2="15" y2="20"/><line x1="19" y1="6" x2="19" y2="20"/><line x1="1" y1="6" x2="22" y2="6"/><line x1="1" y1="20" x2="22" y2="20"/></svg>
-        <p id="trackingDisplay">Toca aquí y escanea el paquete</p>
-      </div>
-      <div class="or-divider">o escribe</div>
+      <h3>📦 Código del Paquete</h3>
+      <p class="hint">Usa la cámara del celular, la pistola USB o escríbelo manualmente</p>
+      <button class="btn-scan-cam" onclick="abrirScanCam()">
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        📷 Escanear con cámara
+      </button>
+      <div id="trackingScanned" style="display:none;background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.9rem;font-weight:600;color:var(--sage);margin-bottom:8px"></div>
+      <div class="or-divider">o escribe manualmente</div>
       <div class="field">
         <input id="trackingManual" type="text" placeholder="Número de guía / tracking" oninput="state.regTracking=this.value">
       </div>
@@ -423,13 +427,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
     <!-- Paso E1: Escanear residente -->
     <div id="es1">
       <div class="wizard-card">
-        <h3>🪪 Escanear Residente</h3>
-        <p class="hint">Escanea la tarjeta del residente o selecciona su depto</p>
-        <div class="scan-zone" id="scanZoneEnt" onclick="focusScanner('ent')">
-          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
-          <p>Toca aquí y escanea la tarjeta del residente</p>
-        </div>
-        <div class="or-divider">o selecciona</div>
+        <h3>🏠 Seleccionar Departamento</h3>
+        <p class="hint">Selecciona el departamento del residente que recoge</p>
         <div class="dept-grid" id="deptGridEnt"></div>
       </div>
     </div>
@@ -608,12 +607,8 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
       </button>
       <div class="wizard-card">
         <h3>🏠 Departamento a visitar</h3>
-        <p class="hint">Escanea o selecciona el departamento</p>
-        <div class="scan-zone" onclick="focusScanner('vis-dept')">
-          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
-          <p id="visRegDeptLabel">Sin depto seleccionado</p>
-        </div>
-        <div class="or-divider">o selecciona</div>
+        <p class="hint">Selecciona el departamento que recibirá la visita</p>
+        <div id="visRegDeptLabel" style="display:none;background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.9rem;font-weight:600;color:var(--sage);margin-bottom:8px"></div>
         <div class="dept-grid" id="deptGridVis"></div>
       </div>
       <div class="wizard-card">
@@ -644,12 +639,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
       </button>
       <div class="wizard-card">
         <h3>🚪 Registrar Salida</h3>
-        <p class="hint">Escanea la tarjeta del residente o selecciona el departamento</p>
-        <div class="scan-zone" onclick="focusScanner('vis-sal')">
-          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
-          <p>Toca aquí y escanea</p>
-        </div>
-        <div class="or-divider">o selecciona depto</div>
+        <p class="hint">Selecciona el departamento visitado para registrar la salida</p>
         <div class="dept-grid" id="deptGridVisSal"></div>
       </div>
       <div class="vis-card-list" id="visActivosList"></div>
@@ -759,6 +749,17 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
   </div>
 </div>
 
+<!-- Modal: Cámara para escaneo de código de barras de paquetes -->
+<div class="modal-backdrop" id="modalScanCam">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="cerrarScanCam()">✕</button>
+    <h3>📷 Escanear código del paquete</h3>
+    <div id="scanCamReader"></div>
+    <p class="scan-cam-hint">Apunta la cámara al código de barras o QR del paquete</p>
+    <button class="btn-secondary" style="width:100%;margin-top:10px" onclick="cerrarScanCam()">Cancelar</button>
+  </div>
+</div>
+
 <!-- ══ SIMULADOR DE ESCÁNER (modo prueba) ══ -->
 <button id="simToggle" onclick="toggleSim()">🔫 SIMULAR</button>
 <div id="simBar">
@@ -785,6 +786,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 <div id="toast"></div>
 <div id="loader"><div class="spinner"></div><p id="loaderMsg">Procesando…</p></div>
 
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 // ════════════════════════════════════════════════
 // CONFIGURACIÓN
@@ -916,7 +918,8 @@ function processScan(raw){
   }
   else if (state.scanMode === 'tracking'){
     state.regTracking = raw;
-    document.getElementById('trackingDisplay').textContent = '✓ ' + raw;
+    const scanned = document.getElementById('trackingScanned');
+    if(scanned){ scanned.textContent = '✓ Código: ' + raw; scanned.style.display='block'; }
     document.getElementById('trackingManual').value = raw;
     showToast('Tracking: ' + raw, 'ok');
     setTimeout(() => wizardStep(3), 400);
@@ -1088,7 +1091,7 @@ function wizardStep(n){
       line.className = 'step-line' + (i < n ? ' done' : '');
     });
   }
-  if(n === 1){ state.scanMode = 'dept'; }
+  if(n === 1){ state.scanMode = null; }
   if(n === 2){ state.scanMode = 'tracking'; }
   if(n === 3){ state.scanMode = null; }
   if(n === 4){
@@ -1155,7 +1158,8 @@ async function confirmarRegistro(){
 
 function nuevoRegistro(){
   state.regDept=''; state.regTracking=''; state.regCourier='';
-  document.getElementById('trackingDisplay').textContent = 'Toca aquí y escanea el paquete';
+  const scanned = document.getElementById('trackingScanned');
+  if(scanned){ scanned.style.display='none'; scanned.textContent=''; }
   document.getElementById('trackingManual').value = '';
   document.querySelectorAll('#deptGrid .dept-btn').forEach(b=>b.classList.remove('selected'));
   document.querySelectorAll('#courierList .courier-btn').forEach(b=>b.classList.remove('selected'));
@@ -1173,16 +1177,22 @@ function entStep(n){
     state.entDept = '';
     state.entPkgs = [];
     state.entFolios = [];
-    state.scanMode = 'ent';
+    state.scanMode = null;
     document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>b.classList.remove('selected'));
     // Restaurar simulador si estaba activo
-    if(state._simWasOpen){ document.getElementById('simBar').classList.add('show'); state._simWasOpen=false; }
+    if(state._simWasOpen){
+      const simBar = document.getElementById('simBar');
+      simBar.classList.add('show');
+      document.body.classList.add('sim-visible');
+      state._simWasOpen=false;
+    }
   }
   if(n===3){
     // Ocultar simulador durante firma para que el botón sea accesible
     const simBar = document.getElementById('simBar');
     state._simWasOpen = simBar.classList.contains('show');
     simBar.classList.remove('show');
+    document.body.classList.remove('sim-visible');
     setTimeout(() => {
       initFirmaCanvas();
       // Scroll al botón de confirmar para asegurar visibilidad
@@ -1525,14 +1535,16 @@ function visStep(sub){
     document.getElementById('visNombre').value = '';
     document.getElementById('visEmpresa').value = '';
     document.getElementById('fotoPreview').style.display = 'none';
-    document.getElementById('visRegDeptLabel').textContent = 'Sin depto seleccionado';
+    const deptLbl = document.getElementById('visRegDeptLabel');
+    deptLbl.style.display = 'none';
+    deptLbl.textContent = '';
     document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>b.classList.remove('selected'));
-    state.scanMode = 'vis-dept';
+    state.scanMode = null;
   }
   if(sub === 'sal'){
     document.getElementById('visActivosList').innerHTML = '';
     document.querySelectorAll('#deptGridVisSal .dept-btn').forEach(b=>b.classList.remove('selected'));
-    state.scanMode = 'vis-sal';
+    state.scanMode = null;
   }
   if(sub === 'his') loadVisHist();
   if(sub === 'menu') loadVisActivos();
@@ -1563,12 +1575,13 @@ function buildDeptGridVis(){
 
 function selectVisDept(dept){
   state.visDept = dept;
-  document.getElementById('visRegDeptLabel').textContent = 'Visita a: Depto ' + dept;
+  const deptLbl = document.getElementById('visRegDeptLabel');
+  deptLbl.textContent = '✓ Visita a: Depto ' + dept;
+  deptLbl.style.display = 'block';
   document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>{
     b.classList.toggle('selected', b.dataset.dept === dept);
   });
   showToast('Depto ' + dept + ' seleccionado','ok');
-  state.scanMode = null;
   setTimeout(() => document.getElementById('visNombre').focus(), 200);
 }
 
@@ -1745,10 +1758,83 @@ function cerrarCamara(){
 }
 
 // ════════════════════════════════════════════════
+// CÁMARA ESCÁNER DE CÓDIGO DE BARRAS (paquetes)
+// ════════════════════════════════════════════════
+let _scanCam = null;
+let _scanCamRunning = false;
+
+async function abrirScanCam(){
+  openModal('modalScanCam');
+  const readerEl = document.getElementById('scanCamReader');
+  readerEl.innerHTML = '';
+  try {
+    if(typeof Html5Qrcode === 'undefined'){
+      cerrarScanCam();
+      // Fallback: abrir file input con cámara
+      const fi = document.createElement('input');
+      fi.type='file'; fi.accept='image/*'; fi.capture='environment';
+      fi.onchange = e => {
+        const f = e.target.files[0];
+        if(!f) return;
+        const r2 = new FileReader();
+        r2.onload = async ev => {
+          try {
+            const hq = new Html5Qrcode('_tmp');
+            const res = await hq.scanFile(f, true);
+            _setTracking(res);
+          } catch(err){ showToast('No se pudo leer el código','err'); }
+        };
+        r2.readAsDataURL(f);
+      };
+      fi.click();
+      return;
+    }
+    _scanCam = new Html5Qrcode('scanCamReader');
+    _scanCamRunning = true;
+    await _scanCam.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 260, height: 120 }, formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.QR_CODE,
+      ]},
+      (decoded) => { _setTracking(decoded); }
+    );
+  } catch(err){
+    cerrarScanCam();
+    showToast('Cámara no disponible: ' + err, 'err');
+  }
+}
+
+function _setTracking(decoded){
+  cerrarScanCam();
+  state.regTracking = decoded;
+  const scanned = document.getElementById('trackingScanned');
+  if(scanned){ scanned.textContent = '✓ Código: ' + decoded; scanned.style.display='block'; }
+  document.getElementById('trackingManual').value = decoded;
+  showToast('✓ Código leído', 'ok');
+  setTimeout(() => wizardStep(3), 500);
+}
+
+function cerrarScanCam(){
+  if(_scanCam && _scanCamRunning){
+    _scanCamRunning = false;
+    _scanCam.stop().catch(()=>{}).finally(()=>{ _scanCam=null; });
+  }
+  closeModal('modalScanCam');
+}
+
+// ════════════════════════════════════════════════
 // SIMULADOR DE ESCÁNER
 // ════════════════════════════════════════════════
 function toggleSim(){
-  document.getElementById('simBar').classList.toggle('show');
+  const simBar = document.getElementById('simBar');
+  simBar.classList.toggle('show');
+  document.body.classList.toggle('sim-visible', simBar.classList.contains('show'));
   document.getElementById('simInput').focus();
 }
 function simSet(val){
