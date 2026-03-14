@@ -116,7 +116,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);
   display:flex;align-items:center;justify-content:center;padding:0 .2rem;}
 
 /* ── MAIN CONTENT ─────────────────────── */
-.page{display:none;flex-direction:column;padding-top:var(--top-h);padding-bottom:var(--nav-h);
+.page{display:none;flex-direction:column;padding-top:var(--top-h);padding-bottom:calc(var(--nav-h) + 28px);
   min-height:100vh;}
 .page.active{display:flex;}
 .content{padding:1.5rem 1rem;flex:1;}
@@ -580,6 +580,12 @@ function navTo(page) {
   document.getElementById('page-'+page).classList.add('active');
   document.getElementById('bnav-'+page).classList.add('active');
   currentPage = page;
+  // Al entrar a AVISOS marcar como leídos y ocultar badge
+  if(page==='avisos'){
+    localStorage.setItem('avisos_last_seen', Date.now());
+    const b=document.getElementById('badge-avisos');
+    if(b) b.style.display='none';
+  }
   // Trigger render if needed
   const renderers = {inicio:renderInicio,avisos:renderAvisos,historial:renderHistorialYRecibos,egresos:renderEgresos,morosos:renderMorosos};
   if(DATA && renderers[page]) renderers[page]();
@@ -956,7 +962,13 @@ async function renderAvisos(){
     // Cols: A=Fecha, B=Tipo(urgente/info/general), C=Titulo, D=Mensaje, E=PDF_URL
     const avisos=rows.filter(r=>r[2]).reverse(); // newest first
     const badge=document.getElementById('badge-avisos');
-    if(avisos.length>0){badge.textContent=avisos.length;badge.style.display='flex';}
+    // Solo mostrar badge con avisos NO leídos (comparar con último timestamp guardado)
+    const lastSeen=parseInt(localStorage.getItem('avisos_last_seen')||'0');
+    const noLeidos=avisos.filter(r=>{
+      const ts=r[0]?new Date(r[0]).getTime():0;
+      return ts>lastSeen;
+    }).length;
+    if(noLeidos>0){badge.textContent=noLeidos;badge.style.display='flex';}
     else{badge.style.display='none';}
     if(!avisos.length){
       document.getElementById('avisos-content').innerHTML=`<div class="aviso-empty"><div class="aviso-empty-icon">📭</div><p>No hay avisos por el momento.</p></div>`;
@@ -1370,7 +1382,7 @@ function applyHistFilters(){
     document.getElementById('hist-summary').innerHTML='Sin resultados.';return;}
   empty.style.display='none';
   tbody.innerHTML=filtered.map(p=>{
-    const recibo=_recibos.find(r=>r.mes.toLowerCase()===p.mes.toLowerCase()&&r.estado!=='cancelado');
+    const recibo=_recibos.find(r=>(r.mes||'').toLowerCase().trim()===(p.mes||'').toLowerCase().trim()&&r.estado!=='cancelado');
     const reciboBtn=recibo&&recibo.link
       ?`<a href="${recibo.link}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;background:var(--gold);color:var(--ink);border-radius:3px;font-size:.85rem;text-decoration:none;flex-shrink:0;" title="Ver recibo">📄</a>`
       :`<span style="color:rgba(24,18,10,.15);font-size:.82rem;display:block;text-align:center;">—</span>`;
