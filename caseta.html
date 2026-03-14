@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Caseta – Paquetería</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#18120a;--cream:#f8f4ed;--warm:#efe7d5;
+  --gold:#c49a22;--rust:#8b3a0f;--sage:#3a5c3c;
+  --red:#8b1a1a;--border:#d4c5a9;--radius:3px;
+  --shadow:0 1px 3px rgba(24,18,10,.08);--nav-h:56px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;overflow-x:hidden}
+
+/* ── PANTALLA DE LOGIN ── */
+#loginScreen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:24px;background:var(--warm)}
+.login-logo{width:72px;height:72px;background:var(--rust);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:20px;box-shadow:0 4px 12px rgba(139,58,15,.3)}
+.login-logo svg{width:38px;height:38px;fill:#fff}
+.login-card{background:#fff;border:1px solid var(--border);border-radius:6px;padding:32px 28px;width:100%;max-width:360px;box-shadow:0 4px 20px rgba(24,18,10,.1)}
+.login-card h1{font-size:1.3rem;font-weight:700;color:var(--rust);margin-bottom:4px;text-align:center}
+.login-card p{font-size:.85rem;color:#6b5a47;text-align:center;margin-bottom:24px}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.field label{font-size:.8rem;font-weight:600;color:var(--ink);letter-spacing:.02em}
+.field input,.field select{padding:10px 12px;border:1px solid var(--border);border-radius:var(--radius);font-size:.95rem;background:var(--cream);color:var(--ink);outline:none;transition:border-color .15s}
+.field input:focus,.field select:focus{border-color:var(--gold)}
+.btn-primary{width:100%;padding:12px;background:var(--rust);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn-primary:active{opacity:.85}
+.btn-secondary{background:transparent;color:var(--rust);border:1.5px solid var(--rust);border-radius:var(--radius);padding:10px 18px;font-size:.9rem;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-secondary:active{background:var(--rust);color:#fff}
+.login-err{display:none;background:#fdeaea;border:1px solid #e8b4b4;border-radius:var(--radius);padding:10px 12px;font-size:.85rem;color:var(--red);margin-bottom:14px}
+
+/* ── LAYOUT PRINCIPAL ── */
+#app{display:none;flex-direction:column;min-height:100vh}
+.app-header{position:sticky;top:0;z-index:100;background:var(--rust);color:#fff;padding:0 16px;height:var(--nav-h);display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 6px rgba(24,18,10,.2)}
+.app-header h2{font-size:1.05rem;font-weight:700;letter-spacing:.01em}
+.header-meta{display:flex;align-items:center;gap:10px}
+.guard-name{font-size:.78rem;opacity:.85}
+.btn-logout{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:var(--radius);padding:5px 10px;font-size:.78rem;cursor:pointer}
+.btn-logout:active{background:rgba(255,255,255,.25)}
+
+/* ── NAV INFERIOR ── */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;height:var(--nav-h);background:#fff;border-top:1px solid var(--border);display:flex;z-index:100}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:#9e8a73;transition:color .15s;padding:6px 0;border:none;background:transparent}
+.nav-item.active{color:var(--rust)}
+.nav-item svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8}
+.nav-item span{font-size:.65rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+
+/* ── VISTAS ── */
+.view{display:none;flex-direction:column;padding:16px;padding-bottom:calc(var(--nav-h)+16px);gap:16px;animation:fadeIn .2s}
+.view.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TARJETAS DASHBOARD ── */
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dash-card{background:#fff;border:1px solid var(--border);border-radius:6px;padding:20px 16px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:box-shadow .15s,transform .1s;text-decoration:none;box-shadow:var(--shadow)}
+.dash-card:active{transform:scale(.97)}
+.dash-card svg{width:36px;height:36px;stroke-width:1.6}
+.dash-card.c-reg svg{stroke:var(--rust)}
+.dash-card.c-ent svg{stroke:var(--sage)}
+.dash-card.c-his svg{stroke:var(--gold)}
+.dash-card.c-cfg svg{stroke:#6b5a47}
+.dash-card h3{font-size:.85rem;font-weight:700;text-align:center;color:var(--ink)}
+.dash-card p{font-size:.75rem;color:#9e8a73;text-align:center}
+.dash-badge{background:var(--rust);color:#fff;border-radius:20px;font-size:.7rem;font-weight:700;padding:2px 8px;min-width:22px;text-align:center}
+.dash-banner{background:#fff;border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+.dash-banner svg{width:28px;height:28px;stroke:var(--gold);stroke-width:1.6;flex-shrink:0}
+.dash-banner-text{font-size:.82rem;color:#6b5a47;line-height:1.4}
+.dash-banner-text b{color:var(--ink)}
+
+/* ── WIZARD DE REGISTRO ── */
+.wizard-header{background:#fff;border:1px solid var(--border);border-radius:6px;padding:14px 16px;box-shadow:var(--shadow)}
+.step-bar{display:flex;align-items:center;gap:0;margin-bottom:10px}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;transition:all .2s}
+.step-dot.done{background:var(--sage);color:#fff}
+.step-dot.active{background:var(--rust);color:#fff;box-shadow:0 0 0 3px rgba(139,58,15,.2)}
+.step-dot.todo{background:var(--warm);color:#9e8a73;border:1px solid var(--border)}
+.step-line{flex:1;height:2px;background:var(--border);transition:background .2s}
+.step-line.done{background:var(--sage)}
+.step-label{font-size:.8rem;color:#6b5a47}
+.step-label b{color:var(--ink)}
+
+.wizard-card{background:#fff;border:1px solid var(--border);border-radius:6px;padding:20px 16px;box-shadow:var(--shadow)}
+.wizard-card h3{font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:6px}
+.wizard-card p.hint{font-size:.82rem;color:#9e8a73;margin-bottom:18px}
+
+.scan-zone{border:2px dashed var(--border);border-radius:6px;padding:28px 16px;text-align:center;background:var(--warm);cursor:pointer;transition:border-color .2s}
+.scan-zone:focus-within{border-color:var(--gold)}
+.scan-zone svg{width:44px;height:44px;stroke:var(--gold);stroke-width:1.4;margin-bottom:8px}
+.scan-zone p{font-size:.85rem;color:#9e8a73}
+.scan-zone input{position:absolute;opacity:0;pointer-events:none;width:1px;height:1px}
+
+.or-divider{text-align:center;font-size:.78rem;color:#9e8a73;position:relative;margin:10px 0}
+.or-divider::before,.or-divider::after{content:'';position:absolute;top:50%;width:40%;height:1px;background:var(--border)}
+.or-divider::before{left:0}.or-divider::after{right:0}
+
+.dept-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:280px;overflow-y:auto}
+.dept-btn{background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);padding:8px 4px;font-size:.78rem;font-weight:600;color:var(--ink);cursor:pointer;text-align:center;transition:all .15s}
+.dept-btn:active,.dept-btn.selected{background:var(--rust);color:#fff;border-color:var(--rust)}
+
+.courier-list{display:flex;flex-direction:column;gap:8px}
+.courier-btn{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);font-size:.9rem;font-weight:600;color:var(--ink);cursor:pointer;transition:all .15s}
+.courier-btn:active,.courier-btn.selected{background:var(--rust);color:#fff;border-color:var(--rust)}
+.courier-btn svg{width:20px;height:20px;flex-shrink:0}
+
+.confirm-table{width:100%;border-collapse:collapse}
+.confirm-table td{padding:8px 0;font-size:.88rem;border-bottom:1px solid var(--warm)}
+.confirm-table td:first-child{color:#6b5a47;width:40%}
+.confirm-table td:last-child{font-weight:600;color:var(--ink)}
+
+/* ── SUCCESS ── */
+.suc-card{background:#fff;border:1px solid #c8dfc8;border-radius:6px;padding:28px 20px;text-align:center;box-shadow:var(--shadow)}
+.suc-icon{width:64px;height:64px;background:var(--sage);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.suc-icon svg{width:34px;height:34px;stroke:#fff;fill:none;stroke-width:2.5}
+.suc-card h3{font-size:1.15rem;font-weight:700;color:var(--sage);margin-bottom:6px}
+.suc-card p{font-size:.85rem;color:#6b5a47;margin-bottom:4px}
+.suc-folio{font-size:1.4rem;font-weight:800;color:var(--ink);letter-spacing:.05em;margin:8px 0}
+.suc-wa{display:flex;align-items:center;justify-content:center;gap:6px;font-size:.8rem;color:var(--sage);margin-top:8px}
+.suc-wa svg{width:16px;height:16px;fill:var(--sage)}
+.btn-nuevo{width:100%;padding:14px;background:var(--rust);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;margin-top:12px}
+
+/* ── ENTREGAR ── */
+.pend-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.pend-header h3{font-size:1rem;font-weight:700}
+.pend-count{background:var(--rust);color:#fff;border-radius:20px;font-size:.75rem;font-weight:700;padding:2px 8px}
+.pkg-list{display:flex;flex-direction:column;gap:8px}
+.pkg-item{background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px 14px;display:flex;align-items:flex-start;gap:10px;box-shadow:var(--shadow)}
+.pkg-checkbox{width:20px;height:20px;accent-color:var(--rust);flex-shrink:0;margin-top:2px;cursor:pointer}
+.pkg-info{flex:1;min-width:0}
+.pkg-courier{font-size:.75rem;font-weight:700;color:var(--rust);text-transform:uppercase;letter-spacing:.04em}
+.pkg-tracking{font-size:.82rem;color:#6b5a47;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pkg-date{font-size:.75rem;color:#9e8a73}
+.pkg-folio{font-size:.72rem;color:#b5a28a;font-style:italic}
+.pkg-empty{text-align:center;padding:32px 16px;color:#9e8a73;font-size:.88rem}
+.pkg-empty svg{width:48px;height:48px;stroke:var(--border);stroke-width:1.2;margin-bottom:10px}
+.btn-entregar{width:100%;padding:14px;background:var(--sage);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-entregar:disabled{opacity:.45;cursor:not-allowed}
+.ent-dept-info{background:#fff;border:1px solid var(--border);border-radius:6px;padding:14px 16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+.ent-dept-info svg{width:28px;height:28px;stroke:var(--sage);flex-shrink:0}
+.ent-dept-name{font-size:.88rem;font-weight:700;color:var(--ink)}
+.ent-dept-sub{font-size:.78rem;color:#9e8a73}
+
+/* ── HISTORIAL ── */
+.hist-filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px}
+.hist-filter-btn{padding:6px 12px;border:1px solid var(--border);border-radius:20px;font-size:.78rem;font-weight:600;background:#fff;color:#6b5a47;cursor:pointer;transition:all .15s}
+.hist-filter-btn.active{background:var(--rust);color:#fff;border-color:var(--rust)}
+.hist-search{position:relative}
+.hist-search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--border);border-radius:var(--radius);font-size:.88rem;background:#fff;outline:none}
+.hist-search input:focus{border-color:var(--gold)}
+.hist-search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:#9e8a73}
+.hist-list{display:flex;flex-direction:column;gap:8px}
+.hist-item{background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px 14px;box-shadow:var(--shadow)}
+.hist-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.hist-dept{font-size:.88rem;font-weight:700;color:var(--ink)}
+.hist-status{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.03em}
+.hist-status.pendiente{background:#fef3e2;color:#8b6200}
+.hist-status.entregado{background:#e8f4e8;color:var(--sage)}
+.hist-tracking{font-size:.78rem;color:#6b5a47}
+.hist-meta{font-size:.72rem;color:#9e8a73;margin-top:3px}
+.hist-load-more{text-align:center;padding:12px;font-size:.83rem;color:var(--rust);cursor:pointer;font-weight:600}
+
+/* ── CONFIG ── */
+.cfg-section{background:#fff;border:1px solid var(--border);border-radius:6px;box-shadow:var(--shadow);overflow:hidden}
+.cfg-section-title{padding:12px 16px;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9e8a73;background:var(--warm);border-bottom:1px solid var(--border)}
+.cfg-row{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--warm);cursor:pointer;transition:background .1s}
+.cfg-row:last-child{border-bottom:none}
+.cfg-row:active{background:var(--warm)}
+.cfg-row-left{display:flex;align-items:center;gap:10px}
+.cfg-row-left svg{width:18px;height:18px;stroke:#6b5a47}
+.cfg-row-label{font-size:.88rem;color:var(--ink)}
+.cfg-row-sub{font-size:.75rem;color:#9e8a73}
+.cfg-arrow{width:16px;height:16px;stroke:#9e8a73}
+.wa-contact-list{display:flex;flex-direction:column}
+.wa-contact-item{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--warm)}
+.wa-contact-item:last-child{border-bottom:none}
+.wa-dept-label{font-size:.85rem;font-weight:600;color:var(--ink)}
+.wa-phone{font-size:.78rem;color:#6b5a47}
+.wa-edit-btn{font-size:.75rem;color:var(--rust);cursor:pointer;font-weight:600;padding:4px 8px}
+
+/* ── BOTÓN ATRÁS ── */
+.back-btn{display:inline-flex;align-items:center;gap:6px;font-size:.83rem;color:var(--rust);font-weight:600;cursor:pointer;padding:0;background:none;border:none;margin-bottom:2px}
+.back-btn svg{width:16px;height:16px;stroke:var(--rust)}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:calc(var(--nav-h)+16px);left:50%;transform:translateX(-50%) translateY(30px);background:#18120a;color:#fff;padding:10px 20px;border-radius:20px;font-size:.85rem;font-weight:600;z-index:9999;opacity:0;transition:all .25s;pointer-events:none;white-space:nowrap;max-width:90vw}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.err{background:var(--red)}
+#toast.ok{background:var(--sage)}
+
+/* ── LOADER ── */
+#loader{display:none;position:fixed;inset:0;background:rgba(248,244,237,.8);z-index:9998;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+#loader.show{display:flex}
+.spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--rust);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loader p{font-size:.85rem;color:#6b5a47;font-weight:600}
+
+/* ── MODAL ── */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(24,18,10,.55);z-index:200;align-items:flex-end;justify-content:center}
+.modal-backdrop.show{display:flex}
+.modal-sheet{background:#fff;border-radius:12px 12px 0 0;padding:24px 20px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto;animation:slideUp .25s}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-sheet h3{font-size:1rem;font-weight:700;margin-bottom:16px;color:var(--ink)}
+.modal-close{float:right;cursor:pointer;background:none;border:none;font-size:1.2rem;color:#9e8a73;line-height:1}
+
+/* ── SCANNER INPUT GLOBAL ── */
+#scannerCapture{position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0}
+
+/* ── BARRA SIMULADOR (modo prueba) ── */
+#simBar{display:none;position:fixed;bottom:var(--nav-h);left:0;right:0;z-index:150;
+  background:#1a1a2e;border-top:2px solid var(--gold);padding:8px 12px;
+  flex-direction:column;gap:6px}
+#simBar.show{display:flex}
+.sim-label{font-size:.7rem;color:var(--gold);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.sim-row{display:flex;gap:8px}
+#simInput{flex:1;padding:8px 10px;border-radius:var(--radius);border:1px solid #444;
+  background:#0d0d1a;color:#fff;font-size:.9rem;font-family:monospace;outline:none}
+#simInput:focus{border-color:var(--gold)}
+#simSend{padding:8px 14px;background:var(--gold);color:#1a1a2e;border:none;
+  border-radius:var(--radius);font-weight:700;font-size:.85rem;cursor:pointer;white-space:nowrap}
+.sim-chips{display:flex;gap:6px;flex-wrap:wrap}
+.sim-chip{padding:3px 9px;background:#2a2a3e;color:#ccc;border:1px solid #444;
+  border-radius:20px;font-size:.72rem;cursor:pointer;font-family:monospace}
+.sim-chip:active{background:var(--gold);color:#1a1a2e}
+#simToggle{position:fixed;bottom:calc(var(--nav-h) + 4px);right:10px;z-index:160;
+  background:#1a1a2e;color:var(--gold);border:1px solid var(--gold);
+  border-radius:20px;padding:4px 10px;font-size:.7rem;font-weight:700;
+  cursor:pointer;letter-spacing:.05em;display:none}
+#simToggle.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- ══════════ HIDDEN SCANNER INPUT ══════════ -->
+<input id="scannerCapture" type="text" autocomplete="off" autocorrect="off" spellcheck="false">
+
+<!-- ══════════ LOGIN ══════════ -->
+<div id="loginScreen">
+  <div class="login-logo">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+  </div>
+  <div class="login-card">
+    <h1>Caseta de Seguridad</h1>
+    <p>Sistema de Paquetería · Minas 11</p>
+    <div class="login-err" id="loginErr">Usuario o contraseña incorrectos</div>
+    <div class="field">
+      <label>Usuario</label>
+      <input id="loginUser" type="text" placeholder="guardia01" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input id="loginPass" type="password" placeholder="••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" onclick="doLogin()">Ingresar</button>
+  </div>
+</div>
+
+<!-- ══════════ APP ══════════ -->
+<div id="app">
+  <header class="app-header">
+    <h2>📦 Paquetería</h2>
+    <div class="header-meta">
+      <span class="guard-name" id="guardName"></span>
+      <button class="btn-logout" onclick="doLogout()">Salir</button>
+    </div>
+  </header>
+
+  <!-- ─── VISTA: DASHBOARD ─── -->
+  <section class="view active" id="v-dash">
+    <div class="dash-banner" id="pendBanner">
+      <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+      <div class="dash-banner-text">Cargando paquetes pendientes…</div>
+    </div>
+    <div class="dash-grid">
+      <div class="dash-card c-reg" onclick="goView('v-reg'); wizardStep(1)">
+        <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        <h3>Registrar</h3>
+        <p>Nuevo paquete</p>
+      </div>
+      <div class="dash-card c-ent" onclick="goView('v-ent'); entStep(1)">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        <h3>Entregar</h3>
+        <p>Residente recoge</p>
+      </div>
+      <div class="dash-card c-his" onclick="goView('v-his'); loadHist()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <h3>Historial</h3>
+        <p>Consultar registros</p>
+      </div>
+      <div class="dash-card c-cfg" onclick="goView('v-cfg')">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <h3>Config</h3>
+        <p>WhatsApp y ajustes</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── VISTA: REGISTRAR ─── -->
+  <section class="view" id="v-reg">
+    <button class="back-btn" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver al menú
+    </button>
+
+    <!-- Barra de pasos -->
+    <div class="wizard-header">
+      <div class="step-bar">
+        <div class="step-dot active" id="sd1">1</div>
+        <div class="step-line" id="sl1"></div>
+        <div class="step-dot todo" id="sd2">2</div>
+        <div class="step-line" id="sl2"></div>
+        <div class="step-dot todo" id="sd3">3</div>
+        <div class="step-line" id="sl3"></div>
+        <div class="step-dot todo" id="sd4">4</div>
+      </div>
+      <div class="step-label" id="stepLabel"><b>Paso 1:</b> Departamento</div>
+    </div>
+
+    <!-- Paso 1: Departamento -->
+    <div class="wizard-card" id="ws1">
+      <h3>🏠 Seleccionar Departamento</h3>
+      <p class="hint">Escanea la tarjeta del depto o selecciona manualmente</p>
+      <div class="scan-zone" id="scanZone1" onclick="focusScanner('dept')">
+        <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
+        <p>Toca aquí y escanea la tarjeta del departamento</p>
+      </div>
+      <div class="or-divider">o selecciona</div>
+      <div class="dept-grid" id="deptGrid"></div>
+    </div>
+
+    <!-- Paso 2: Tracking / Cédula -->
+    <div class="wizard-card" id="ws2" style="display:none">
+      <h3>📦 Escanear Paquete</h3>
+      <p class="hint">Escanea el código de barras o QR del paquete / guía</p>
+      <div class="scan-zone" id="scanZone2" onclick="focusScanner('tracking')">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="3" y2="20"/><line x1="7" y1="6" x2="7" y2="20"/><line x1="11" y1="6" x2="11" y2="20"/><line x1="15" y1="6" x2="15" y2="20"/><line x1="19" y1="6" x2="19" y2="20"/><line x1="1" y1="6" x2="22" y2="6"/><line x1="1" y1="20" x2="22" y2="20"/></svg>
+        <p id="trackingDisplay">Toca aquí y escanea el paquete</p>
+      </div>
+      <div class="or-divider">o escribe</div>
+      <div class="field">
+        <input id="trackingManual" type="text" placeholder="Número de guía / tracking" oninput="state.regTracking=this.value">
+      </div>
+      <button class="btn-primary" onclick="wizardStep(3)" id="btnStep3" style="margin-top:4px">Continuar →</button>
+    </div>
+
+    <!-- Paso 3: Paquetería -->
+    <div class="wizard-card" id="ws3" style="display:none">
+      <h3>🚚 Paquetería / Courier</h3>
+      <p class="hint">¿Con qué empresa llegó el paquete?</p>
+      <div class="courier-list" id="courierList"></div>
+    </div>
+
+    <!-- Paso 4: Confirmación -->
+    <div class="wizard-card" id="ws4" style="display:none">
+      <h3>✅ Confirmar Registro</h3>
+      <p class="hint">Verifica los datos antes de guardar</p>
+      <table class="confirm-table">
+        <tr><td>Departamento</td><td id="cfDept">—</td></tr>
+        <tr><td>Tracking</td><td id="cfTracking">—</td></tr>
+        <tr><td>Courier</td><td id="cfCourier">—</td></tr>
+        <tr><td>Guardia</td><td id="cfGuard">—</td></tr>
+        <tr><td>Fecha/Hora</td><td id="cfDate">—</td></tr>
+      </table>
+      <button class="btn-primary" onclick="confirmarRegistro()" style="margin-top:16px">💾 Guardar Registro</button>
+    </div>
+
+    <!-- Éxito registro -->
+    <div class="suc-card" id="ws5" style="display:none">
+      <div class="suc-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <h3>¡Paquete Registrado!</h3>
+      <div class="suc-folio" id="sucFolio">—</div>
+      <p id="sucDeptText">Depto —</p>
+      <p id="sucCourierText">—</p>
+      <div class="suc-wa" id="sucWaStatus" style="display:none">
+        <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        <span id="sucWaText">Notificación WhatsApp enviada</span>
+      </div>
+      <button class="btn-nuevo" onclick="wizardStep(1); nuevoRegistro()">+ Registrar Otro Paquete</button>
+    </div>
+  </section>
+
+  <!-- ─── VISTA: ENTREGAR ─── -->
+  <section class="view" id="v-ent">
+    <button class="back-btn" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver al menú
+    </button>
+
+    <!-- Paso E1: Escanear residente -->
+    <div id="es1">
+      <div class="wizard-card">
+        <h3>🪪 Escanear Residente</h3>
+        <p class="hint">Escanea la tarjeta del residente o selecciona su depto</p>
+        <div class="scan-zone" id="scanZoneEnt" onclick="focusScanner('ent')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
+          <p>Toca aquí y escanea la tarjeta del residente</p>
+        </div>
+        <div class="or-divider">o selecciona</div>
+        <div class="dept-grid" id="deptGridEnt"></div>
+      </div>
+    </div>
+
+    <!-- Paso E2: Paquetes pendientes del depto -->
+    <div id="es2" style="display:none">
+      <div class="ent-dept-info">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+        <div>
+          <div class="ent-dept-name" id="entDeptName">Depto —</div>
+          <div class="ent-dept-sub" id="entDeptSub">0 paquetes pendientes</div>
+        </div>
+      </div>
+      <div class="wizard-card">
+        <div class="pend-header">
+          <h3>Paquetes Pendientes</h3>
+          <span class="pend-count" id="pendCount">0</span>
+        </div>
+        <div class="pkg-list" id="pkgList"></div>
+      </div>
+      <button class="btn-entregar" id="btnEntregarFinal" onclick="confirmarEntrega()" disabled>
+        ✓ Confirmar Entrega
+      </button>
+    </div>
+
+    <!-- Éxito entrega -->
+    <div id="es3" style="display:none">
+      <div class="suc-card">
+        <div class="suc-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <h3>¡Entrega Confirmada!</h3>
+        <p id="sucEntText">— paquetes entregados</p>
+        <div class="suc-wa" id="sucEntWa" style="display:none">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span>Notificación enviada al residente</span>
+        </div>
+        <button class="btn-nuevo" onclick="entStep(1)">Entregar Otro</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── VISTA: HISTORIAL ─── -->
+  <section class="view" id="v-his">
+    <button class="back-btn" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver al menú
+    </button>
+    <div class="hist-filters">
+      <button class="hist-filter-btn active" onclick="setHistFilter('todos',this)">Todos</button>
+      <button class="hist-filter-btn" onclick="setHistFilter('pendiente',this)">Pendientes</button>
+      <button class="hist-filter-btn" onclick="setHistFilter('entregado',this)">Entregados</button>
+    </div>
+    <div class="hist-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input id="histSearch" type="text" placeholder="Buscar depto, tracking, courier…" oninput="filterHist()">
+    </div>
+    <div class="hist-list" id="histList"><p style="text-align:center;color:#9e8a73;padding:32px">Cargando historial…</p></div>
+    <div class="hist-load-more" id="histMore" style="display:none" onclick="loadMoreHist()">Cargar más registros ↓</div>
+  </section>
+
+  <!-- ─── VISTA: CONFIG ─── -->
+  <section class="view" id="v-cfg">
+    <button class="back-btn" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver al menú
+    </button>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Sistema</div>
+      <div class="cfg-row" onclick="showApiModal()">
+        <div class="cfg-row-left">
+          <svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
+          <div>
+            <div class="cfg-row-label">URL del Script (GAS)</div>
+            <div class="cfg-row-sub" id="apiUrlDisplay">No configurada</div>
+          </div>
+        </div>
+        <svg class="cfg-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Contactos WhatsApp por Departamento</div>
+      <div class="cfg-row" onclick="loadWaContacts()">
+        <div class="cfg-row-left">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <div>
+            <div class="cfg-row-label">Ver y editar contactos</div>
+            <div class="cfg-row-sub">Teléfonos y ApiKey de Callmebot</div>
+          </div>
+        </div>
+        <svg class="cfg-arrow" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Activar WhatsApp (Callmebot)</div>
+      <div style="padding:14px 16px;font-size:.83rem;color:#6b5a47;line-height:1.6">
+        Cada residente debe activar su número una sola vez:<br>
+        1. Guardar el número <b>+34 644 60 70 47</b> en sus contactos como "Callmebot"<br>
+        2. Enviar por WhatsApp el mensaje exacto:<br>
+        <code style="background:var(--warm);padding:4px 8px;border-radius:3px;display:inline-block;margin:6px 0;font-size:.8rem">I allow callmebot to send me messages</code><br>
+        3. Recibirán su ApiKey de respuesta<br>
+        4. El guardia la registra en Configuración → Contactos
+      </div>
+    </div>
+
+    <div class="cfg-section">
+      <div class="cfg-section-title">Sesión</div>
+      <div class="cfg-row" onclick="doLogout()">
+        <div class="cfg-row-left">
+          <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <div><div class="cfg-row-label">Cerrar Sesión</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── BOTTOM NAV ── -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-dash" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <span>Inicio</span>
+    </button>
+    <button class="nav-item" id="nav-reg" onclick="goView('v-reg'); wizardStep(1)">
+      <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>Registrar</span>
+    </button>
+    <button class="nav-item" id="nav-ent" onclick="goView('v-ent'); entStep(1)">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      <span>Entregar</span>
+    </button>
+    <button class="nav-item" id="nav-his" onclick="goView('v-his'); loadHist()">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span>Historial</span>
+    </button>
+  </nav>
+</div>
+
+<!-- ══════════ MODALES ══════════ -->
+
+<!-- Modal: API URL -->
+<div class="modal-backdrop" id="modalApi">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeModal('modalApi')">✕</button>
+    <h3>URL de Google Apps Script</h3>
+    <div class="field">
+      <label>URL del Web App (doPost)</label>
+      <input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/…/exec">
+    </div>
+    <button class="btn-primary" onclick="saveApiUrl()">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal: Editar contacto WA -->
+<div class="modal-backdrop" id="modalWa">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeModal('modalWa')">✕</button>
+    <h3>Contacto WhatsApp</h3>
+    <div class="field">
+      <label>Departamento</label>
+      <input id="waEditDept" type="text" readonly style="background:var(--warm)">
+    </div>
+    <div class="field">
+      <label>Nombre del propietario</label>
+      <input id="waEditNombre" type="text" placeholder="Juan Pérez">
+    </div>
+    <div class="field">
+      <label>Teléfono (con código país)</label>
+      <input id="waEditTel" type="tel" placeholder="+521234567890">
+    </div>
+    <div class="field">
+      <label>ApiKey de Callmebot</label>
+      <input id="waEditKey" type="text" placeholder="123456">
+    </div>
+    <button class="btn-primary" onclick="saveWaContact()">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal: Lista contactos WA -->
+<div class="modal-backdrop" id="modalWaList">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="closeModal('modalWaList')">✕</button>
+    <h3>Contactos WhatsApp</h3>
+    <div class="wa-contact-list" id="waContactList">
+      <p style="text-align:center;padding:20px;color:#9e8a73">Cargando…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SIMULADOR DE ESCÁNER (modo prueba) ══ -->
+<button id="simToggle" onclick="toggleSim()">🔫 SIMULAR</button>
+<div id="simBar">
+  <div class="sim-label">🔫 Simulador de escáner — modo prueba</div>
+  <div class="sim-row">
+    <input id="simInput" type="text" placeholder="Escribe el código y presiona Enviar o Enter"
+      autocomplete="off" spellcheck="false">
+    <button id="simSend" onclick="simEnviar()">Enviar ↵</button>
+  </div>
+  <div class="sim-chips" id="simChips">
+    <span style="font-size:.7rem;color:#888">Deptos rápidos:</span>
+    <span class="sim-chip" onclick="simSet('D101')">D101</span>
+    <span class="sim-chip" onclick="simSet('D201')">D201</span>
+    <span class="sim-chip" onclick="simSet('D301')">D301</span>
+    <span class="sim-chip" onclick="simSet('D401')">D401</span>
+    <span class="sim-chip" onclick="simSet('D501')">D501</span>
+    <span class="sim-chip" onclick="simSet('R101')">R101</span>
+    <span class="sim-chip" onclick="simSet('R201')">R201</span>
+    <span class="sim-chip" onclick="simSet('1234567890')">📦 Tracking</span>
+  </div>
+</div>
+
+<!-- Toast & Loader -->
+<div id="toast"></div>
+<div id="loader"><div class="spinner"></div><p id="loaderMsg">Procesando…</p></div>
+
+<script>
+// ════════════════════════════════════════════════
+// CONFIGURACIÓN
+// ════════════════════════════════════════════════
+const DEPTS = [
+  '101','102','103','104','105',
+  '201','202','203','204','205',
+  '301','302','303','304','305',
+  '401','402','403','404','405',
+  '501','502','503','504','505',
+  'PH1','PH2','PH3'
+];
+const COURIERS = [
+  {id:'DHL',       icon:'🟡'},
+  {id:'FedEx',     icon:'🟣'},
+  {id:'Estafeta',  icon:'🟠'},
+  {id:'Amazon',    icon:'📦'},
+  {id:'MercadoLibre', icon:'🟡'},
+  {id:'UPS',       icon:'🟤'},
+  {id:'OXXO Pak',  icon:'🔴'},
+  {id:'J&T',       icon:'🔵'},
+  {id:'Otro',      icon:'📬'},
+];
+
+// ════════════════════════════════════════════════
+// ESTADO
+// ════════════════════════════════════════════════
+const state = {
+  token: '', userName: '',
+  scanMode: null,          // 'dept' | 'tracking' | 'ent'
+  regDept: '', regTracking: '', regCourier: '',
+  entDept: '', entPkgs: [],
+  allPkgs: [], histFilter: 'todos', histPage: 0,
+  apiUrl: localStorage.getItem('caseta_api') || 'https://script.google.com/macros/s/AKfycbwzLyGKqogM3k3N74p8BP93OpC5bTnMYgTLWWevY1Wwjn-5MXBt341P6QG_dx3s6xqt/exec',
+};
+
+// ════════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════════
+function showToast(msg, type=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  clearTimeout(t._tid);
+  t._tid = setTimeout(()=>t.className='', 2800);
+}
+function showLoader(msg='Procesando…'){
+  document.getElementById('loaderMsg').textContent = msg;
+  document.getElementById('loader').classList.add('show');
+}
+function hideLoader(){ document.getElementById('loader').classList.remove('show'); }
+
+function openModal(id){ document.getElementById(id).classList.add('show'); }
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+
+function fmt(d){ if(!d) return '—'; const dt=new Date(d); return dt.toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'}); }
+function fmtDate(d){ if(!d) return '—'; return new Date(d).toLocaleDateString('es-MX'); }
+
+async function api(action, payload={}){
+  if(!state.apiUrl) throw new Error('URL del script no configurada');
+  const body = { action, token: state.token, ...payload };
+  const r = await fetch(state.apiUrl, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if(!r.ok) throw new Error('Error HTTP ' + r.status);
+  const data = await r.json();
+  if(data.error) throw new Error(data.error);
+  return data;
+}
+
+// ════════════════════════════════════════════════
+// SCANNER GLOBAL
+// ════════════════════════════════════════════════
+const scanInput = document.getElementById('scannerCapture');
+let scanBuffer = '';
+let scanTimer = null;
+
+document.addEventListener('keydown', (e) => {
+  // Solo capturar cuando hay modo de scan activo
+  if (!state.scanMode) return;
+  // No interceptar si el foco está en otro input visible
+  const active = document.activeElement;
+  if (active && active !== scanInput &&
+      (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') &&
+      !active.id.startsWith('scanZone')) return;
+
+  if (e.key === 'Enter') {
+    if (scanBuffer.trim()) processScan(scanBuffer.trim());
+    scanBuffer = '';
+    clearTimeout(scanTimer);
+    return;
+  }
+  if (e.key.length === 1) {
+    scanBuffer += e.key;
+    clearTimeout(scanTimer);
+    scanTimer = setTimeout(() => { scanBuffer = ''; }, 200);
+  }
+});
+
+function focusScanner(mode){
+  state.scanMode = mode;
+  scanInput.focus();
+}
+
+function parseDept(raw){
+  // Formatos: "D101", "MINAS-D-101", "101"
+  raw = raw.trim().toUpperCase();
+  let m;
+  if ((m = raw.match(/^(?:MINAS-D-|D)(\d{3}|PH\d)$/))) return m[1];
+  if (DEPTS.includes(raw)) return raw;
+  if (/^\d{3}$/.test(raw) && DEPTS.includes(raw)) return raw;
+  return null;
+}
+
+function parseResident(raw){
+  // Formatos: "R101", "RES-101"
+  raw = raw.trim().toUpperCase();
+  let m;
+  if ((m = raw.match(/^(?:RES-|R)(\d{3}|PH\d)$/))) return m[1];
+  return parseDept(raw); // fallback
+}
+
+function processScan(raw){
+  if (state.scanMode === 'dept'){
+    const dept = parseDept(raw);
+    if (dept){ selectDept(dept); }
+    else { showToast('Código no reconocido: ' + raw, 'err'); }
+  }
+  else if (state.scanMode === 'tracking'){
+    state.regTracking = raw;
+    document.getElementById('trackingDisplay').textContent = '✓ ' + raw;
+    document.getElementById('trackingManual').value = raw;
+    showToast('Tracking: ' + raw, 'ok');
+    setTimeout(() => wizardStep(3), 400);
+  }
+  else if (state.scanMode === 'ent'){
+    const dept = parseResident(raw);
+    if (dept){ selectEntDept(dept); }
+    else { showToast('Tarjeta no reconocida: ' + raw, 'err'); }
+  }
+}
+
+// ════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════
+document.getElementById('loginPass').addEventListener('keydown', e => {
+  if(e.key === 'Enter') doLogin();
+});
+
+async function doLogin(){
+  const user = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err  = document.getElementById('loginErr');
+  err.style.display = 'none';
+  if(!user || !pass){ err.textContent='Ingresa usuario y contraseña'; err.style.display='block'; return; }
+  if(!state.apiUrl){
+    const url = prompt('Ingresa la URL del Web App de Google Apps Script:');
+    if(!url){ return; }
+    state.apiUrl = url.trim();
+    localStorage.setItem('caseta_api', state.apiUrl);
+  }
+  showLoader('Verificando credenciales…');
+  try {
+    const r = await fetch(state.apiUrl, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ action:'login', user, pass })
+    });
+    const data = await r.json();
+    if(data.error || !data.token){ throw new Error(data.error || 'Sin token'); }
+    // Verificar que tenga rol caseta
+    if(data.role && !['caseta','admin'].includes(data.role)){
+      throw new Error('Sin permisos de caseta');
+    }
+    state.token = data.token;
+    state.userName = data.userName || user;
+    hideLoader();
+    bootApp();
+  } catch(e){
+    hideLoader();
+    err.textContent = e.message || 'Error al conectar';
+    err.style.display = 'block';
+  }
+}
+
+function doLogout(){
+  state.token = '';
+  state.userName = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginPass').value = '';
+}
+
+function bootApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('guardName').textContent = state.userName;
+  buildDeptGrids();
+  buildCourierList();
+  updateApiUrlDisplay();
+  loadDashBanner();
+  // Mostrar botón de simulador
+  document.getElementById('simToggle').classList.add('show');
+}
+
+// ════════════════════════════════════════════════
+// NAVEGACIÓN
+// ════════════════════════════════════════════════
+const viewNavMap = { 'v-dash':'nav-dash','v-reg':'nav-reg','v-ent':'nav-ent','v-his':'nav-his','v-cfg':'' };
+
+function goView(id){
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const navId = viewNavMap[id];
+  if(navId) document.getElementById(navId).classList.add('active');
+  state.scanMode = null;
+}
+
+// ════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════
+async function loadDashBanner(){
+  const banner = document.getElementById('pendBanner');
+  try {
+    const r = await api('paquetes-pendientes', {});
+    const count = r.paquetes ? r.paquetes.length : 0;
+    banner.querySelector('.dash-banner-text').innerHTML =
+      count > 0
+        ? `<b>${count} paquete${count!==1?'s':''} pendiente${count!==1?'s':''}</b> esperando al residente`
+        : '<b>Sin paquetes pendientes</b> — todo al día ✓';
+    // Actualizar badge
+    const badge = document.querySelector('#nav-ent .dash-badge');
+    if(count > 0 && !badge){
+      const b = document.createElement('span');
+      b.className='dash-badge'; b.textContent=count;
+      document.getElementById('nav-ent').appendChild(b);
+    }
+  } catch(e) {
+    banner.querySelector('.dash-banner-text').textContent = 'Error al cargar resumen';
+  }
+}
+
+// ════════════════════════════════════════════════
+// WIZARD REGISTRO
+// ════════════════════════════════════════════════
+function buildDeptGrids(){
+  ['deptGrid','deptGridEnt'].forEach(gid => {
+    const g = document.getElementById(gid);
+    g.innerHTML = '';
+    DEPTS.forEach(d => {
+      const b = document.createElement('button');
+      b.className='dept-btn'; b.textContent=d; b.dataset.dept=d;
+      b.onclick = () => gid==='deptGrid' ? selectDept(d) : selectEntDept(d);
+      g.appendChild(b);
+    });
+  });
+}
+
+function buildCourierList(){
+  const cl = document.getElementById('courierList');
+  cl.innerHTML = '';
+  COURIERS.forEach(c => {
+    const b = document.createElement('button');
+    b.className='courier-btn';
+    b.innerHTML = `<span style="font-size:1.3rem">${c.icon}</span>${c.id}`;
+    b.onclick = () => selectCourier(c.id, b);
+    cl.appendChild(b);
+  });
+}
+
+function wizardStep(n){
+  [1,2,3,4,5].forEach(i => {
+    const ws = document.getElementById('ws'+i);
+    if(ws) ws.style.display = i===n ? 'block' : 'none';
+  });
+  // Update step bar (only steps 1-4)
+  if(n <= 4){
+    const labels = ['','Departamento','Escanear Paquete','Paquetería','Confirmación'];
+    document.getElementById('stepLabel').innerHTML = `<b>Paso ${n}:</b> ${labels[n]}`;
+    [1,2,3,4].forEach(i => {
+      const dot = document.getElementById('sd'+i);
+      dot.className = 'step-dot ' + (i < n ? 'done' : i===n ? 'active' : 'todo');
+      dot.textContent = i < n ? '✓' : i;
+    });
+    [1,2,3].forEach(i => {
+      const line = document.getElementById('sl'+i);
+      line.className = 'step-line' + (i < n ? ' done' : '');
+    });
+  }
+  if(n === 1){ state.scanMode = 'dept'; }
+  if(n === 2){ state.scanMode = 'tracking'; }
+  if(n === 3){ state.scanMode = null; }
+  if(n === 4){
+    state.scanMode = null;
+    fillConfirm();
+  }
+}
+
+function selectDept(dept){
+  state.regDept = dept;
+  // Highlight
+  document.querySelectorAll('#deptGrid .dept-btn').forEach(b => {
+    b.classList.toggle('selected', b.dataset.dept === dept);
+  });
+  showToast('Depto ' + dept + ' seleccionado', 'ok');
+  setTimeout(() => wizardStep(2), 350);
+}
+
+function selectCourier(courier, btn){
+  state.regCourier = courier;
+  document.querySelectorAll('#courierList .courier-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  setTimeout(() => wizardStep(4), 300);
+}
+
+function fillConfirm(){
+  const now = new Date();
+  document.getElementById('cfDept').textContent    = 'Depto ' + state.regDept;
+  document.getElementById('cfTracking').textContent = state.regTracking || '(sin tracking)';
+  document.getElementById('cfCourier').textContent  = state.regCourier;
+  document.getElementById('cfGuard').textContent    = state.userName;
+  document.getElementById('cfDate').textContent     = now.toLocaleString('es-MX',{dateStyle:'short',timeStyle:'short'});
+}
+
+async function confirmarRegistro(){
+  if(!state.regDept || !state.regCourier){
+    showToast('Faltan datos del paquete', 'err'); return;
+  }
+  showLoader('Guardando paquete…');
+  try {
+    const r = await api('registrar-paquete', {
+      departamento: state.regDept,
+      tracking: state.regTracking || '',
+      courier: state.regCourier,
+    });
+    hideLoader();
+    // Mostrar éxito
+    document.getElementById('sucFolio').textContent    = r.folio || '—';
+    document.getElementById('sucDeptText').textContent = 'Departamento ' + state.regDept;
+    document.getElementById('sucCourierText').textContent = state.regCourier;
+    const waEl = document.getElementById('sucWaStatus');
+    if(r.whatsapp){
+      waEl.style.display = 'flex';
+      document.getElementById('sucWaText').textContent =
+        r.whatsapp === 'ok' ? 'Notificación WhatsApp enviada ✓' : 'Sin contacto WA registrado';
+    } else { waEl.style.display = 'none'; }
+    wizardStep(5);
+    loadDashBanner();
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+function nuevoRegistro(){
+  state.regDept=''; state.regTracking=''; state.regCourier='';
+  document.getElementById('trackingDisplay').textContent = 'Toca aquí y escanea el paquete';
+  document.getElementById('trackingManual').value = '';
+  document.querySelectorAll('#deptGrid .dept-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('#courierList .courier-btn').forEach(b=>b.classList.remove('selected'));
+  wizardStep(1);
+}
+
+// ════════════════════════════════════════════════
+// ENTREGAR
+// ════════════════════════════════════════════════
+function entStep(n){
+  ['es1','es2','es3'].forEach((id,i) => {
+    document.getElementById(id).style.display = i+1===n ? 'block' : 'none';
+  });
+  if(n===1){
+    state.entDept = '';
+    state.entPkgs = [];
+    state.scanMode = 'ent';
+    document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>b.classList.remove('selected'));
+  }
+}
+
+async function selectEntDept(dept){
+  state.entDept = dept;
+  document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.dept === dept);
+  });
+  showLoader('Buscando paquetes…');
+  try {
+    const r = await api('paquetes-pendientes', { departamento: dept });
+    hideLoader();
+    state.entPkgs = r.paquetes || [];
+    renderPkgList();
+    document.getElementById('entDeptName').textContent = 'Departamento ' + dept;
+    document.getElementById('entDeptSub').textContent  = state.entPkgs.length + ' paquete(s) pendiente(s)';
+    entStep(2);
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+function renderPkgList(){
+  const list = document.getElementById('pkgList');
+  const count = document.getElementById('pendCount');
+  count.textContent = state.entPkgs.length;
+  if(!state.entPkgs.length){
+    list.innerHTML = `<div class="pkg-empty">
+      <svg viewBox="0 0 24 24"><path d="M22 12H2"/><path d="M12 2v10"/><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+      <p>Sin paquetes pendientes</p></div>`;
+    document.getElementById('btnEntregarFinal').disabled = true;
+    return;
+  }
+  list.innerHTML = state.entPkgs.map((p,i) => `
+    <div class="pkg-item">
+      <input class="pkg-checkbox" type="checkbox" checked data-idx="${i}" onchange="updateEntBtn()">
+      <div class="pkg-info">
+        <div class="pkg-courier">${p.Courier || '—'}</div>
+        <div class="pkg-tracking">${p.Tracking || 'Sin tracking'}</div>
+        <div class="pkg-date">Ingresó: ${fmtDate(p.FechaEntrada)} ${p.HoraEntrada||''}</div>
+        <div class="pkg-folio">Folio: ${p.Folio||'—'}</div>
+      </div>
+    </div>`).join('');
+  document.getElementById('btnEntregarFinal').disabled = false;
+}
+
+function updateEntBtn(){
+  const any = [...document.querySelectorAll('.pkg-checkbox')].some(c=>c.checked);
+  document.getElementById('btnEntregarFinal').disabled = !any;
+}
+
+async function confirmarEntrega(){
+  const checks = [...document.querySelectorAll('.pkg-checkbox')];
+  const folios = checks.filter(c=>c.checked).map(c=> state.entPkgs[c.dataset.idx].Folio);
+  if(!folios.length){ showToast('Selecciona al menos un paquete','err'); return; }
+  showLoader('Registrando entrega…');
+  try {
+    const r = await api('entregar-paquete', { folios });
+    hideLoader();
+    document.getElementById('sucEntText').textContent = folios.length + ' paquete(s) entregado(s) al residente';
+    const waEl = document.getElementById('sucEntWa');
+    waEl.style.display = (r.whatsapp === 'ok') ? 'flex' : 'none';
+    entStep(3);
+    loadDashBanner();
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message, 'err');
+  }
+}
+
+// ════════════════════════════════════════════════
+// HISTORIAL
+// ════════════════════════════════════════════════
+const HIST_PAGE_SIZE = 20;
+
+async function loadHist(){
+  state.histPage = 0;
+  const list = document.getElementById('histList');
+  list.innerHTML = '<p style="text-align:center;color:#9e8a73;padding:32px">Cargando…</p>';
+  document.getElementById('histMore').style.display = 'none';
+  try {
+    const r = await api('paquetes-admin', { limite: 200 });
+    state.allPkgs = r.paquetes || [];
+    filterHist();
+  } catch(e){
+    list.innerHTML = `<p style="text-align:center;color:var(--red);padding:32px">Error: ${e.message}</p>`;
+  }
+}
+
+function setHistFilter(f, btn){
+  state.histFilter = f;
+  document.querySelectorAll('.hist-filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  state.histPage = 0;
+  filterHist();
+}
+
+function filterHist(){
+  const q = document.getElementById('histSearch').value.trim().toLowerCase();
+  let filtered = state.allPkgs.filter(p => {
+    if(state.histFilter !== 'todos' && (p.Estado||'').toLowerCase() !== state.histFilter) return false;
+    if(q){
+      const hay = [p.Departamento, p.Tracking, p.Courier, p.Propietario, p.Folio].join(' ').toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  renderHist(filtered);
+}
+
+function renderHist(items){
+  const list  = document.getElementById('histList');
+  const more  = document.getElementById('histMore');
+  const page  = items.slice(0, (state.histPage+1)*HIST_PAGE_SIZE);
+  if(!page.length){
+    list.innerHTML = '<p style="text-align:center;color:#9e8a73;padding:32px">Sin resultados</p>';
+    more.style.display = 'none'; return;
+  }
+  list.innerHTML = page.map(p => `
+    <div class="hist-item">
+      <div class="hist-top">
+        <span class="hist-dept">Depto ${p.Departamento||'—'} · ${p.Courier||'—'}</span>
+        <span class="hist-status ${(p.Estado||'').toLowerCase()}">${p.Estado||'—'}</span>
+      </div>
+      <div class="hist-tracking">${p.Tracking||'Sin tracking'}</div>
+      <div class="hist-meta">
+        Folio ${p.Folio||'—'} · Ingresó ${fmtDate(p.FechaEntrada)}
+        ${p.FechaSalida ? ' · Entregado ' + fmtDate(p.FechaSalida) : ''}
+      </div>
+    </div>`).join('');
+
+  // Guardar filtered para loadMore
+  list._filtered = items;
+  more.style.display = items.length > page.length ? 'block' : 'none';
+}
+
+function loadMoreHist(){
+  state.histPage++;
+  const list = document.getElementById('histList');
+  renderHist(list._filtered || state.allPkgs);
+}
+
+// ════════════════════════════════════════════════
+// CONFIG / API URL
+// ════════════════════════════════════════════════
+function updateApiUrlDisplay(){
+  const el = document.getElementById('apiUrlDisplay');
+  if(state.apiUrl) el.textContent = state.apiUrl.substring(0,50)+'…';
+  else el.textContent = 'No configurada';
+}
+
+function showApiModal(){
+  document.getElementById('apiUrlInput').value = state.apiUrl;
+  openModal('modalApi');
+}
+
+function saveApiUrl(){
+  const url = document.getElementById('apiUrlInput').value.trim();
+  if(!url){ showToast('Ingresa la URL','err'); return; }
+  state.apiUrl = url;
+  localStorage.setItem('caseta_api', url);
+  updateApiUrlDisplay();
+  closeModal('modalApi');
+  showToast('URL guardada ✓','ok');
+}
+
+// ════════════════════════════════════════════════
+// CONTACTOS WHATSAPP
+// ════════════════════════════════════════════════
+let waContactsCache = [];
+
+async function loadWaContacts(){
+  openModal('modalWaList');
+  const list = document.getElementById('waContactList');
+  list.innerHTML = '<p style="text-align:center;padding:20px;color:#9e8a73">Cargando…</p>';
+  try {
+    const r = await api('get-contactos-wa', {});
+    waContactsCache = r.contactos || [];
+    renderWaContacts();
+  } catch(e){
+    list.innerHTML = `<p style="text-align:center;padding:20px;color:var(--red)">${e.message}</p>`;
+  }
+}
+
+function renderWaContacts(){
+  const list = document.getElementById('waContactList');
+  if(!waContactsCache.length){
+    list.innerHTML = '<p style="text-align:center;padding:20px;color:#9e8a73">Sin contactos registrados</p>';
+    return;
+  }
+  list.innerHTML = DEPTS.map(dept => {
+    const c = waContactsCache.find(x=>x.Departamento===dept);
+    return `<div class="wa-contact-item">
+      <div>
+        <div class="wa-dept-label">Depto ${dept}</div>
+        <div class="wa-phone">${c ? (c.Nombre||'—') + ' · ' + (c.Telefono||'—') : 'Sin contacto'}</div>
+      </div>
+      <span class="wa-edit-btn" onclick="editWaContact('${dept}')">Editar</span>
+    </div>`;
+  }).join('');
+}
+
+function editWaContact(dept){
+  const c = waContactsCache.find(x=>x.Departamento===dept) || {};
+  document.getElementById('waEditDept').value   = dept;
+  document.getElementById('waEditNombre').value = c.Nombre   || '';
+  document.getElementById('waEditTel').value    = c.Telefono || '';
+  document.getElementById('waEditKey').value    = c.ApiKey_Callmebot || '';
+  closeModal('modalWaList');
+  openModal('modalWa');
+}
+
+async function saveWaContact(){
+  const dept   = document.getElementById('waEditDept').value;
+  const nombre = document.getElementById('waEditNombre').value.trim();
+  const tel    = document.getElementById('waEditTel').value.trim();
+  const key    = document.getElementById('waEditKey').value.trim();
+  if(!tel){ showToast('Ingresa el teléfono','err'); return; }
+  showLoader('Guardando contacto…');
+  try {
+    await api('save-contacto-wa', { departamento:dept, nombre, telefono:tel, apikey:key });
+    hideLoader();
+    closeModal('modalWa');
+    showToast('Contacto guardado ✓','ok');
+    // Refresh cache
+    const r = await api('get-contactos-wa', {});
+    waContactsCache = r.contactos || [];
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message,'err');
+  }
+}
+
+// ════════════════════════════════════════════════
+// SIMULADOR DE ESCÁNER
+// ════════════════════════════════════════════════
+function toggleSim(){
+  document.getElementById('simBar').classList.toggle('show');
+  document.getElementById('simInput').focus();
+}
+function simSet(val){
+  const inp = document.getElementById('simInput');
+  inp.value = val;
+  inp.focus();
+}
+function simEnviar(){
+  const inp = document.getElementById('simInput');
+  const val = inp.value.trim();
+  if(!val){ showToast('Escribe un código primero','err'); return; }
+  if(!state.scanMode){
+    showToast('Primero activa una zona de escaneo (toca el área de scan)','err'); return; }
+  processScan(val);
+  inp.value = '';
+  inp.focus();
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('simInput');
+  if(inp) inp.addEventListener('keydown', e => {
+    if(e.key === 'Enter'){ e.preventDefault(); simEnviar(); }
+  });
+});
+
+// ════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════
+(function init(){
+  // Cerrar modales al tocar fuera del sheet
+  document.querySelectorAll('.modal-backdrop').forEach(m => {
+    m.addEventListener('click', e => {
+      if(e.target === m) m.classList.remove('show');
+    });
+  });
+  // Mostrar URL guardada en login si no tiene
+  updateApiUrlDisplay();
+  // Enfocar usuario
+  document.getElementById('loginUser').focus();
+  // Paso 2 tracking manual trigger
+  document.getElementById('trackingManual').addEventListener('input', function(){
+    state.regTracking = this.value;
+  });
+  document.getElementById('trackingManual').addEventListener('keydown', function(e){
+    if(e.key==='Enter' && this.value.trim()) wizardStep(3);
+  });
+})();
+</script>
+</body>
+</html>
