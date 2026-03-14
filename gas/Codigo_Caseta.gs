@@ -34,6 +34,10 @@ function doPost(e) {
     } else if (accion === 'paquetes-admin')      { resultado = getPaquetesAdmin(data, ss);
     } else if (accion === 'get-contactos-wa')    { resultado = getContactosWA(data, ss);
     } else if (accion === 'save-contacto-wa')    { resultado = saveContactoWA(data, ss);
+    } else if (accion === 'registrar-visita')       { resultado = registrarVisita(data, ss);
+    } else if (accion === 'registrar-salida')       { resultado = registrarSalida(data, ss);
+    } else if (accion === 'get-visitantes-activos') { resultado = getVisitantesActivos(data, ss);
+    } else if (accion === 'get-visitantes-hist')    { resultado = getVisitantesHistorial(data, ss);
 
     } else {
       resultado = { error: 'Acción desconocida: ' + accion };
@@ -133,8 +137,8 @@ function getOAsegurarHojaPaqueteria(ss) {
     sh = ss.insertSheet('Paqueteria');
     sh.appendRow([
       'Folio','Departamento','Propietario','Tracking','Courier',
-      'FechaEntrada','HoraEntrada','Guardia','Estado',
-      'FechaSalida','HoraSalida','QuienRecibio','FirmaURL'
+      'FechaEntrada','HoraEntrada','GuardiaRecibio','Estado',
+      'FechaSalida','HoraSalida','GuardiaEntrego','FirmaResidente'
     ]);
     sh.setFrozenRows(1);
     sh.getRange(1,1,1,13).setFontWeight('bold')
@@ -145,13 +149,13 @@ function getOAsegurarHojaPaqueteria(ss) {
     sh.setColumnWidth(4,  200);  // Tracking
     sh.setColumnWidth(5,  120);  // Courier
     sh.setColumnWidth(9,  100);  // Estado
-    sh.setColumnWidth(13, 300);  // FirmaURL
+    sh.setColumnWidth(13, 300);  // FirmaResidente
   } else {
-    // Agregar columna FirmaURL si ya existía la hoja sin ella
+    // Agregar columna FirmaResidente si ya existía la hoja sin ella
     var hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-    if (hdrs.indexOf('FirmaURL') === -1) {
+    if (hdrs.indexOf('FirmaResidente') === -1) {
       var col = sh.getLastColumn() + 1;
-      sh.getRange(1, col).setValue('FirmaURL')
+      sh.getRange(1, col).setValue('FirmaResidente')
         .setFontWeight('bold').setBackground('#c49a22').setFontColor('#ffffff');
       sh.setColumnWidth(col, 300);
     }
@@ -246,11 +250,11 @@ function registrarPaquete(data, ss) {
     courier,          // Courier
     fmtFecha(ahora),  // FechaEntrada
     fmtHora(ahora),   // HoraEntrada
-    u.nombre,         // Guardia
+    u.nombre,         // GuardiaRecibio
     'pendiente',      // Estado
     '',               // FechaSalida
     '',               // HoraSalida
-    ''                // QuienRecibio
+    ''                // GuardiaEntrego
   ]);
 
   // WhatsApp al residente
@@ -319,8 +323,8 @@ function entregarPaquete(data, ss) {
   var hora    = fmtHora(ahora);
   var marcados = 0;
 
-  // Encontrar índice de columna FirmaURL (puede variar si la hoja ya existía)
-  var colFirma = hdrs.indexOf('FirmaURL');
+  // Encontrar índice de columna FirmaResidente (puede variar si la hoja ya existía)
+  var colFirma = hdrs.indexOf('FirmaResidente');
   if (colFirma === -1) colFirma = 12; // col 13 → índice 12 (base-0) → getRange col 13
 
   for (var i = 1; i < filas.length; i++) {
@@ -441,6 +445,207 @@ function saveContactoWA(data, ss) {
   return { ok: true, accion: 'creado', departamento: dept };
 }
 
+// ════════════════════════════════════════════════
+// HOJA VISITANTES
+// ════════════════════════════════════════════════
+function getOAsegurarHojaVisitantes(ss) {
+  var sh = ss.getSheetByName('Visitantes');
+  if (!sh) {
+    sh = ss.insertSheet('Visitantes');
+    sh.appendRow([
+      'FolioVisita','NombreVisitante','Empresa','DeptVisitado',
+      'FechaEntrada','HoraEntrada','FechaSalida','HoraSalida',
+      'GuardiaEntrada','GuardiaSalida','FotoID_URL','Estado','Notas'
+    ]);
+    sh.setFrozenRows(1);
+    sh.getRange(1,1,1,13).setFontWeight('bold')
+      .setBackground('#1a3a5c').setFontColor('#ffffff');
+    sh.setColumnWidth(1,  160);  // FolioVisita
+    sh.setColumnWidth(2,  200);  // NombreVisitante
+    sh.setColumnWidth(3,  160);  // Empresa
+    sh.setColumnWidth(4,  100);  // DeptVisitado
+    sh.setColumnWidth(11, 300);  // FotoID_URL
+    sh.setColumnWidth(12,  90);  // Estado
+  }
+  return sh;
+}
+
+// ════════════════════════════════════════════════
+// GUARDAR FOTO EN DRIVE
+// ════════════════════════════════════════════════
+function guardarFotoEnDrive(fotoBase64, folio) {
+  try {
+    var b64   = fotoBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+    var bytes = Utilities.base64Decode(b64);
+    var blob  = Utilities.newBlob(bytes, 'image/jpeg', 'foto_' + folio + '.jpg');
+
+    var nombre  = 'FotosID_Visitantes_Minas11';
+    var folders = DriveApp.getFoldersByName(nombre);
+    var folder  = folders.hasNext() ? folders.next() : DriveApp.createFolder(nombre);
+
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch(e) {
+    Logger.log('Error guardando foto: ' + e.message);
+    return 'error-foto: ' + e.message;
+  }
+}
+
+// ════════════════════════════════════════════════
+// REGISTRAR VISITA
+// ════════════════════════════════════════════════
+function registrarVisita(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var nombre       = String(data.nombre       || '').trim();
+  var empresa      = String(data.empresa      || '').trim();
+  var departamento = String(data.departamento || '').trim();
+  var foto         = data.foto || '';
+
+  if (!nombre)       return { error: 'Nombre del visitante es obligatorio' };
+  if (!departamento) return { error: 'Departamento es obligatorio' };
+
+  var sh    = getOAsegurarHojaVisitantes(ss);
+  var ahora = new Date();
+  var yy    = String(ahora.getFullYear()).slice(2);
+  var mm    = String(ahora.getMonth()+1).padStart(2,'0');
+  var dd    = String(ahora.getDate()).padStart(2,'0');
+  var seq   = String(Math.max(sh.getLastRow(), 1)).padStart(4,'0');
+  var folio = 'VIS-' + yy + mm + dd + '-' + seq;
+
+  var fotoUrl = '';
+  if (foto) {
+    fotoUrl = guardarFotoEnDrive(foto, folio);
+  }
+
+  sh.appendRow([
+    folio,            // FolioVisita
+    nombre,           // NombreVisitante
+    empresa,          // Empresa
+    departamento,     // DeptVisitado
+    fmtFecha(ahora),  // FechaEntrada
+    fmtHora(ahora),   // HoraEntrada
+    '',               // FechaSalida
+    '',               // HoraSalida
+    u.nombre,         // GuardiaEntrada
+    '',               // GuardiaSalida
+    fotoUrl,          // FotoID_URL
+    'adentro',        // Estado
+    ''                // Notas
+  ]);
+
+  return { ok: true, folio: folio };
+}
+
+// ════════════════════════════════════════════════
+// REGISTRAR SALIDA
+// ════════════════════════════════════════════════
+function registrarSalida(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var sh    = getOAsegurarHojaVisitantes(ss);
+  var filas = sh.getDataRange().getValues();
+  var hdrs  = filas[0];
+  var ahora = new Date();
+
+  // Si se pasa un folio específico
+  if (data.folioVisita) {
+    var folioTarget = String(data.folioVisita).trim();
+    for (var i = 1; i < filas.length; i++) {
+      var obj = {};
+      hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+      if (String(obj.FolioVisita).trim() === folioTarget) {
+        sh.getRange(i+1, hdrs.indexOf('FechaSalida')+1).setValue(fmtFecha(ahora));
+        sh.getRange(i+1, hdrs.indexOf('HoraSalida')+1).setValue(fmtHora(ahora));
+        sh.getRange(i+1, hdrs.indexOf('GuardiaSalida')+1).setValue(u.nombre);
+        sh.getRange(i+1, hdrs.indexOf('Estado')+1).setValue('salio');
+        return { ok: true };
+      }
+    }
+    return { error: 'No se encontró el folio: ' + folioTarget };
+  }
+
+  // Buscar por departamento
+  var departamento = String(data.departamento || '').trim();
+  if (!departamento) return { error: 'Se requiere departamento o folioVisita' };
+
+  var activos = [];
+  for (var i = 1; i < filas.length; i++) {
+    var obj = {};
+    hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+    if (String(obj.DeptVisitado).trim() === departamento &&
+        String(obj.Estado).trim().toLowerCase() === 'adentro') {
+      obj._row = i + 1;
+      activos.push(obj);
+    }
+  }
+
+  if (activos.length === 0) {
+    return { error: 'No hay visitantes activos en ese departamento' };
+  }
+
+  if (activos.length > 1) {
+    return { ok: true, multiples: activos };
+  }
+
+  // Exactamente 1
+  var fila = activos[0]._row;
+  sh.getRange(fila, hdrs.indexOf('FechaSalida')+1).setValue(fmtFecha(ahora));
+  sh.getRange(fila, hdrs.indexOf('HoraSalida')+1).setValue(fmtHora(ahora));
+  sh.getRange(fila, hdrs.indexOf('GuardiaSalida')+1).setValue(u.nombre);
+  sh.getRange(fila, hdrs.indexOf('Estado')+1).setValue('salio');
+  return { ok: true };
+}
+
+// ════════════════════════════════════════════════
+// VISITANTES ACTIVOS
+// ════════════════════════════════════════════════
+function getVisitantesActivos(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var sh    = getOAsegurarHojaVisitantes(ss);
+  var filas = sh.getDataRange().getValues();
+  var hdrs  = filas[0];
+  var lista = [];
+
+  for (var i = filas.length - 1; i >= 1; i--) {
+    var obj = {};
+    hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+    if (String(obj.Estado).trim().toLowerCase() === 'adentro') {
+      lista.push(obj);
+    }
+  }
+
+  return { ok: true, visitantes: lista, total: lista.length };
+}
+
+// ════════════════════════════════════════════════
+// HISTORIAL VISITANTES
+// ════════════════════════════════════════════════
+function getVisitantesHistorial(data, ss) {
+  var u = checkAuth(data.token);
+  if (!u) return { error: 'No autorizado' };
+
+  var sh     = getOAsegurarHojaVisitantes(ss);
+  var filas  = sh.getDataRange().getValues();
+  var hdrs   = filas[0];
+  var limite = data.limite ? parseInt(data.limite) : 100;
+  var lista  = [];
+
+  for (var i = filas.length - 1; i >= 1; i--) {
+    if (lista.length >= limite) break;
+    var obj = {};
+    hdrs.forEach(function(h, j) { obj[h] = filas[i][j]; });
+    lista.push(obj);
+  }
+
+  return { ok: true, visitantes: lista, total: filas.length - 1 };
+}
+
 // ════════════════════════════════════════════════════════════════
 // INICIALIZACIÓN MANUAL (ejecutar una vez desde el editor)
 // ════════════════════════════════════════════════════════════════
@@ -449,6 +654,7 @@ function inicializarHojas() {
   getOAsegurarHojaUsuarios(ss);
   getOAsegurarHojaPaqueteria(ss);
   getOAsegurarHojaContactosWA(ss);
+  getOAsegurarHojaVisitantes(ss);
   Logger.log('✅ Hojas inicializadas correctamente');
   Logger.log('👤 Usuario por defecto: guardia01 / Caseta2025');
 }

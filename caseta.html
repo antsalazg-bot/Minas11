@@ -211,6 +211,27 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .btn-limpiar:active{background:var(--border)}
 .firma-status{font-size:.75rem;text-align:center;color:#9e8a73;margin-top:6px;font-weight:600}
 
+/* ── VISITAS ── */
+.vis-badge{background:#1a3a5c;color:#fff;border-radius:20px;font-size:.7rem;font-weight:700;padding:2px 8px}
+.vis-card-list{display:flex;flex-direction:column;gap:8px}
+.vis-item{background:#fff;border:1px solid var(--border);border-radius:6px;padding:12px 14px;box-shadow:var(--shadow)}
+.vis-item-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px}
+.vis-nombre{font-size:.9rem;font-weight:700;color:var(--ink)}
+.vis-status{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:20px}
+.vis-status.adentro{background:#e8f0fe;color:#1a3a5c}
+.vis-status.salio{background:#f0f0f0;color:#6b5a47}
+.vis-dept{font-size:.8rem;color:var(--rust);font-weight:600}
+.vis-meta{font-size:.72rem;color:#9e8a73;margin-top:3px}
+.vis-foto{width:56px;height:56px;border-radius:4px;object-fit:cover;border:1px solid var(--border);flex-shrink:0}
+.vis-foto-placeholder{width:56px;height:56px;border-radius:4px;background:var(--warm);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.btn-salida{padding:6px 14px;background:#1a3a5c;color:#fff;border:none;border-radius:var(--radius);font-size:.78rem;font-weight:600;cursor:pointer}
+/* ── CÁMARA ── */
+.camara-wrap{background:#000;border-radius:8px;overflow:hidden;position:relative;aspect-ratio:4/3}
+#camaraVideo{width:100%;height:100%;object-fit:cover;display:block}
+.camara-overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.btn-capturar{background:rgba(255,255,255,.9);border:none;border-radius:50%;width:60px;height:60px;font-size:1.5rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#fotoPreview{width:100%;border-radius:8px;border:1px solid var(--border);display:none}
+
 /* ── SCANNER INPUT GLOBAL ── */
 #scannerCapture{position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0}
 
@@ -299,6 +320,11 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
         <h3>Config</h3>
         <p>WhatsApp y ajustes</p>
+      </div>
+      <div class="dash-card" style="grid-column:1/-1" onclick="goView('v-vis'); visStep('menu')" id="dashVisCard">
+        <svg viewBox="0 0 24 24" style="stroke:#1a3a5c;stroke-width:1.6;width:36px;height:36px;fill:none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        <h3>Visitantes</h3>
+        <p id="dashVisSub">Registro de acceso</p>
       </div>
     </div>
   </section>
@@ -545,6 +571,102 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
     </div>
   </section>
 
+  <!-- ─── VISTA: VISITANTES ─── -->
+  <section class="view" id="v-vis">
+    <button class="back-btn" onclick="goView('v-dash')">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Volver al menú
+    </button>
+
+    <!-- Sub-menú -->
+    <div id="vv-menu">
+      <div id="visMenuActivos" class="vis-card-list" style="margin-bottom:12px"></div>
+      <div class="dash-grid">
+        <div class="dash-card" onclick="visStep('reg')" style="cursor:pointer">
+          <svg viewBox="0 0 24 24" style="stroke:#1a3a5c;stroke-width:1.6;width:36px;height:36px;fill:none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+          <h3>Registrar Entrada</h3>
+          <p>Nueva visita</p>
+        </div>
+        <div class="dash-card" onclick="visStep('sal')" style="cursor:pointer">
+          <svg viewBox="0 0 24 24" style="stroke:#8b3a0f;stroke-width:1.6;width:36px;height:36px;fill:none"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="22" y1="11" x2="16" y2="11"/><polyline points="19 8 16 11 19 14"/></svg>
+          <h3>Registrar Salida</h3>
+          <p>Visitante sale</p>
+        </div>
+        <div class="dash-card" style="grid-column:1/-1;cursor:pointer" onclick="visStep('his')">
+          <svg viewBox="0 0 24 24" style="stroke:var(--gold);stroke-width:1.6;width:36px;height:36px;fill:none"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <h3>Historial de Visitas</h3>
+          <p>Consultar registros</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registro de entrada -->
+    <div id="vv-reg" style="display:none">
+      <button class="back-btn" onclick="visStep('menu')" style="margin-bottom:8px">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Volver
+      </button>
+      <div class="wizard-card">
+        <h3>🏠 Departamento a visitar</h3>
+        <p class="hint">Escanea o selecciona el departamento</p>
+        <div class="scan-zone" onclick="focusScanner('vis-dept')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
+          <p id="visRegDeptLabel">Sin depto seleccionado</p>
+        </div>
+        <div class="or-divider">o selecciona</div>
+        <div class="dept-grid" id="deptGridVis"></div>
+      </div>
+      <div class="wizard-card">
+        <h3>👤 Datos del Visitante</h3>
+        <div class="field">
+          <label>Nombre completo *</label>
+          <input id="visNombre" type="text" placeholder="Nombre del visitante">
+        </div>
+        <div class="field">
+          <label>Empresa (opcional)</label>
+          <input id="visEmpresa" type="text" placeholder="Nombre de la empresa">
+        </div>
+      </div>
+      <div class="wizard-card">
+        <h3>📷 Foto del ID (opcional)</h3>
+        <p class="hint">Toma una foto de la identificación del visitante</p>
+        <button class="btn-secondary" style="width:100%;margin-bottom:10px" onclick="abrirCamara()">📷 Tomar foto del ID</button>
+        <img id="fotoPreview" src="" alt="Foto del ID">
+      </div>
+      <button class="btn-primary" onclick="registrarEntrada()">✅ Registrar Entrada</button>
+    </div>
+
+    <!-- Registro de salida -->
+    <div id="vv-sal" style="display:none">
+      <button class="back-btn" onclick="visStep('menu')" style="margin-bottom:8px">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Volver
+      </button>
+      <div class="wizard-card">
+        <h3>🚪 Registrar Salida</h3>
+        <p class="hint">Escanea la tarjeta del residente o selecciona el departamento</p>
+        <div class="scan-zone" onclick="focusScanner('vis-sal')">
+          <svg viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7"/><rect x="2" y="15" width="7" height="7"/><rect x="15" y="2" width="7" height="7"/><line x1="15" y1="17" x2="15" y2="22"/><line x1="19" y1="17" x2="22" y2="17"/><line x1="22" y1="22" x2="19" y2="22"/><line x1="19" y1="20" x2="22" y2="20"/></svg>
+          <p>Toca aquí y escanea</p>
+        </div>
+        <div class="or-divider">o selecciona depto</div>
+        <div class="dept-grid" id="deptGridVisSal"></div>
+      </div>
+      <div class="vis-card-list" id="visActivosList"></div>
+    </div>
+
+    <!-- Historial de visitas -->
+    <div id="vv-his" style="display:none">
+      <button class="back-btn" onclick="visStep('menu')" style="margin-bottom:8px">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Volver
+      </button>
+      <div class="vis-card-list" id="visHistList">
+        <p style="text-align:center;color:#9e8a73;padding:24px">Cargando…</p>
+      </div>
+    </div>
+  </section>
+
   <!-- ── BOTTOM NAV ── -->
   <nav class="bottom-nav">
     <button class="nav-item active" id="nav-dash" onclick="goView('v-dash')">
@@ -562,6 +684,10 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
     <button class="nav-item" id="nav-his" onclick="goView('v-his'); loadHist()">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       <span>Historial</span>
+    </button>
+    <button class="nav-item" id="nav-vis" onclick="goView('v-vis'); visStep('menu')">
+      <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span>Visitas</span>
     </button>
   </nav>
 </div>
@@ -614,6 +740,22 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
     <div class="wa-contact-list" id="waContactList">
       <p style="text-align:center;padding:20px;color:#9e8a73">Cargando…</p>
     </div>
+  </div>
+</div>
+
+<!-- Modal: Cámara para foto del ID -->
+<div class="modal-backdrop" id="modalCamara">
+  <div class="modal-sheet">
+    <button class="modal-close" onclick="cerrarCamara()">✕</button>
+    <h3>📷 Foto del ID</h3>
+    <div class="camara-wrap">
+      <video id="camaraVideo" autoplay playsinline muted></video>
+      <div class="camara-overlay">
+        <button class="btn-capturar" onclick="capturarFoto()">📸</button>
+      </div>
+    </div>
+    <input type="file" id="fotoFileInput" accept="image/*" capture="environment" style="display:none" onchange="fotoDesdeArchivo(this)">
+    <button class="btn-secondary" style="width:100%;margin-top:10px" onclick="document.getElementById('fotoFileInput').click()">📁 Elegir desde galería</button>
   </div>
 </div>
 
@@ -784,6 +926,16 @@ function processScan(raw){
     if (dept){ selectEntDept(dept); }
     else { showToast('Tarjeta no reconocida: ' + raw, 'err'); }
   }
+  else if (state.scanMode === 'vis-dept') {
+    const dept = parseDept(raw);
+    if(dept){ selectVisDept(dept); }
+    else { showToast('Código no reconocido','err'); }
+  }
+  else if (state.scanMode === 'vis-sal') {
+    const dept = parseDept(raw) || parseResident(raw);
+    if(dept){ buscarSalida(dept); }
+    else { showToast('Tarjeta no reconocida','err'); }
+  }
 }
 
 // ════════════════════════════════════════════════
@@ -841,9 +993,11 @@ function bootApp(){
   document.getElementById('app').style.display = 'flex';
   document.getElementById('guardName').textContent = state.userName;
   buildDeptGrids();
+  buildDeptGridVis();
   buildCourierList();
   updateApiUrlDisplay();
   loadDashBanner();
+  loadDashVisBanner();
   // Mostrar botón de simulador
   document.getElementById('simToggle').classList.add('show');
 }
@@ -851,7 +1005,7 @@ function bootApp(){
 // ════════════════════════════════════════════════
 // NAVEGACIÓN
 // ════════════════════════════════════════════════
-const viewNavMap = { 'v-dash':'nav-dash','v-reg':'nav-reg','v-ent':'nav-ent','v-his':'nav-his','v-cfg':'' };
+const viewNavMap = { 'v-dash':'nav-dash','v-reg':'nav-reg','v-ent':'nav-ent','v-his':'nav-his','v-cfg':'','v-vis':'nav-vis' };
 
 function goView(id){
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
@@ -884,6 +1038,7 @@ async function loadDashBanner(){
   } catch(e) {
     banner.querySelector('.dash-banner-text').textContent = 'Error al cargar resumen';
   }
+  loadDashVisBanner();
 }
 
 // ════════════════════════════════════════════════
@@ -1349,6 +1504,244 @@ async function saveWaContact(){
     hideLoader();
     showToast('Error: ' + e.message,'err');
   }
+}
+
+// ════════════════════════════════════════════════
+// VISITANTES
+// ════════════════════════════════════════════════
+// Estado visitantes
+state.visDept = '';
+state.fotoIdB64 = '';
+
+function visStep(sub){
+  ['vv-menu','vv-reg','vv-sal','vv-his'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = id === 'vv-' + sub ? 'block' : 'none';
+  });
+  state.scanMode = null;
+  if(sub === 'reg'){
+    state.visDept = '';
+    state.fotoIdB64 = '';
+    document.getElementById('visNombre').value = '';
+    document.getElementById('visEmpresa').value = '';
+    document.getElementById('fotoPreview').style.display = 'none';
+    document.getElementById('visRegDeptLabel').textContent = 'Sin depto seleccionado';
+    document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>b.classList.remove('selected'));
+    state.scanMode = 'vis-dept';
+  }
+  if(sub === 'sal'){
+    document.getElementById('visActivosList').innerHTML = '';
+    document.querySelectorAll('#deptGridVisSal .dept-btn').forEach(b=>b.classList.remove('selected'));
+    state.scanMode = 'vis-sal';
+  }
+  if(sub === 'his') loadVisHist();
+  if(sub === 'menu') loadVisActivos();
+}
+
+function buildDeptGridVis(){
+  const gridVis    = document.getElementById('deptGridVis');
+  const gridVisSal = document.getElementById('deptGridVisSal');
+  if(gridVis){
+    gridVis.innerHTML = '';
+    DEPTS.forEach(d => {
+      const b = document.createElement('button');
+      b.className='dept-btn'; b.textContent=d; b.dataset.dept=d;
+      b.onclick = () => selectVisDept(d);
+      gridVis.appendChild(b);
+    });
+  }
+  if(gridVisSal){
+    gridVisSal.innerHTML = '';
+    DEPTS.forEach(d => {
+      const b = document.createElement('button');
+      b.className='dept-btn'; b.textContent=d; b.dataset.dept=d;
+      b.onclick = () => buscarSalida(d);
+      gridVisSal.appendChild(b);
+    });
+  }
+}
+
+function selectVisDept(dept){
+  state.visDept = dept;
+  document.getElementById('visRegDeptLabel').textContent = 'Visita a: Depto ' + dept;
+  document.querySelectorAll('#deptGridVis .dept-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.dept === dept);
+  });
+  showToast('Depto ' + dept + ' seleccionado','ok');
+  state.scanMode = null;
+  setTimeout(() => document.getElementById('visNombre').focus(), 200);
+}
+
+async function registrarEntrada(){
+  const nombre  = document.getElementById('visNombre').value.trim();
+  const empresa = document.getElementById('visEmpresa').value.trim();
+  if(!state.visDept){ showToast('Selecciona el departamento visitado','err'); return; }
+  if(!nombre){ showToast('Ingresa el nombre del visitante','err'); return; }
+  showLoader('Registrando visita…');
+  try {
+    const payload = { nombre, empresa, departamento: state.visDept };
+    if(state.fotoIdB64) payload.foto = state.fotoIdB64;
+    const r = await api('registrar-visita', payload);
+    hideLoader();
+    showToast('Visita registrada — Folio ' + r.folio,'ok');
+    visStep('menu');
+    loadDashVisBanner();
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message,'err');
+  }
+}
+
+async function buscarSalida(dept){
+  document.querySelectorAll('#deptGridVisSal .dept-btn').forEach(b=>{
+    b.classList.toggle('selected', b.dataset.dept === dept);
+  });
+  showLoader('Buscando visitantes…');
+  try {
+    const r = await api('registrar-salida', { departamento: dept });
+    hideLoader();
+    if(r.ok && !r.multiples){
+      showToast('Salida registrada ✓','ok');
+      visStep('menu');
+      loadDashVisBanner();
+    } else if(r.multiples){
+      const list = document.getElementById('visActivosList');
+      list.innerHTML = '<p style="font-size:.82rem;color:#6b5a47;margin-bottom:8px">Múltiples visitantes en Depto '+dept+'. Selecciona quién sale:</p>' +
+        r.multiples.map(v => `<div class="vis-item" style="cursor:pointer" onclick="confirmarSalida('${v.FolioVisita}')">
+          <div class="vis-nombre">${v.NombreVisitante}</div>
+          <div class="vis-meta">Entró: ${v.HoraEntrada||'—'} ${v.Empresa ? '· '+v.Empresa : ''}</div>
+        </div>`).join('');
+    }
+  } catch(e){
+    hideLoader();
+    showToast('Error: ' + e.message,'err');
+  }
+}
+
+async function confirmarSalida(folioVisita){
+  showLoader('Registrando salida…');
+  try {
+    await api('registrar-salida', { folioVisita });
+    hideLoader();
+    showToast('Salida registrada ✓','ok');
+    visStep('menu');
+    loadDashVisBanner();
+  } catch(e){
+    hideLoader();
+    showToast('Error: '+e.message,'err');
+  }
+}
+
+async function loadVisActivos(){
+  try {
+    const r = await api('get-visitantes-activos', {});
+    const lista = r.visitantes || [];
+    const el = document.getElementById('visActivosCount');
+    if(el) el.textContent = lista.length;
+    const sub = document.getElementById('dashVisSub');
+    if(sub) sub.textContent = lista.length > 0 ? lista.length + ' visitante(s) adentro' : 'Sin visitantes activos';
+    const cont = document.getElementById('visMenuActivos');
+    if(cont) renderVisActivos(lista, cont);
+  } catch(e) { /* silencioso */ }
+}
+
+function renderVisActivos(lista, cont){
+  if(!lista.length){
+    cont.innerHTML = '';
+    return;
+  }
+  cont.innerHTML = '<div style="font-size:.78rem;font-weight:700;color:#1a3a5c;margin-bottom:6px">Visitantes activos</div>' +
+    lista.map(v => `
+      <div class="vis-item">
+        <div class="vis-item-top">
+          <span class="vis-nombre">${v.NombreVisitante||'—'}</span>
+          <span class="vis-status adentro">adentro</span>
+        </div>
+        <div class="vis-dept">Depto ${v.DeptVisitado||'—'}${v.Empresa ? ' · '+v.Empresa : ''}</div>
+        <div class="vis-meta">Entrada: ${v.FechaEntrada||'—'} ${v.HoraEntrada||''}</div>
+      </div>`).join('');
+}
+
+async function loadDashVisBanner(){ await loadVisActivos(); }
+
+async function loadVisHist(){
+  const list = document.getElementById('visHistList');
+  if(!list) return;
+  list.innerHTML = '<p style="text-align:center;color:#9e8a73;padding:24px">Cargando…</p>';
+  try {
+    const r = await api('get-visitantes-hist', { limite: 100 });
+    const items = r.visitantes || [];
+    if(!items.length){ list.innerHTML='<p style="text-align:center;color:#9e8a73;padding:24px">Sin registros</p>'; return; }
+    list.innerHTML = items.map(v => `
+      <div class="vis-item">
+        <div class="vis-item-top">
+          <span class="vis-nombre">${v.NombreVisitante||'—'}</span>
+          <span class="vis-status ${(v.Estado||'').toLowerCase()}">${v.Estado||'—'}</span>
+        </div>
+        <div class="vis-dept">Depto ${v.DeptVisitado||'—'}${v.Empresa ? ' · '+v.Empresa : ''}</div>
+        <div class="vis-meta">
+          Folio ${v.FolioVisita||'—'} · Entrada ${v.FechaEntrada||'—'} ${v.HoraEntrada||''}
+          ${v.HoraSalida ? ' · Salida '+v.HoraSalida : ''}
+        </div>
+        ${v.FotoID_URL ? '<a href="'+v.FotoID_URL+'" target="_blank" style="font-size:.72rem;color:var(--rust)">Ver foto ID →</a>' : ''}
+      </div>`).join('');
+  } catch(e){
+    list.innerHTML = '<p style="text-align:center;color:var(--red);padding:24px">'+e.message+'</p>';
+  }
+}
+
+// ── CÁMARA ──
+async function abrirCamara(){
+  openModal('modalCamara');
+  const video = document.getElementById('camaraVideo');
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal:'environment' }, width:{ ideal:1280 }, height:{ ideal:720 } }
+    });
+    video.srcObject = stream;
+    state.camaraStream = stream;
+    await video.play();
+  } catch(e){
+    cerrarCamara();
+    document.getElementById('fotoFileInput').click();
+  }
+}
+
+function capturarFoto(){
+  const video = document.getElementById('camaraVideo');
+  const canvas = document.createElement('canvas');
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  state.fotoIdB64 = canvas.toDataURL('image/jpeg', 0.85);
+  mostrarFotoPreview(state.fotoIdB64);
+  cerrarCamara();
+}
+
+function fotoDesdeArchivo(input){
+  const file = input.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    state.fotoIdB64 = e.target.result;
+    mostrarFotoPreview(state.fotoIdB64);
+  };
+  reader.readAsDataURL(file);
+}
+
+function mostrarFotoPreview(src){
+  const prev = document.getElementById('fotoPreview');
+  prev.src = src;
+  prev.style.display = 'block';
+  showToast('Foto capturada ✓','ok');
+}
+
+function cerrarCamara(){
+  if(state.camaraStream){
+    state.camaraStream.getTracks().forEach(t => t.stop());
+    state.camaraStream = null;
+  }
+  closeModal('modalCamara');
 }
 
 // ════════════════════════════════════════════════
