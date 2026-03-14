@@ -203,14 +203,13 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 .modal-sheet h3{font-size:1rem;font-weight:700;margin-bottom:16px;color:var(--ink)}
 .modal-close{float:right;cursor:pointer;background:none;border:none;font-size:1.2rem;color:#9e8a73;line-height:1}
 
-/* ── OTP ── */
-.otp-box{display:flex;justify-content:center;margin:20px 0 8px}
-#otpInput{width:180px;text-align:center;font-size:2rem;font-weight:800;letter-spacing:.3em;
-  padding:14px 10px;border:2px solid var(--border);border-radius:8px;
-  background:var(--warm);color:var(--ink);outline:none;font-family:monospace}
-#otpInput:focus{border-color:var(--gold);background:#fff}
-.otp-nota{font-size:.75rem;color:#9e8a73;text-align:center;margin-top:4px}
-#otpTimer{color:var(--rust);font-weight:600}
+/* ── FIRMA DIGITAL ── */
+.firma-wrap{border:2px dashed var(--border);border-radius:8px;background:#fff;overflow:hidden;touch-action:none;position:relative}
+.firma-hint-bar{font-size:.78rem;color:#9e8a73;text-align:center;padding:7px;background:var(--warm);border-bottom:1px solid var(--border);pointer-events:none}
+#firmaCanvas{display:block;width:100%;cursor:crosshair;touch-action:none;background:#fff}
+.btn-limpiar{width:100%;padding:10px;background:var(--warm);color:var(--ink);border:1.5px solid var(--border);border-radius:var(--radius);font-size:.9rem;font-weight:600;cursor:pointer;margin-top:8px;transition:background .15s}
+.btn-limpiar:active{background:var(--border)}
+.firma-status{font-size:.75rem;text-align:center;color:#9e8a73;margin-top:6px;font-weight:600}
 
 /* ── SCANNER INPUT GLOBAL ── */
 #scannerCapture{position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0}
@@ -425,35 +424,32 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         </div>
         <div class="pkg-list" id="pkgList"></div>
       </div>
-      <button class="btn-entregar" id="btnSolicitarOtp" onclick="solicitarOtp()" disabled>
-        📲 Enviar código al residente
+      <button class="btn-entregar" id="btnSolicitarFirma" onclick="mostrarFirma()" disabled>
+        ✍️ Confirmar con Firma Digital
       </button>
     </div>
 
-    <!-- Paso E3: Validar OTP -->
+    <!-- Paso E3: Firma Digital -->
     <div id="es3" style="display:none">
       <div class="ent-dept-info">
         <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
         <div>
-          <div class="ent-dept-name" id="otpDeptName">Depto —</div>
-          <div class="ent-dept-sub" id="otpTimer">Código válido por 10 minutos</div>
+          <div class="ent-dept-name" id="firmaDeptName">Depto —</div>
+          <div class="ent-dept-sub" id="firmaPkgCount">— paquete(s) a entregar</div>
         </div>
       </div>
       <div class="wizard-card">
-        <h3>🔐 Código de Verificación</h3>
-        <p class="hint">El residente recibió un código por WhatsApp. Pídeselo y escríbelo aquí.</p>
-        <div class="otp-box">
-          <input id="otpInput" type="text" inputmode="numeric" pattern="[0-9]*"
-            maxlength="6" placeholder="· · · · · ·" autocomplete="off"
-            oninput="this.value=this.value.replace(/\D/g,''); updateOtpBtn()">
+        <h3>✍️ Firma del Residente</h3>
+        <p class="hint">El residente firma en pantalla para confirmar la recepción de sus paquetes.</p>
+        <div class="firma-wrap">
+          <div class="firma-hint-bar">↓ Firma aquí con el dedo o lápiz ↓</div>
+          <canvas id="firmaCanvas" height="200"></canvas>
         </div>
-        <p class="otp-nota">⚠️ Solo el residente recibe este código en su WhatsApp</p>
+        <button class="btn-limpiar" onclick="limpiarFirma()">🗑 Limpiar y volver a firmar</button>
+        <div class="firma-status" id="firmaStatus">Sin firma — dibuja en el recuadro</div>
       </div>
-      <button class="btn-entregar" id="btnValidarOtp" onclick="validarOtp()" disabled>
-        ✓ Validar y Entregar
-      </button>
-      <button class="btn-secondary" style="width:100%;margin-top:8px" onclick="reenviarOtp()">
-        🔄 Reenviar código
+      <button class="btn-entregar" id="btnConfirmarFirma" onclick="confirmarFirma()" disabled>
+        ✓ Confirmar Entrega
       </button>
     </div>
 
@@ -465,7 +461,7 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
         <p id="sucEntText">— paquetes entregados</p>
         <div class="suc-wa" style="display:flex">
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-          <span>Validado con código OTP del residente ✓</span>
+          <span>Confirmado con firma digital del residente ✓</span>
         </div>
         <button class="btn-nuevo" onclick="entStep(1)">Entregar Otro</button>
       </div>
@@ -1021,11 +1017,11 @@ function entStep(n){
   if(n===1){
     state.entDept = '';
     state.entPkgs = [];
-    state.otpFolios = [];
+    state.entFolios = [];
     state.scanMode = 'ent';
-    clearOtpTimer();
     document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>b.classList.remove('selected'));
   }
+  if(n===3){ setTimeout(initFirmaCanvas, 80); } // pequeño delay para que el DOM sea visible
 }
 
 async function selectEntDept(dept){
@@ -1056,7 +1052,7 @@ function renderPkgList(){
     list.innerHTML = `<div class="pkg-empty">
       <svg viewBox="0 0 24 24"><path d="M22 12H2"/><path d="M12 2v10"/><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
       <p>Sin paquetes pendientes</p></div>`;
-    document.getElementById('btnSolicitarOtp').disabled = true;
+    document.getElementById('btnSolicitarFirma').disabled = true;
     return;
   }
   list.innerHTML = state.entPkgs.map((p,i) => `
@@ -1069,112 +1065,107 @@ function renderPkgList(){
         <div class="pkg-folio">Folio: ${p.Folio||'—'}</div>
       </div>
     </div>`).join('');
-  document.getElementById('btnSolicitarOtp').disabled = false;
+  document.getElementById('btnSolicitarFirma').disabled = false;
 }
 
 function updateEntBtn(){
   const any = [...document.querySelectorAll('.pkg-checkbox')].some(c=>c.checked);
-  document.getElementById('btnSolicitarOtp').disabled = !any;
+  document.getElementById('btnSolicitarFirma').disabled = !any;
 }
 
-// ── OTP TIMER ──
-let otpTimerInterval = null;
-let otpExpiry = null;
-function startOtpTimer(){
-  clearOtpTimer();
-  otpExpiry = Date.now() + 10 * 60 * 1000; // 10 min
-  otpTimerInterval = setInterval(() => {
-    const left = Math.max(0, otpExpiry - Date.now());
-    const m = String(Math.floor(left/60000)).padStart(2,'0');
-    const s = String(Math.floor((left%60000)/1000)).padStart(2,'0');
-    const el = document.getElementById('otpTimer');
-    if(el) el.textContent = left > 0 ? `Código válido: ${m}:${s}` : 'Código expirado — reenvía';
-    if(left === 0) clearOtpTimer();
-  }, 1000);
-}
-function clearOtpTimer(){
-  if(otpTimerInterval){ clearInterval(otpTimerInterval); otpTimerInterval = null; }
+// ════════════════════════════════════════════════
+// FIRMA DIGITAL
+// ════════════════════════════════════════════════
+let firmaCtx = null;
+let firmaDrawing = false;
+let firmaTieneDatos = false;
+
+function initFirmaCanvas(){
+  const canvas = document.getElementById('firmaCanvas');
+  if(!canvas) return;
+  // Resolución real para buena calidad (el CSS la escala al ancho del div)
+  canvas.width  = 600;
+  canvas.height = 200;
+
+  // Limpiar listeners previos clonando el nodo
+  const fresh = canvas.cloneNode(true);
+  canvas.parentNode.replaceChild(fresh, canvas);
+
+  firmaCtx = fresh.getContext('2d');
+  firmaCtx.strokeStyle = '#18120a';
+  firmaCtx.lineWidth   = 2.8;
+  firmaCtx.lineCap     = 'round';
+  firmaCtx.lineJoin    = 'round';
+  firmaCtx.fillStyle   = '#ffffff';
+  firmaCtx.fillRect(0, 0, fresh.width, fresh.height);
+
+  firmaTieneDatos = false;
+  document.getElementById('btnConfirmarFirma').disabled = true;
+  const st = document.getElementById('firmaStatus');
+  st.textContent = 'Sin firma — dibuja en el recuadro';
+  st.style.color = '#9e8a73';
+
+  function getPos(e){
+    const rect   = fresh.getBoundingClientRect();
+    const scaleX = fresh.width  / rect.width;
+    const scaleY = fresh.height / rect.height;
+    const src    = e.touches ? e.touches[0] : e;
+    return { x:(src.clientX - rect.left)*scaleX, y:(src.clientY - rect.top)*scaleY };
+  }
+  function onStart(e){ e.preventDefault(); firmaDrawing=true; const p=getPos(e); firmaCtx.beginPath(); firmaCtx.moveTo(p.x,p.y); }
+  function onMove(e) { e.preventDefault(); if(!firmaDrawing) return; const p=getPos(e); firmaCtx.lineTo(p.x,p.y); firmaCtx.stroke(); firmaTieneDatos=true; _updateFirmaBtn(); }
+  function onEnd(e)  { e.preventDefault(); firmaDrawing=false; }
+
+  fresh.addEventListener('mousedown',  onStart);
+  fresh.addEventListener('mousemove',  onMove);
+  fresh.addEventListener('mouseup',    onEnd);
+  fresh.addEventListener('mouseleave', onEnd);
+  fresh.addEventListener('touchstart', onStart, {passive:false});
+  fresh.addEventListener('touchmove',  onMove,  {passive:false});
+  fresh.addEventListener('touchend',   onEnd,   {passive:false});
 }
 
-// ── SOLICITAR OTP ──
-async function solicitarOtp(){
+function _updateFirmaBtn(){
+  document.getElementById('btnConfirmarFirma').disabled = !firmaTieneDatos;
+  const st = document.getElementById('firmaStatus');
+  if(firmaTieneDatos){
+    st.textContent = 'Firma capturada ✓ — presiona "Confirmar Entrega"';
+    st.style.color = 'var(--sage)';
+  }
+}
+
+function limpiarFirma(){
+  const canvas = document.getElementById('firmaCanvas');
+  if(!firmaCtx || !canvas) return;
+  firmaCtx.fillStyle = '#ffffff';
+  firmaCtx.fillRect(0, 0, canvas.width, canvas.height);
+  firmaTieneDatos = false;
+  document.getElementById('btnConfirmarFirma').disabled = true;
+  const st = document.getElementById('firmaStatus');
+  st.textContent = 'Sin firma — dibuja en el recuadro';
+  st.style.color = '#9e8a73';
+}
+
+function mostrarFirma(){
   const checks = [...document.querySelectorAll('.pkg-checkbox')];
   const folios = checks.filter(c=>c.checked).map(c => state.entPkgs[c.dataset.idx].Folio);
   if(!folios.length){ showToast('Selecciona al menos un paquete','err'); return; }
-  state.otpFolios = folios;
-  showLoader('Enviando código al residente…');
-  try {
-    const r = await api('solicitar-otp', { departamento: state.entDept, folios });
-    hideLoader();
-    if(r.sinContacto){
-      // Sin WhatsApp registrado — ofrecer entrega directa con confirmación manual
-      if(confirm(`⚠️ El depto ${state.entDept} no tiene WhatsApp registrado.\n\n¿Confirmas que el residente está presente y entregaste los paquetes?`)){
-        await entregarDirecto(folios);
-      }
-      return;
-    }
-    document.getElementById('otpDeptName').textContent = 'Departamento ' + state.entDept;
-    document.getElementById('otpInput').value = '';
-    document.getElementById('btnValidarOtp').disabled = true;
-    entStep(3);
-    startOtpTimer();
-    showToast('Código enviado por WhatsApp ✓', 'ok');
-  } catch(e){
-    hideLoader();
-    showToast('Error: ' + e.message, 'err');
-  }
+  state.entFolios = folios;
+  document.getElementById('firmaDeptName').textContent = 'Departamento ' + state.entDept;
+  document.getElementById('firmaPkgCount').textContent = folios.length + ' paquete(s) a entregar';
+  entStep(3);
 }
 
-// ── REENVIAR OTP ──
-async function reenviarOtp(){
-  showLoader('Reenviando código…');
+async function confirmarFirma(){
+  if(!firmaTieneDatos){ showToast('El residente debe firmar primero','err'); return; }
+  const canvas = document.getElementById('firmaCanvas');
+  const firmaB64 = canvas.toDataURL('image/png');
+  showLoader('Registrando entrega y guardando firma…');
   try {
-    await api('solicitar-otp', { departamento: state.entDept, folios: state.otpFolios });
-    hideLoader();
-    document.getElementById('otpInput').value = '';
-    document.getElementById('btnValidarOtp').disabled = true;
-    startOtpTimer();
-    showToast('Código reenviado ✓', 'ok');
-  } catch(e){
-    hideLoader();
-    showToast('Error: ' + e.message, 'err');
-  }
-}
-
-function updateOtpBtn(){
-  const v = document.getElementById('otpInput').value;
-  document.getElementById('btnValidarOtp').disabled = v.length !== 6;
-}
-
-// ── VALIDAR OTP Y ENTREGAR ──
-async function validarOtp(){
-  const otp = document.getElementById('otpInput').value.trim();
-  if(otp.length !== 6){ showToast('Ingresa el código de 6 dígitos','err'); return; }
-  showLoader('Validando código…');
-  try {
-    const r = await api('entregar-paquete', { folios: state.otpFolios, otp });
-    hideLoader();
-    clearOtpTimer();
-    document.getElementById('sucEntText').textContent =
-      state.otpFolios.length + ' paquete(s) entregado(s) — validado con OTP ✓';
-    entStep(4);
-    loadDashBanner();
-  } catch(e){
-    hideLoader();
-    showToast('Código incorrecto o expirado', 'err');
-    document.getElementById('otpInput').value = '';
-    document.getElementById('btnValidarOtp').disabled = true;
-  }
-}
-
-// ── ENTREGA DIRECTA (sin WA registrado) ──
-async function entregarDirecto(folios){
-  showLoader('Registrando entrega…');
-  try {
-    await api('entregar-paquete', { folios, sinOtp: true });
+    await api('entregar-paquete', { folios: state.entFolios, firma: firmaB64 });
     hideLoader();
     document.getElementById('sucEntText').textContent =
-      folios.length + ' paquete(s) entregado(s) — confirmación manual';
+      state.entFolios.length + ' paquete(s) entregado(s) — firma digital guardada ✓';
     entStep(4);
     loadDashBanner();
   } catch(e){

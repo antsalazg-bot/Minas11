@@ -29,7 +29,6 @@ function doPost(e) {
 
     // ── Acciones protegidas ───────────────────────────────────
     } else if (accion === 'registrar-paquete')   { resultado = registrarPaquete(data, ss);
-    } else if (accion === 'solicitar-otp')       { resultado = solicitarOtp(data, ss);
     } else if (accion === 'entregar-paquete')    { resultado = entregarPaquete(data, ss);
     } else if (accion === 'paquetes-pendientes') { resultado = getPaquetesPendientes(data, ss);
     } else if (accion === 'paquetes-admin')      { resultado = getPaquetesAdmin(data, ss);
@@ -135,18 +134,27 @@ function getOAsegurarHojaPaqueteria(ss) {
     sh.appendRow([
       'Folio','Departamento','Propietario','Tracking','Courier',
       'FechaEntrada','HoraEntrada','Guardia','Estado',
-      'FechaSalida','HoraSalida','QuienRecibio'
+      'FechaSalida','HoraSalida','QuienRecibio','FirmaURL'
     ]);
     sh.setFrozenRows(1);
-    sh.getRange(1,1,1,12).setFontWeight('bold')
+    sh.getRange(1,1,1,13).setFontWeight('bold')
       .setBackground('#c49a22').setFontColor('#ffffff');
-    // Anchos de columna cómodos
-    sh.setColumnWidth(1, 160);   // Folio
-    sh.setColumnWidth(2, 110);   // Departamento
-    sh.setColumnWidth(3, 160);   // Propietario
-    sh.setColumnWidth(4, 200);   // Tracking
-    sh.setColumnWidth(5, 120);   // Courier
-    sh.setColumnWidth(9, 100);   // Estado
+    sh.setColumnWidth(1,  160);  // Folio
+    sh.setColumnWidth(2,  110);  // Departamento
+    sh.setColumnWidth(3,  160);  // Propietario
+    sh.setColumnWidth(4,  200);  // Tracking
+    sh.setColumnWidth(5,  120);  // Courier
+    sh.setColumnWidth(9,  100);  // Estado
+    sh.setColumnWidth(13, 300);  // FirmaURL
+  } else {
+    // Agregar columna FirmaURL si ya existía la hoja sin ella
+    var hdrs = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    if (hdrs.indexOf('FirmaURL') === -1) {
+      var col = sh.getLastColumn() + 1;
+      sh.getRange(1, col).setValue('FirmaURL')
+        .setFontWeight('bold').setBackground('#c49a22').setFontColor('#ffffff');
+      sh.setColumnWidth(col, 300);
+    }
   }
   return sh;
 }
@@ -263,111 +271,74 @@ function registrarPaquete(data, ss) {
 }
 
 // ════════════════════════════════════════════════════════════════
-// SOLICITAR OTP — genera código y lo manda por WhatsApp al residente
+// GUARDAR FIRMA EN GOOGLE DRIVE
 // ════════════════════════════════════════════════════════════════
-function solicitarOtp(data, ss) {
-  var u = checkAuth(data.token);
-  if (!u) return { error: 'No autorizado' };
+function guardarFirmaEnDrive(firmaBase64, folio) {
+  try {
+    // Quitar prefijo data:image/png;base64,
+    var b64 = firmaBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+    var bytes = Utilities.base64Decode(b64);
+    var blob  = Utilities.newBlob(bytes, 'image/png', 'firma_' + folio + '.png');
 
-  var dept   = String(data.departamento || '').trim();
-  var folios = data.folios;
-  if (!dept || !folios || !folios.length) return { error: 'Faltan datos' };
+    // Obtener o crear carpeta en Drive
+    var nombre   = 'Firmas_Paqueteria_Minas11';
+    var folders  = DriveApp.getFoldersByName(nombre);
+    var folder   = folders.hasNext() ? folders.next() : DriveApp.createFolder(nombre);
 
-  var contacto = getContactoWA(dept, ss);
-  if (!contacto || !contacto.telefono || !contacto.apikey) {
-    return { ok: true, sinContacto: true };
+    var file = folder.createFile(blob);
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    return file.getUrl();
+  } catch(e) {
+    Logger.log('Error guardando firma: ' + e.message);
+    return 'error-firma: ' + e.message;
   }
-
-  // Generar OTP de 6 dígitos
-  var otp = String(Math.floor(100000 + Math.random() * 900000));
-  var expiry = Date.now() + 10 * 60 * 1000; // 10 minutos
-
-  // Guardar OTP en PropertiesService con clave por depto
-  var props = PropertiesService.getScriptProperties();
-  props.setProperty('otp_' + dept, JSON.stringify({
-    otp: otp, expiry: expiry, folios: folios
-  }));
-
-  // Enviar por WhatsApp al residente
-  var msg = '🔐 *Código de entrega de paquete*\n'
-    + 'Depto: *' + dept + '*\n\n'
-    + 'Tu código es: *' + otp + '*\n\n'
-    + '⏱ Válido por 10 minutos.\n'
-    + 'Muéstraselo al guardia para recibir tu(s) paquete(s).';
-
-  var waStatus = sendWhatsApp(contacto.telefono, contacto.apikey, msg);
-
-  return { ok: true, waStatus: waStatus };
 }
 
 // ════════════════════════════════════════════════════════════════
-// ENTREGAR PAQUETE — requiere OTP válido (o sinOtp para deptos sin WA)
+// ENTREGAR PAQUETE — requiere firma digital del residente
 // ════════════════════════════════════════════════════════════════
 function entregarPaquete(data, ss) {
   var u = checkAuth(data.token);
   if (!u) return { error: 'No autorizado' };
 
-  var folios  = data.folios;
-  var otp     = String(data.otp || '').trim();
-  var sinOtp  = data.sinOtp === true;
+  var folios = data.folios;
+  var firma  = data.firma || '';   // base64 PNG del canvas
 
   if (!folios || !folios.length) return { error: 'Se requiere al menos un folio' };
+  if (!firma) return { error: 'Se requiere la firma del residente para entregar' };
 
-  // ── Validar OTP (si no es entrega directa) ──────────────────
-  if (!sinOtp) {
-    // Obtener el depto del primer folio para buscar el OTP
-    var shP   = getOAsegurarHojaPaqueteria(ss);
-    var filasP = shP.getDataRange().getValues();
-    var dept  = '';
-    for (var x = 1; x < filasP.length; x++) {
-      if (String(filasP[x][0]).trim() === folios[0]) {
-        dept = String(filasP[x][1]).trim(); break;
-      }
-    }
+  // ── Guardar firma en Drive ───────────────────────────────────
+  var firmaUrl = guardarFirmaEnDrive(firma, folios[0]);
 
-    var props  = PropertiesService.getScriptProperties();
-    var rawOtp = props.getProperty('otp_' + dept);
-    if (!rawOtp) return { error: 'Código no encontrado o ya usado. Solicita uno nuevo.' };
-
-    var otpData = JSON.parse(rawOtp);
-    if (Date.now() > otpData.expiry) {
-      props.deleteProperty('otp_' + dept);
-      return { error: 'El código ha expirado. Solicita uno nuevo.' };
-    }
-    if (otpData.otp !== otp) {
-      return { error: 'Código incorrecto.' };
-    }
-
-    // OTP válido — eliminarlo para que no se reutilice
-    props.deleteProperty('otp_' + dept);
-  }
-
-  // ── Marcar como entregados ───────────────────────────────────
+  // ── Marcar paquetes como entregados ─────────────────────────
   var sh      = getOAsegurarHojaPaqueteria(ss);
   var filas   = sh.getDataRange().getValues();
+  var hdrs    = filas[0];
   var ahora   = new Date();
   var fecha   = fmtFecha(ahora);
   var hora    = fmtHora(ahora);
-  var entDept = '';
   var marcados = 0;
+
+  // Encontrar índice de columna FirmaURL (puede variar si la hoja ya existía)
+  var colFirma = hdrs.indexOf('FirmaURL');
+  if (colFirma === -1) colFirma = 12; // col 13 → índice 12 (base-0) → getRange col 13
 
   for (var i = 1; i < filas.length; i++) {
     var folio = String(filas[i][0]).trim();
     if (folios.indexOf(folio) >= 0 &&
         String(filas[i][8]).trim().toLowerCase() === 'pendiente') {
-      var metodo = sinOtp ? u.nombre + ' (manual)' : u.nombre + ' (OTP ✓)';
       sh.getRange(i+1,  9).setValue('entregado');
       sh.getRange(i+1, 10).setValue(fecha);
       sh.getRange(i+1, 11).setValue(hora);
-      sh.getRange(i+1, 12).setValue(metodo);
-      entDept = String(filas[i][1]).trim();
+      sh.getRange(i+1, 12).setValue(u.nombre + ' (firma ✓)');
+      sh.getRange(i+1, colFirma + 1).setValue(firmaUrl);
       marcados++;
     }
   }
 
   if (marcados === 0) return { error: 'No se encontraron paquetes pendientes con esos folios' };
 
-  return { ok: true, marcados: marcados };
+  return { ok: true, marcados: marcados, firmaUrl: firmaUrl };
 }
 
 // ════════════════════════════════════════════════════════════════
