@@ -49,7 +49,6 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
 
 /* ── VISTAS ── */
 .view{display:none;flex-direction:column;padding:16px;padding-bottom:calc(var(--nav-h)+16px);gap:16px;animation:fadeIn .2s}
-body.sim-visible .view{padding-bottom:calc(var(--nav-h)+120px)}
 .view.active{display:flex}
 @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
 
@@ -99,6 +98,11 @@ body.sim-visible .view{padding-bottom:calc(var(--nav-h)+120px)}
 .dept-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;max-height:280px;overflow-y:auto}
 .dept-btn{background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);padding:8px 4px;font-size:.78rem;font-weight:600;color:var(--ink);cursor:pointer;text-align:center;transition:all .15s}
 .dept-btn:active,.dept-btn.selected{background:var(--rust);color:#fff;border-color:var(--rust)}
+.dept-btn.has-pkgs{background:#e8f4e8;border-color:var(--sage);color:var(--sage)}
+.dept-btn.has-pkgs:active,.dept-btn.has-pkgs.selected{background:var(--rust);color:#fff;border-color:var(--rust)}
+.dept-pkg-badge{display:inline-flex;align-items:center;justify-content:center;background:var(--sage);color:#fff;border-radius:10px;font-size:.6rem;font-weight:800;padding:1px 5px;margin-left:4px;vertical-align:middle;min-width:16px}
+.ent-grid-hint{font-size:.75rem;color:#6b5a47;text-align:center;padding:6px 0;display:flex;align-items:center;justify-content:center;gap:6px}
+.ent-grid-hint span{display:inline-block;width:10px;height:10px;background:#e8f4e8;border:1px solid var(--sage);border-radius:2px}
 
 .courier-list{display:flex;flex-direction:column;gap:8px}
 .courier-btn{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--warm);border:1px solid var(--border);border-radius:var(--radius);font-size:.9rem;font-weight:600;color:var(--ink);cursor:pointer;transition:all .15s}
@@ -240,30 +244,8 @@ body.sim-visible .view{padding-bottom:calc(var(--nav-h)+120px)}
 .btn-scan-cam{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;background:var(--rust);color:#fff;border:none;border-radius:var(--radius);font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px}
 .btn-scan-cam svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:2}
 
-/* ── SCANNER INPUT GLOBAL ── */
+/* ── SCANNER USB (teclado HID) ── */
 #scannerCapture{position:fixed;top:-999px;left:-999px;width:1px;height:1px;opacity:0}
-
-/* ── BARRA SIMULADOR (modo prueba) ── */
-#simBar{display:none;position:fixed;bottom:var(--nav-h);left:0;right:0;z-index:150;
-  background:#1a1a2e;border-top:2px solid var(--gold);padding:8px 12px;
-  flex-direction:column;gap:6px}
-#simBar.show{display:flex}
-.sim-label{font-size:.7rem;color:var(--gold);font-weight:700;letter-spacing:.08em;text-transform:uppercase}
-.sim-row{display:flex;gap:8px}
-#simInput{flex:1;padding:8px 10px;border-radius:var(--radius);border:1px solid #444;
-  background:#0d0d1a;color:#fff;font-size:.9rem;font-family:monospace;outline:none}
-#simInput:focus{border-color:var(--gold)}
-#simSend{padding:8px 14px;background:var(--gold);color:#1a1a2e;border:none;
-  border-radius:var(--radius);font-weight:700;font-size:.85rem;cursor:pointer;white-space:nowrap}
-.sim-chips{display:flex;gap:6px;flex-wrap:wrap}
-.sim-chip{padding:3px 9px;background:#2a2a3e;color:#ccc;border:1px solid #444;
-  border-radius:20px;font-size:.72rem;cursor:pointer;font-family:monospace}
-.sim-chip:active{background:var(--gold);color:#1a1a2e}
-#simToggle{position:fixed;bottom:calc(var(--nav-h) + 4px);right:10px;z-index:160;
-  background:#1a1a2e;color:var(--gold);border:1px solid var(--gold);
-  border-radius:20px;padding:4px 10px;font-size:.7rem;font-weight:700;
-  cursor:pointer;letter-spacing:.05em;display:none}
-#simToggle.show{display:block}
 </style>
 </head>
 <body>
@@ -428,7 +410,10 @@ body.sim-visible .view{padding-bottom:calc(var(--nav-h)+120px)}
     <div id="es1">
       <div class="wizard-card">
         <h3>🏠 Seleccionar Departamento</h3>
-        <p class="hint">Selecciona el departamento del residente que recoge</p>
+        <p class="hint">Los deptos con paquetes aparecen resaltados en verde</p>
+        <div class="ent-grid-hint" id="entGridHint" style="display:none">
+          <span></span> con paquetes pendientes
+        </div>
         <div class="dept-grid" id="deptGridEnt"></div>
       </div>
     </div>
@@ -760,27 +745,6 @@ body.sim-visible .view{padding-bottom:calc(var(--nav-h)+120px)}
   </div>
 </div>
 
-<!-- ══ SIMULADOR DE ESCÁNER (modo prueba) ══ -->
-<button id="simToggle" onclick="toggleSim()">🔫 SIMULAR</button>
-<div id="simBar">
-  <div class="sim-label">🔫 Simulador de escáner — modo prueba</div>
-  <div class="sim-row">
-    <input id="simInput" type="text" placeholder="Escribe el código y presiona Enviar o Enter"
-      autocomplete="off" spellcheck="false">
-    <button id="simSend" onclick="simEnviar()">Enviar ↵</button>
-  </div>
-  <div class="sim-chips" id="simChips">
-    <span style="font-size:.7rem;color:#888">Deptos rápidos:</span>
-    <span class="sim-chip" onclick="simSet('D101')">D101</span>
-    <span class="sim-chip" onclick="simSet('D201')">D201</span>
-    <span class="sim-chip" onclick="simSet('D301')">D301</span>
-    <span class="sim-chip" onclick="simSet('D401')">D401</span>
-    <span class="sim-chip" onclick="simSet('D501')">D501</span>
-    <span class="sim-chip" onclick="simSet('R101')">R101</span>
-    <span class="sim-chip" onclick="simSet('R201')">R201</span>
-    <span class="sim-chip" onclick="simSet('1234567890')">📦 Tracking</span>
-  </div>
-</div>
 
 <!-- Toast & Loader -->
 <div id="toast"></div>
@@ -1001,8 +965,6 @@ function bootApp(){
   updateApiUrlDisplay();
   loadDashBanner();
   loadDashVisBanner();
-  // Mostrar botón de simulador
-  document.getElementById('simToggle').classList.add('show');
 }
 
 // ════════════════════════════════════════════════
@@ -1058,6 +1020,36 @@ function buildDeptGrids(){
       g.appendChild(b);
     });
   });
+}
+
+async function cargarConteosPendientes(){
+  const hint = document.getElementById('entGridHint');
+  try {
+    const r = await api('paquetes-pendientes', {});
+    const pkgs = r.paquetes || [];
+    // Contar por departamento
+    const counts = {};
+    pkgs.forEach(p => {
+      const d = String(p.Departamento || '').trim();
+      if(d) counts[d] = (counts[d] || 0) + 1;
+    });
+    let conPaquetes = 0;
+    document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b => {
+      const d = b.dataset.dept;
+      const c = counts[d] || 0;
+      if(c > 0){
+        b.innerHTML = d + '<span class="dept-pkg-badge">' + c + '</span>';
+        b.classList.add('has-pkgs');
+        conPaquetes++;
+      } else {
+        b.textContent = d;
+        b.classList.remove('has-pkgs');
+      }
+    });
+    if(hint) hint.style.display = conPaquetes > 0 ? 'flex' : 'none';
+  } catch(e){
+    if(hint) hint.style.display = 'none';
+  }
 }
 
 function buildCourierList(){
@@ -1178,21 +1170,13 @@ function entStep(n){
     state.entPkgs = [];
     state.entFolios = [];
     state.scanMode = null;
-    document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>b.classList.remove('selected'));
-    // Restaurar simulador si estaba activo
-    if(state._simWasOpen){
-      const simBar = document.getElementById('simBar');
-      simBar.classList.add('show');
-      document.body.classList.add('sim-visible');
-      state._simWasOpen=false;
-    }
+    document.querySelectorAll('#deptGridEnt .dept-btn').forEach(b=>{
+      b.classList.remove('selected','has-pkgs');
+      b.textContent = b.dataset.dept;
+    });
+    cargarConteosPendientes();
   }
   if(n===3){
-    // Ocultar simulador durante firma para que el botón sea accesible
-    const simBar = document.getElementById('simBar');
-    state._simWasOpen = simBar.classList.contains('show');
-    simBar.classList.remove('show');
-    document.body.classList.remove('sim-visible');
     setTimeout(() => {
       initFirmaCanvas();
       // Scroll al botón de confirmar para asegurar visibilidad
@@ -1828,36 +1812,6 @@ function cerrarScanCam(){
   closeModal('modalScanCam');
 }
 
-// ════════════════════════════════════════════════
-// SIMULADOR DE ESCÁNER
-// ════════════════════════════════════════════════
-function toggleSim(){
-  const simBar = document.getElementById('simBar');
-  simBar.classList.toggle('show');
-  document.body.classList.toggle('sim-visible', simBar.classList.contains('show'));
-  document.getElementById('simInput').focus();
-}
-function simSet(val){
-  const inp = document.getElementById('simInput');
-  inp.value = val;
-  inp.focus();
-}
-function simEnviar(){
-  const inp = document.getElementById('simInput');
-  const val = inp.value.trim();
-  if(!val){ showToast('Escribe un código primero','err'); return; }
-  if(!state.scanMode){
-    showToast('Primero activa una zona de escaneo (toca el área de scan)','err'); return; }
-  processScan(val);
-  inp.value = '';
-  inp.focus();
-}
-document.addEventListener('DOMContentLoaded', () => {
-  const inp = document.getElementById('simInput');
-  if(inp) inp.addEventListener('keydown', e => {
-    if(e.key === 'Enter'){ e.preventDefault(); simEnviar(); }
-  });
-});
 
 // ════════════════════════════════════════════════
 // INIT
