@@ -1032,10 +1032,21 @@ function doPost(e) {
 
         var dept = info.dept;
         var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
+
+        // Si el concepto menciona un mes+año explícito (pago adelantado/tardío),
+        // usar ese periodo para el recibo — no el nombre del sheet.
+        // Ej: "DEPTO 302 JUNIO 2025" en hoja Mayo → periodoRecibo = "Junio 2025"
+        var periodoRecibo = mes;
+        var mPeriodo = nombreFila.match(/\b(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)\s+(\d{4})\b/i);
+        if (mPeriodo) {
+          var mesNorm = mPeriodo[1].charAt(0).toUpperCase() + mPeriodo[1].slice(1).toLowerCase();
+          periodoRecibo = mesNorm + ' ' + mPeriodo[2];
+        }
+
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
           if (String(recibosCache[j][1]).toUpperCase() === dept &&
-              periodoAMes(recibosCache[j][3]) === mes &&
+              periodoAMes(recibosCache[j][3]) === periodoRecibo &&
               String(recibosCache[j][7]) !== 'cancelado' &&
               Number(recibosCache[j][5]).toFixed(2) === Number(monto).toFixed(2)) { isDup = true; break; }
         }
@@ -1050,7 +1061,7 @@ function doPost(e) {
             fechaStr = Utilities.formatDate(new Date((fecha-25569)*86400*1000), 'America/Mexico_City', 'dd/MM/yyyy');
           } else { fechaStr = String(fecha); }
         } catch(ex) { fechaStr = String(fecha); }
-        var result = generarRecibo(dept, nombre, mes, fechaStr, monto, concepto);
+        var result = generarRecibo(dept, nombre, periodoRecibo, fechaStr, monto, concepto);
         if (result.ok) {
           generados++;
         } else {
