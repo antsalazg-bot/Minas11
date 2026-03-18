@@ -498,7 +498,11 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     if (mesParts.length >= 2 && /^\d{4}$/.test(mesParts[mesParts.length - 1])) {
       year = parseInt(mesParts[mesParts.length - 1]);
     }
-    var count = rs.getLastRow();
+    // Contador persistente: sobrevive borrado de la hoja Recibos
+    var scriptProps = PropertiesService.getScriptProperties();
+    var lastFolio   = parseInt(scriptProps.getProperty('ULTIMO_FOLIO_NUM') || '0', 10);
+    var count       = lastFolio + 1;
+    scriptProps.setProperty('ULTIMO_FOLIO_NUM', String(count));
     var folio = 'REC-' + year + '-' + String(count).padStart(4,'0');
     var montoFmt = '$' + Number(monto).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2});
     var fechaEmision = Utilities.formatDate(new Date(), 'America/Mexico_City', 'dd/MM/yyyy');
@@ -1220,6 +1224,21 @@ function doPost(e) {
 
     if (data.accion === 'generar-recibo')
       return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto));
+
+    // ── GESTIÓN DEL CONTADOR DE FOLIOS ───────────────────────────────────────
+    if (data.accion === 'folio-contador') {
+      if (!hasPermiso(currentUser, 'recibos')) return json({ok:false, error:'No autorizado'});
+      var sp = PropertiesService.getScriptProperties();
+      if (data.reset !== undefined) {
+        // Permite resetear a un valor específico (ej: 0 para empezar desde 1)
+        var nuevoVal = Math.max(0, parseInt(data.reset, 10) || 0);
+        sp.setProperty('ULTIMO_FOLIO_NUM', String(nuevoVal));
+        return json({ok:true, accion:'reset', ultimo_folio_num: nuevoVal});
+      }
+      var actual = parseInt(sp.getProperty('ULTIMO_FOLIO_NUM') || '0', 10);
+      return json({ok:true, accion:'consulta', ultimo_folio_num: actual});
+    }
+
     if (data.accion === 'notificar') {
       if (!hasPermiso(currentUser, 'notificar')) return json({ok:false, error:'No autorizado'});
       UrlFetchApp.fetch('https://api.onesignal.com/notifications', {
