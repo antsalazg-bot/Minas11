@@ -71,6 +71,37 @@ function periodoAMes(val) {
   }
   return String(val).trim();
 }
+/**
+ * Determina el periodo del recibo a partir del concepto y el nombre del sheet.
+ * Reglas (en orden de prioridad):
+ *  1) "MES AÑO" explícito (ej: "JUNIO 2025")        → usa ese periodo
+ *  2) Patrón rango "DE MES A ..."                    → ignora, usa sheet
+ *  3) Solo "MES" sin año, al final o standalone       → mes + año del sheet
+ *  4) Sin mes detectado                               → nombre del sheet
+ */
+function extractPeriodoRecibo(nombreFila, mes) {
+  var MESES_PAT = 'Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre';
+  var anoSheet  = mes.split(' ')[1] || String(new Date().getFullYear());
+
+  // 1) Mes + año explícito
+  var m1 = nombreFila.match(new RegExp('\\b(' + MESES_PAT + ')\\s+(\\d{4})\\b', 'i'));
+  if (m1) {
+    return m1[1].charAt(0).toUpperCase() + m1[1].slice(1).toLowerCase() + ' ' + m1[2];
+  }
+
+  // 2) Patrón de rango descriptivo "DE MES A ..." → el mes NO es el periodo
+  var esRango = new RegExp('\\bde\\s+(' + MESES_PAT + ')\\s+a\\b', 'i').test(nombreFila);
+  if (esRango) return mes;
+
+  // 3) Solo mes sin año → tomar año del sheet
+  var m3 = nombreFila.match(new RegExp('\\b(' + MESES_PAT + ')\\b', 'i'));
+  if (m3) {
+    return m3[1].charAt(0).toUpperCase() + m3[1].slice(1).toLowerCase() + ' ' + anoSheet;
+  }
+
+  // 4) Usar nombre del sheet
+  return mes;
+}
 function json(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
@@ -1041,24 +1072,7 @@ function doPost(e) {
         var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
 
         // Determinar período del recibo a partir del concepto.
-        // Prioridad: 1) "MES AÑO" explícito  2) solo "MES" → usa año del sheet  3) sheet name
-        // Ej: "DEPTO 302 JUNIO 2025"  → "Junio 2025"
-        // Ej: "ABRIL 302"             → "Abril 2025"  (año tomado del sheet)
-        // Ej: "DEPARTAMENTO 302"      → "Marzo 2025"  (= nombre del sheet)
-        var MESES_RE = 'Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre';
-        var periodoRecibo = mes;
-        var anoSheet = mes.split(' ')[1] || String(new Date().getFullYear());
-        var mPeriodo = nombreFila.match(new RegExp('\\b(' + MESES_RE + ')\\s+(\\d{4})\\b', 'i'));
-        if (mPeriodo) {
-          // Mes + año explícito
-          periodoRecibo = mPeriodo[1].charAt(0).toUpperCase() + mPeriodo[1].slice(1).toLowerCase() + ' ' + mPeriodo[2];
-        } else {
-          var mSoloMes = nombreFila.match(new RegExp('\\b(' + MESES_RE + ')\\b', 'i'));
-          if (mSoloMes) {
-            // Mes sin año → tomar año del sheet
-            periodoRecibo = mSoloMes[1].charAt(0).toUpperCase() + mSoloMes[1].slice(1).toLowerCase() + ' ' + anoSheet;
-          }
-        }
+        var periodoRecibo = extractPeriodoRecibo(nombreFila, mes);
 
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
@@ -1128,8 +1142,6 @@ function doPost(e) {
         });
       }
 
-      var MESES_RE2 = 'Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre';
-      var anoSheet2 = mes.split(' ')[1] || String(new Date().getFullYear());
       var pagos = [];
 
       for (var i = 1; i < rows.length; i++) {
@@ -1154,15 +1166,7 @@ function doPost(e) {
           if (mN2) info2 = {dept: mN2[1].toUpperCase(), concepto: nombre2};
         }
         if (!info2) continue;
-        // Determinar periodoRecibo
-        var periodoRecibo2 = mes;
-        var mP2 = nombre2.match(new RegExp('\\b(' + MESES_RE2 + ')\\s+(\\d{4})\\b', 'i'));
-        if (mP2) {
-          periodoRecibo2 = mP2[1].charAt(0).toUpperCase() + mP2[1].slice(1).toLowerCase() + ' ' + mP2[2];
-        } else {
-          var mSM2 = nombre2.match(new RegExp('\\b(' + MESES_RE2 + ')\\b', 'i'));
-          if (mSM2) periodoRecibo2 = mSM2[1].charAt(0).toUpperCase() + mSM2[1].slice(1).toLowerCase() + ' ' + anoSheet2;
-        }
+        var periodoRecibo2 = extractPeriodoRecibo(nombre2, mes);
         // Buscar recibo coincidente
         var recibo2 = null;
         for (var r = 0; r < recibos.length; r++) {
