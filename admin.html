@@ -481,6 +481,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
         <div class="sb-lbl">Recibos</div>
         <button class="slink" data-view="generar-recibos" onclick="sv('generar-recibos',this)"><span class="ic">🧾</span>Generar Recibos</button>
         <button class="slink" data-view="cancelar-recibo" onclick="sv('cancelar-recibo',this)"><span class="ic">❌</span>Cancelar Recibo</button>
+        <button class="slink" data-view="auditoria-recibos" onclick="sv('auditoria-recibos',this)"><span class="ic">🔍</span>Auditoría</button>
       </div>
       <div class="sb-section" style="margin-top:.5rem">
         <div class="sb-lbl">Configuración</div>
@@ -653,6 +654,25 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
             </div>
             <div id="cr-result" style="margin-top:1.2rem;display:none;"></div>
           </div>
+        </div>
+      </div>
+
+      <!-- AUDITORÍA DE RECIBOS -->
+      <div id="view-auditoria-recibos" class="view">
+        <div class="content fade-in">
+          <div class="page-hdr"><h1>Auditoría de Recibos</h1><p>Verifica que cada pago del mes tenga su recibo generado</p></div>
+          <div class="panel panel-pad" style="max-width:100%">
+            <div class="form-grid">
+              <div class="form-group">
+                <label class="form-lbl">Mes a auditar</label>
+                <select id="audit-mes" class="form-select"></select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn-primary" id="btn-audit" onclick="auditarRecibos()">🔍 Auditar mes</button>
+            </div>
+          </div>
+          <div id="audit-result" style="margin-top:1rem;display:none;"></div>
         </div>
       </div>
 
@@ -1137,6 +1157,111 @@ async function cancelarRecibo(){
   }
   btn.disabled = false;
   btn.textContent = '❌ Cancelar Recibo';
+}
+
+// ═══════════════════════════════════════════════════
+//  AUDITORÍA DE RECIBOS
+// ═══════════════════════════════════════════════════
+async function auditarRecibos(){
+  const mes = document.getElementById('audit-mes').value;
+  if(!mes){ toast('Selecciona un mes'); return; }
+  const btn = document.getElementById('btn-audit');
+  const result = document.getElementById('audit-result');
+  btn.disabled = true; btn.textContent = '⏳ Auditando…';
+  result.style.display = 'none';
+  try{
+    const res = await fetch(SCRIPT_URL, {
+      method:'POST',
+      body: JSON.stringify({accion:'auditoria-recibos', mes, token:SESSION_TOKEN})
+    });
+    const data = await res.json();
+    if(data.ok){ renderAuditResult(data); }
+    else{
+      result.style.display='block';
+      result.innerHTML=`<div style="color:var(--red);font-size:.82rem;">Error: ${data.error}</div>`;
+    }
+  }catch(e){
+    result.style.display='block';
+    result.innerHTML='<div style="color:var(--red);font-size:.82rem;">Error de conexión</div>';
+  }
+  btn.disabled=false; btn.textContent='🔍 Auditar mes';
+}
+
+function renderAuditResult(data){
+  const pagos = data.pagos || [];
+  const result = document.getElementById('audit-result');
+  const activos   = pagos.filter(p=>p.reciboEstado==='activo');
+  const cancelados= pagos.filter(p=>p.reciboEstado==='cancelado');
+  const sinRecibo = pagos.filter(p=>p.reciboEstado==='sin_recibo');
+  const adelantos = pagos.filter(p=>p.esAdelanto);
+
+  const badge = (p) => {
+    if(p.reciboEstado==='activo')
+      return `<span style="background:#f0faf2;color:#2a7a3e;padding:.2rem .5rem;border-radius:2px;font-size:.65rem;font-weight:700;letter-spacing:.06em">✓ ACTIVO</span>`;
+    if(p.reciboEstado==='cancelado')
+      return `<span style="background:#fff8e7;color:#7a5200;padding:.2rem .5rem;border-radius:2px;font-size:.65rem;font-weight:700;letter-spacing:.06em">⚠ CANCELADO</span>`;
+    return `<span style="background:#fef2f2;color:#8b1a1a;padding:.2rem .5rem;border-radius:2px;font-size:.65rem;font-weight:700;letter-spacing:.06em">✗ SIN RECIBO</span>`;
+  };
+
+  result.style.display='block';
+  result.innerHTML=`
+    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">
+      <div class="kcard g"><div class="klbl">Con recibo activo</div><div class="kval">${activos.length}</div><div class="ksub">de ${pagos.length} pagos</div></div>
+      <div class="kcard r"><div class="klbl">Sin recibo</div><div class="kval">${sinRecibo.length}</div><div class="ksub">${sinRecibo.length>0?'Pendientes':'Todo bien'}</div></div>
+      <div class="kcard o"><div class="klbl">Cancelados</div><div class="kval">${cancelados.length}</div><div class="ksub">${cancelados.length>0?'Regenerar':'—'}</div></div>
+      <div class="kcard b"><div class="klbl">Adelantos</div><div class="kval">${adelantos.length}</div><div class="ksub">Otro periodo</div></div>
+    </div>
+
+    <div class="panel" style="overflow-x:auto;margin-bottom:1rem">
+      <table style="min-width:680px">
+        <thead><tr>
+          <th style="width:44px">Fila</th><th style="width:60px">Depto</th>
+          <th>Concepto</th>
+          <th style="text-align:right;width:90px">Monto</th>
+          <th style="width:110px">Periodo recibo</th>
+          <th style="width:130px">Folio</th>
+          <th style="width:110px">Estado</th>
+        </tr></thead>
+        <tbody>
+          ${pagos.map(p=>{
+            const rowBg = p.reciboEstado==='sin_recibo'?'background:#fff8f8':p.reciboEstado==='cancelado'?'background:#fffdf0':'';
+            const adelantoPill = p.esAdelanto?`<span style="background:rgba(44,62,80,.1);color:var(--slate);padding:.1rem .35rem;border-radius:2px;font-size:.6rem;font-weight:700;margin-left:.4rem">ADELANTO</span>`:'';
+            const folioCell = p.folio
+              ? (p.link?`<a href="${p.link}" target="_blank" style="color:var(--gold);font-size:.75rem;font-family:monospace">${p.folio}</a>`:`<span style="font-size:.75rem;font-family:monospace">${p.folio}</span>`)
+              : `<span style="color:rgba(24,18,10,.2);font-size:.82rem">—</span>`;
+            return `<tr style="${rowBg}">
+              <td style="font-size:.7rem;color:rgba(24,18,10,.35);text-align:center">${p.fila}</td>
+              <td style="font-weight:700;font-size:.85rem">${p.dept}</td>
+              <td style="font-size:.75rem">${p.concepto}${adelantoPill}</td>
+              <td style="text-align:right;font-family:'Fraunces',serif;font-size:.88rem">${fmt(p.monto)}</td>
+              <td style="font-size:.75rem${p.esAdelanto?';color:var(--slate);font-weight:600':''}">${p.periodoRecibo}</td>
+              <td>${folioCell}</td>
+              <td>${badge(p)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    ${(data.recibosDelPeriodo||[]).length>0?`
+    <div class="stitle"><h2>Recibos activos para ${data.mes}</h2><span class="tag">${(data.recibosDelPeriodo||[]).length} total (incluye adelantos de otros meses)</span></div>
+    <div class="panel" style="overflow-x:auto">
+      <table style="min-width:440px">
+        <thead><tr>
+          <th>Folio</th><th>Depto</th><th>Propietario</th>
+          <th style="text-align:right">Monto</th>
+        </tr></thead>
+        <tbody>
+          ${(data.recibosDelPeriodo||[]).map(r=>`<tr>
+            <td style="font-family:monospace;font-size:.75rem">${r.folio}</td>
+            <td style="font-weight:700;font-size:.85rem">${r.dept}</td>
+            <td style="font-size:.78rem;color:rgba(24,18,10,.55)">${r.nombre||'—'}</td>
+            <td style="text-align:right;font-family:'Fraunces',serif;font-size:.88rem">${fmt(r.monto)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`:''}
+  `;
 }
 
 function sv(name,btn){
@@ -2289,6 +2414,8 @@ function initForms(){
   document.getElementById('p-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
   document.getElementById('gr-mes').innerHTML=DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
   document.getElementById('gr-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
+  document.getElementById('audit-mes').innerHTML=DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('audit-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
   document.getElementById('e-mes').innerHTML=DATA.activeMonths.map(m=>`<option value="${m}">${m}</option>`).join('');
   document.getElementById('e-mes').value=DATA.activeMonths[DATA.activeMonths.length-1];
   document.getElementById('e-cat').innerHTML=Object.entries(CAT).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');

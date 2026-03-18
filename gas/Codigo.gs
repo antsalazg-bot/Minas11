@@ -1103,6 +1103,106 @@ function doPost(e) {
         : null;
       return json({ok: true, generados: generados, omitidos: omitidos, errores: errores, advertencia: advertencia});
     }
+    // ── AUDITORÍA DE RECIBOS ─────────────────────────────────────────────
+    if (data.accion === 'auditoria-recibos') {
+      var mes = String(data.mes || '').trim();
+      if (!mes) return json({ok: false, error: 'Mes requerido'});
+      var sheet = ss.getSheetByName(mes);
+      if (!sheet) return json({ok: false, error: 'Hoja no encontrada: ' + mes});
+
+      var rows = sheet.getDataRange().getValues();
+      var rs2  = ss.getSheetByName('Recibos');
+      var rd   = rs2 ? rs2.getDataRange().getValues() : [];
+
+      // Construir lookup de recibos: {dept_periodo_monto → {folio,estado,link,nombre}}
+      var recibos = [];
+      for (var k = 1; k < rd.length; k++) {
+        recibos.push({
+          folio:   String(rd[k][0]),
+          dept:    String(rd[k][1]).toUpperCase().trim(),
+          nombre:  String(rd[k][2] || ''),
+          periodo: periodoAMes(rd[k][3]),
+          monto:   Number(rd[k][5]),
+          estado:  String(rd[k][7] || '').trim().toLowerCase(),
+          link:    String(rd[k][6] || '')
+        });
+      }
+
+      var MESES_RE2 = 'Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre';
+      var anoSheet2 = mes.split(' ')[1] || String(new Date().getFullYear());
+      var pagos = [];
+
+      for (var i = 1; i < rows.length; i++) {
+        var monto2     = rows[i][3];
+        var idConc2    = String(rows[i][6] || '').trim();
+        var nombre2    = String(rows[i][2] || '').trim();
+        if (!monto2 || isNaN(monto2) || Number(monto2) <= 0) continue;
+        if (!idConc2 && !rows[i][8] && !nombre2) continue;
+        // Saltar marcadores de anulación
+        if (idConc2 && !/^(CM|CE|OI|CV)-/i.test(idConc2)) {
+          var idL = idConc2.toLowerCase();
+          if (idL === 'cancelado' || idL === 'devuelto' || idL === 'anulado' || idL === 'reverso' || idL === 'void' || idL === 'n/a') continue;
+        }
+        // Detectar depto
+        var info2 = getConceptoYDepto(idConc2);
+        if (!info2) {
+          var colI2 = String(rows[i][8] || '').trim().toUpperCase();
+          if (colI2 && /\d/.test(colI2)) info2 = {dept: colI2, concepto: idConc2 || 'Pago'};
+        }
+        if (!info2 && nombre2) {
+          var mN2 = nombre2.match(/\b(\d{3}|PH\d)\s*$/i);
+          if (mN2) info2 = {dept: mN2[1].toUpperCase(), concepto: nombre2};
+        }
+        if (!info2) continue;
+        // Determinar periodoRecibo
+        var periodoRecibo2 = mes;
+        var mP2 = nombre2.match(new RegExp('\\b(' + MESES_RE2 + ')\\s+(\\d{4})\\b', 'i'));
+        if (mP2) {
+          periodoRecibo2 = mP2[1].charAt(0).toUpperCase() + mP2[1].slice(1).toLowerCase() + ' ' + mP2[2];
+        } else {
+          var mSM2 = nombre2.match(new RegExp('\\b(' + MESES_RE2 + ')\\b', 'i'));
+          if (mSM2) periodoRecibo2 = mSM2[1].charAt(0).toUpperCase() + mSM2[1].slice(1).toLowerCase() + ' ' + anoSheet2;
+        }
+        // Buscar recibo coincidente
+        var recibo2 = null;
+        for (var r = 0; r < recibos.length; r++) {
+          if (recibos[r].dept === info2.dept &&
+              recibos[r].periodo === periodoRecibo2 &&
+              Math.abs(recibos[r].monto - Number(monto2)) < 0.05) {
+            recibo2 = recibos[r]; break;
+          }
+        }
+        // Formatear fecha
+        var fRaw = rows[i][0], fechaStr2 = '';
+        try {
+          fechaStr2 = (fRaw instanceof Date)
+            ? Utilities.formatDate(fRaw, 'America/Mexico_City', 'dd/MM/yyyy')
+            : String(fRaw);
+        } catch(ex) { fechaStr2 = String(fRaw); }
+
+        pagos.push({
+          fila:         i + 1,
+          dept:         info2.dept,
+          nombre:       getNombrePropietario(info2.dept),
+          concepto:     nombre2,
+          monto:        Number(monto2),
+          fecha:        fechaStr2,
+          periodoRecibo: periodoRecibo2,
+          esAdelanto:   periodoRecibo2 !== mes,
+          folio:        recibo2 ? recibo2.folio  : null,
+          reciboEstado: recibo2 ? recibo2.estado : 'sin_recibo',
+          link:         recibo2 ? recibo2.link   : null
+        });
+      }
+
+      // Recibos activos para este periodo (incluyendo los adelantados de otros meses)
+      var recibosDelPeriodo = recibos.filter(function(r) {
+        return r.periodo === mes && r.estado !== 'cancelado';
+      });
+
+      return json({ok: true, mes: mes, pagos: pagos, recibosDelPeriodo: recibosDelPeriodo});
+    }
+
     if (data.accion === 'generar-recibo')
       return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto));
     if (data.accion === 'notificar') {
