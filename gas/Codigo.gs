@@ -993,18 +993,45 @@ function doPost(e) {
       if (!sheet) return json({ok: false, error: 'Hoja no encontrada: ' + mes});
       var rows = sheet.getDataRange().getValues();
       var generados = 0, omitidos = 0, errores = 0;
+      var saltados = []; // filas con monto pero sin dept detectable — para diagnóstico
       // Leer hoja Recibos UNA sola vez fuera del loop
       var rs = ss.getSheetByName('Recibos');
       var recibosCache = rs ? rs.getDataRange().getValues() : [];
       for (var i = 1; i < rows.length; i++) {
         var monto = rows[i][3];
         var idConc = String(rows[i][6] || '').trim();
+        var nombreFila = String(rows[i][2] || '').trim();
         if (!monto || isNaN(monto) || Number(monto) <= 0) continue;
-        if (!idConc) continue;
+        // Saltar filas sin ningún tipo de identificador
+        if (!idConc && !rows[i][8] && !nombreFila) continue;
+
+        // ── Detección de depto con misma lógica de 3 capas que shared.js ────
         var info = getConceptoYDepto(idConc);
-        if (!info) continue;
+
+        // Fallback 1: Col I (depto directo, formato "201", "PH3", etc.)
+        if (!info) {
+          var colI = String(rows[i][8] || '').trim().toUpperCase();
+          if (colI && /\d/.test(colI)) {
+            info = { dept: colI, concepto: idConc || 'Pago' };
+          }
+        }
+
+        // Fallback 2: número de depto al final del nombre/concepto (col C)
+        if (!info && nombreFila) {
+          var mNom = nombreFila.match(/\b(\d{3}|PH\d)\s*$/i);
+          if (mNom) {
+            info = { dept: mNom[1].toUpperCase(), concepto: nombreFila };
+          }
+        }
+
+        // Sin depto detectable — registrar para diagnóstico y saltar
+        if (!info) {
+          if (idConc) saltados.push('Fila ' + (i+1) + ': idConc="' + idConc + '" nombre="' + nombreFila + '"');
+          continue;
+        }
+
         var dept = info.dept;
-        var concepto = info.concepto + ' · Depto ' + dept;
+        var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
           if (String(recibosCache[j][1]).toUpperCase() === dept &&
@@ -1035,7 +1062,10 @@ function doPost(e) {
           }
         }
       }
-      return json({ok: true, generados: generados, omitidos: omitidos, errores: errores});
+      var advertencia = saltados.length > 0
+        ? saltados.length + ' fila(s) sin depto detectable (no generaron recibo): ' + saltados.join('; ')
+        : null;
+      return json({ok: true, generados: generados, omitidos: omitidos, errores: errores, advertencia: advertencia});
     }
     if (data.accion === 'generar-recibo')
       return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto));
