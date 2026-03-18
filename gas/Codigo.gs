@@ -492,6 +492,28 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     // Asegurar encabezado columna Token
     if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
 
+    // ── Guardia anti-duplicado (protege sin importar quién llame esta función) ──
+    var hojaOrigen = mesHoja || mes; // col J: hoja de origen para matching
+    var montoFijo  = Number(monto).toFixed(2);
+    var deptUp     = String(dept).toUpperCase();
+    var cacheCheck = rs.getDataRange().getValues();
+    for (var ci = 1; ci < cacheCheck.length; ci++) {
+      var cDept    = String(cacheCheck[ci][1]).toUpperCase();
+      var cMonto   = Number(cacheCheck[ci][5]).toFixed(2);
+      var cMesHoja = String(cacheCheck[ci][9] || '').trim();
+      var cPeriodo = String(cacheCheck[ci][3] || '').trim();
+      // Primario: dept + mesHoja + monto
+      if (cMesHoja && cDept === deptUp && cMesHoja === hojaOrigen && cMonto === montoFijo) {
+        return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
+                msg: 'Ya existe recibo para ' + dept + ' en ' + hojaOrigen};
+      }
+      // Secundario (legado sin col J): dept + periodo + monto
+      if (!cMesHoja && cDept === deptUp && periodoAMes(cPeriodo) === mes && cMonto === montoFijo) {
+        return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
+                msg: 'Ya existe recibo (legado) para ' + dept + ' en ' + mes};
+      }
+    }
+
     // Usar el año del PERIODO del recibo, no el año actual de impresión
     var year = new Date().getFullYear();
     var mesParts = String(mes).trim().split(' ');

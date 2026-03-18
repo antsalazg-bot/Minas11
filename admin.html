@@ -1152,6 +1152,7 @@ async function generarRecibosDelMes(){
       if(!r2.ok) throw new Error('HTTP ' + r2.status);
       const d2 = await r2.json();
       if(d2.ok) { generados++; }
+      else if(d2.error === 'DUP') { omitidosInicial++; } // ya existía, no es error
       else { errores++; errList.push(`Depto ${p.dept}: ${d2.error||'error desconocido'}`); }
     } catch(e2) {
       errores++;
