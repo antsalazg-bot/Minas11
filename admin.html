@@ -1050,7 +1050,7 @@ function aplicarPermisos(){
 // ═══════════════════════════════════════════════════
 async function generarRecibosDelMes(){
   const mes = document.getElementById('gr-mes').value;
-  if(!mes){ showToast('Selecciona un mes'); return; }
+  if(!mes){ toast('Selecciona un mes'); return; }
   const btn = document.getElementById('btn-generar');
   const result = document.getElementById('gr-result');
   btn.disabled = true;
@@ -1094,7 +1094,7 @@ async function generarRecibosDelMes(){
           </div>
           ${advertencia}
         </div>`;
-      showToast(data.generados + ' recibos generados');
+      toast(data.generados + ' recibos generados');
     } else {
       result.style.display = 'block';
       result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error: ' + data.error + '</div>';
@@ -1112,7 +1112,7 @@ async function generarRecibosDelMes(){
 
 async function cancelarRecibo(){
   const folio = document.getElementById('cr-folio').value.trim().toUpperCase();
-  if(!folio){ showToast('Ingresa el folio'); return; }
+  if(!folio){ toast('Ingresa el folio'); return; }
   const btn = document.getElementById('btn-cancelar-rec');
   const result = document.getElementById('cr-result');
   btn.disabled = true;
@@ -1128,7 +1128,7 @@ async function cancelarRecibo(){
     if(data.ok){
       result.innerHTML = '<div style="background:#f0faf0;border:1px solid #cce8cc;border-radius:4px;padding:.8rem;font-size:.82rem;color:#1a6b30;">✓ Recibo ' + folio + ' cancelado correctamente</div>';
       document.getElementById('cr-folio').value = '';
-      showToast('Recibo cancelado');
+      toast('Recibo cancelado');
     } else {
       result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error: ' + data.error + '</div>';
     }
