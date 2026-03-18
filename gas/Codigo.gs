@@ -1040,14 +1040,24 @@ function doPost(e) {
         var dept = info.dept;
         var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
 
-        // Si el concepto menciona un mes+año explícito (pago adelantado/tardío),
-        // usar ese periodo para el recibo — no el nombre del sheet.
-        // Ej: "DEPTO 302 JUNIO 2025" en hoja Mayo → periodoRecibo = "Junio 2025"
+        // Determinar período del recibo a partir del concepto.
+        // Prioridad: 1) "MES AÑO" explícito  2) solo "MES" → usa año del sheet  3) sheet name
+        // Ej: "DEPTO 302 JUNIO 2025"  → "Junio 2025"
+        // Ej: "ABRIL 302"             → "Abril 2025"  (año tomado del sheet)
+        // Ej: "DEPARTAMENTO 302"      → "Marzo 2025"  (= nombre del sheet)
+        var MESES_RE = 'Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre';
         var periodoRecibo = mes;
-        var mPeriodo = nombreFila.match(/\b(Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre)\s+(\d{4})\b/i);
+        var anoSheet = mes.split(' ')[1] || String(new Date().getFullYear());
+        var mPeriodo = nombreFila.match(new RegExp('\\b(' + MESES_RE + ')\\s+(\\d{4})\\b', 'i'));
         if (mPeriodo) {
-          var mesNorm = mPeriodo[1].charAt(0).toUpperCase() + mPeriodo[1].slice(1).toLowerCase();
-          periodoRecibo = mesNorm + ' ' + mPeriodo[2];
+          // Mes + año explícito
+          periodoRecibo = mPeriodo[1].charAt(0).toUpperCase() + mPeriodo[1].slice(1).toLowerCase() + ' ' + mPeriodo[2];
+        } else {
+          var mSoloMes = nombreFila.match(new RegExp('\\b(' + MESES_RE + ')\\b', 'i'));
+          if (mSoloMes) {
+            // Mes sin año → tomar año del sheet
+            periodoRecibo = mSoloMes[1].charAt(0).toUpperCase() + mSoloMes[1].slice(1).toLowerCase() + ' ' + anoSheet;
+          }
         }
 
         var isDup = false;
