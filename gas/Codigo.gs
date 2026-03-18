@@ -1047,7 +1047,6 @@ function doPost(e) {
         for (var j = 1; j < recibosCache.length; j++) {
           if (String(recibosCache[j][1]).toUpperCase() === dept &&
               periodoAMes(recibosCache[j][3]) === periodoRecibo &&
-              String(recibosCache[j][7]) !== 'cancelado' &&
               Number(recibosCache[j][5]).toFixed(2) === Number(monto).toFixed(2)) { isDup = true; break; }
         }
         if (isDup) { omitidos++; continue; }
@@ -1556,9 +1555,9 @@ function generarRecibosHistoricos() {
         var rMes    = periodoAMes(recibosCache[j][3]); // convierte Date → "Mes Año"
         var rMonto  = Number(recibosCache[j][5]).toFixed(2);
         var rEstado = String(recibosCache[j][7]).trim().toLowerCase();
-        if (rDept === dept && rMes === mes && rEstado !== 'cancelado' && rMonto === montoCheck) {
+        if (rDept === dept && rMes === mes && rMonto === montoCheck) {
           isDup = true;
-          Logger.log('  SKIP dup: ' + dept + ' ' + mes + ' $' + montoCheck + ' → ' + recibosCache[j][0]);
+          Logger.log('  SKIP dup (incl. cancelado): ' + dept + ' ' + mes + ' $' + montoCheck + ' → ' + recibosCache[j][0]);
           break;
         }
       }
