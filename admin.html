@@ -1072,61 +1072,109 @@ function aplicarPermisos(){
 async function generarRecibosDelMes(){
   const mes = document.getElementById('gr-mes').value;
   if(!mes){ toast('Selecciona un mes'); return; }
-  const btn = document.getElementById('btn-generar');
+  const btn    = document.getElementById('btn-generar');
   const result = document.getElementById('gr-result');
   btn.disabled = true;
-  btn.textContent = '⏳ Procesando…';
-  result.style.display = 'none';
+  btn.textContent = '⏳ Obteniendo lista…';
+  result.style.display = 'block';
+  result.innerHTML = '<div style="font-size:.82rem;color:rgba(24,18,10,.5);">Consultando pagos del mes…</div>';
 
-  // Timeout duro: restaura el botón pase lo que pase (incluso si fetch se cuelga)
-  const hardTid = setTimeout(() => {
-    btn.disabled = false;
-    btn.textContent = '🧾 Generar Recibos';
-    result.style.display = 'block';
-    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">⏱ Tiempo agotado (3 min). El proceso puede seguir en segundo plano — revisa la hoja Recibos en unos minutos.</div>';
-  }, 3 * 60 * 1000);
-
-  try{
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 3 * 60 * 1000);
-    const res = await fetch(SCRIPT_URL, {
+  // ── PASO 1: obtener lista de pagos (rápido, ~2s) ─────────────────────────
+  let pagos = [], omitidosInicial = 0;
+  try {
+    const r1 = await fetch(SCRIPT_URL, {
       method:'POST',
-      signal: ctrl.signal,
-      body: JSON.stringify({accion:'generar-recibos-mes', mes, token:SESSION_TOKEN})
+      body: JSON.stringify({accion:'listar-pagos-mes', mes, token:SESSION_TOKEN})
     });
-    clearTimeout(tid);
-    clearTimeout(hardTid);
-    if(!res.ok) throw new Error('HTTP ' + res.status);
-    const text = await res.text();
-    let data;
-    try { data = JSON.parse(text); } catch(je){ throw new Error('Respuesta inválida: ' + text.substring(0,200)); }
-    if(data.ok){
-      const advertencia = data.advertencia
-        ? `<div style="margin-top:.5rem;padding:.5rem;background:#fff8e1;border:1px solid #f0c040;border-radius:4px;font-size:.78rem;color:#7a5800;">⚠️ ${data.advertencia}</div>`
-        : '';
-      result.style.display = 'block';
-      result.innerHTML = `
-        <div style="background:#f0faf0;border:1px solid #cce8cc;border-radius:4px;padding:1rem;">
-          <div style="font-weight:700;color:#1a6b30;margin-bottom:.5rem;">✓ Proceso completado</div>
-          <div style="font-size:.82rem;line-height:1.8;color:rgba(24,18,10,.7);">
-            <div>✅ Generados: <strong>${data.generados}</strong></div>
-            <div>⏭️ Ya existían: <strong>${data.omitidos}</strong></div>
-            <div>❌ Errores: <strong>${data.errores}</strong></div>
-          </div>
-          ${advertencia}
-        </div>`;
-      toast(data.generados + ' recibos generados');
-    } else {
-      result.style.display = 'block';
-      result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">Error: ' + data.error + '</div>';
-    }
-  }catch(e){
-    clearTimeout(hardTid);
-    result.style.display = 'block';
-    const msg = e.name === 'AbortError' ? 'Tiempo agotado (>3 min). Los recibos pueden haberse generado — revisa la hoja Recibos.' : e.message;
-    result.innerHTML = '<div style="color:var(--red);font-size:.82rem;">⚠️ ' + msg + '</div>';
+    if(!r1.ok) throw new Error('HTTP ' + r1.status);
+    const d1 = await r1.json();
+    if(!d1.ok) throw new Error(d1.error || 'Error al listar pagos');
+    pagos           = d1.pendientes || [];
+    const pendientes = pagos.filter(p => !p.isDup);
+    omitidosInicial  = pagos.length - pendientes.length;
+    pagos            = pendientes; // solo los que necesitan recibo
+  } catch(e) {
+    result.innerHTML = `<div style="color:var(--red);font-size:.82rem;">⚠️ ${e.message}</div>`;
+    btn.disabled = false; btn.textContent = '🧾 Generar Recibos'; return;
   }
-  clearTimeout(hardTid);
+
+  if(pagos.length === 0){
+    result.innerHTML = `
+      <div style="background:#f0faf0;border:1px solid #cce8cc;border-radius:4px;padding:1rem;">
+        <div style="font-weight:700;color:#1a6b30;margin-bottom:.4rem;">✓ Sin pendientes</div>
+        <div style="font-size:.82rem;color:rgba(24,18,10,.6);">
+          ⏭️ Ya existían: <strong>${omitidosInicial}</strong> · No hay recibos nuevos por generar.
+        </div>
+      </div>`;
+    btn.disabled = false; btn.textContent = '🧾 Generar Recibos'; return;
+  }
+
+  // ── PASO 2: generar uno por uno con barra de progreso ───────────────────
+  let generados = 0, errores = 0;
+  const errList = [];
+
+  function renderProgress(actual){
+    const total  = pagos.length;
+    const pct    = Math.round((actual / total) * 100);
+    result.innerHTML = `
+      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:1rem;">
+        <div style="font-size:.82rem;font-weight:600;margin-bottom:.5rem;">
+          Generando recibo ${actual} de ${total} — Depto ${pagos[actual-1]?.dept || '…'}
+        </div>
+        <div style="background:#e8e8e8;border-radius:4px;height:8px;overflow:hidden;">
+          <div style="background:var(--accent,#1a6b30);width:${pct}%;height:100%;transition:width .3s;"></div>
+        </div>
+        <div style="margin-top:.4rem;font-size:.75rem;color:rgba(24,18,10,.5);">
+          ✅ ${generados} generados · ❌ ${errores} errores
+        </div>
+      </div>`;
+  }
+
+  for(let i = 0; i < pagos.length; i++){
+    const p = pagos[i];
+    renderProgress(i + 1);
+    btn.textContent = `⏳ ${i+1}/${pagos.length}`;
+    try {
+      const r2 = await fetch(SCRIPT_URL, {
+        method:'POST',
+        body: JSON.stringify({
+          accion:'generar-recibo',
+          dept:     p.dept,
+          nombre:   p.nombre,
+          mes:      p.periodoRecibo,  // periodo en el PDF
+          mesHoja:  p.mesHoja,        // hoja origen para auditoría
+          fechaPago:p.fechaPago,
+          monto:    p.monto,
+          concepto: p.concepto,
+          token:    SESSION_TOKEN
+        })
+      });
+      if(!r2.ok) throw new Error('HTTP ' + r2.status);
+      const d2 = await r2.json();
+      if(d2.ok) { generados++; }
+      else { errores++; errList.push(`Depto ${p.dept}: ${d2.error||'error desconocido'}`); }
+    } catch(e2) {
+      errores++;
+      errList.push(`Depto ${p.dept}: ${e2.message}`);
+    }
+  }
+
+  // ── RESULTADO FINAL ──────────────────────────────────────────────────────
+  const errHtml = errList.length
+    ? `<details style="margin-top:.5rem;font-size:.75rem;"><summary style="cursor:pointer;color:var(--red);">${errores} error(es) — ver detalle</summary>
+        <ul style="margin:.3rem 0 0 1rem;color:var(--red);">${errList.map(e=>`<li>${e}</li>`).join('')}</ul></details>`
+    : '';
+  result.innerHTML = `
+    <div style="background:#f0faf0;border:1px solid #cce8cc;border-radius:4px;padding:1rem;">
+      <div style="font-weight:700;color:#1a6b30;margin-bottom:.5rem;">✓ Proceso completado</div>
+      <div style="font-size:.82rem;line-height:1.8;color:rgba(24,18,10,.7);">
+        <div>✅ Generados: <strong>${generados}</strong></div>
+        <div>⏭️ Ya existían: <strong>${omitidosInicial}</strong></div>
+        <div>❌ Errores: <strong>${errores}</strong></div>
+      </div>
+      ${errHtml}
+    </div>`;
+  toast(generados + ' recibos generados');
   btn.disabled = false;
   btn.textContent = '🧾 Generar Recibos';
 }

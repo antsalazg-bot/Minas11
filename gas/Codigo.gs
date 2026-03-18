@@ -46,7 +46,7 @@ var _PERMISOS = {
   editor:      ['append','editar','eliminar','cancelar-pago','guardar-cuota-extra',
                 'eliminar-cuota-extra','editar-deuda-hist','quitar-multa','pwd'],
   operaciones: ['leer','leer-cuotas-extras','leer-tarifas','saldos-admin','detalle-depto',
-                'generar-recibos-mes','generar-recibo','cancelar-recibo',
+                'generar-recibos-mes','listar-pagos-mes','generar-recibo','cancelar-recibo',
                 'verificar-ahora','crear-hoja-mes','notificar'],
   consulta:    ['leer','leer-cuotas-extras','leer-tarifas','saldos-admin','detalle-depto']
 };
@@ -1021,6 +1021,70 @@ function doPost(e) {
       newSh.getRange(1, 1, filas.length, filas[0].length).setValues(filas);
       return json({ok:true, filas:filas.length});
     }
+    // ── LISTAR PAGOS PENDIENTES (sin generar, para modo secuencial) ──────────
+    if (data.accion === 'listar-pagos-mes') {
+      if (!hasPermiso(currentUser, 'listar-pagos-mes')) return json({ok:false, error:'No autorizado'});
+      var mes = String(data.mes || '').trim();
+      if (!mes) return json({ok: false, error: 'Mes requerido'});
+      var sheet = ss.getSheetByName(mes);
+      if (!sheet) return json({ok: false, error: 'Hoja no encontrada: ' + mes});
+      var rows = sheet.getDataRange().getValues();
+      var rs = ss.getSheetByName('Recibos');
+      var recibosCache = rs ? rs.getDataRange().getValues() : [];
+      var pendientes = [];
+      for (var i = 1; i < rows.length; i++) {
+        var monto = rows[i][3];
+        var idConc = String(rows[i][6] || '').trim();
+        var nombreFila = String(rows[i][2] || '').trim();
+        if (!monto || isNaN(monto) || Number(monto) <= 0) continue;
+        if (!idConc && !rows[i][8] && !nombreFila) continue;
+        if (idConc && !/^(CM|CE|OI|CV)-/i.test(idConc)) {
+          var idLow = idConc.toLowerCase();
+          if (idLow === 'cancelado' || idLow === 'devuelto' || idLow === 'anulado' ||
+              idLow === 'reverso' || idLow === 'void' || idLow === 'n/a') continue;
+        }
+        var info = getConceptoYDepto(idConc);
+        if (!info) {
+          var colI = String(rows[i][8] || '').trim().toUpperCase();
+          if (colI && /\d/.test(colI)) info = { dept: colI, concepto: idConc || 'Pago' };
+        }
+        if (!info && nombreFila) {
+          var mNom = nombreFila.match(/\b(\d{3}|PH\d)\s*$/i);
+          if (mNom) info = { dept: mNom[1].toUpperCase(), concepto: nombreFila };
+        }
+        if (!info) continue;
+        var dept = info.dept;
+        var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
+        var periodoRecibo = extractPeriodoRecibo(nombreFila, mes);
+        var isDup = false;
+        for (var j = 1; j < recibosCache.length; j++) {
+          var rDept_   = String(recibosCache[j][1]).toUpperCase();
+          var rMonto_  = Number(recibosCache[j][5]).toFixed(2);
+          var rMesHoja = String(recibosCache[j][9] || '').trim();
+          var matchP = rMesHoja && rDept_ === dept && rMesHoja === mes && rMonto_ === Number(monto).toFixed(2);
+          var matchS = !rMesHoja && rDept_ === dept && periodoAMes(recibosCache[j][3]) === periodoRecibo && rMonto_ === Number(monto).toFixed(2);
+          if (matchP || matchS) { isDup = true; break; }
+        }
+        var fecha = rows[i][0];
+        var fechaStr = '';
+        try {
+          if (fecha instanceof Date) {
+            fechaStr = Utilities.formatDate(fecha, 'America/Mexico_City', 'dd/MM/yyyy');
+          } else if (typeof fecha === 'number') {
+            fechaStr = Utilities.formatDate(new Date((fecha-25569)*86400*1000), 'America/Mexico_City', 'dd/MM/yyyy');
+          } else { fechaStr = String(fecha); }
+        } catch(ex) { fechaStr = String(fecha); }
+        var nombre = getNombrePropietario(dept);
+        pendientes.push({
+          dept: dept, nombre: nombre, mes: mes, mesHoja: mes,
+          periodoRecibo: periodoRecibo, fechaPago: fechaStr,
+          monto: Number(monto), concepto: concepto,
+          isDup: isDup, fila: i + 1
+        });
+      }
+      return json({ok: true, mes: mes, total: pendientes.length, pendientes: pendientes});
+    }
+
     if (data.accion === 'generar-recibos-mes') {
       if (!hasPermiso(currentUser, 'generar-recibos-mes')) return json({ok:false, error:'No autorizado'});
       var mes = String(data.mes || '').trim();
@@ -1223,7 +1287,7 @@ function doPost(e) {
     }
 
     if (data.accion === 'generar-recibo')
-      return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto));
+      return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto, data.mesHoja || data.mes));
 
     // ── GESTIÓN DEL CONTADOR DE FOLIOS ───────────────────────────────────────
     if (data.accion === 'folio-contador') {
