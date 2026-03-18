@@ -481,13 +481,13 @@ function generateReciboToken(folio, depto, mes, monto) {
 // ═══════════════════════════════════════════════
 //  generarRecibo
 // ═══════════════════════════════════════════════
-function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
+function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var rs = ss.getSheetByName('Recibos');
     if (!rs) {
       rs = ss.insertSheet('Recibos');
-      rs.appendRow(['Folio','Depto','Nombre','Mes','Fecha','Monto','Link','Estado','Token']);
+      rs.appendRow(['Folio','Depto','Nombre','Mes','Fecha','Monto','Link','Estado','Token','MesHoja']);
     }
     // Asegurar encabezado columna Token
     if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
@@ -731,7 +731,8 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto) {
     docFile.setTrashed(true);
 
     var link = pdfFile.getUrl();
-    rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo', token]);
+    // Col J = MesHoja: hoja de origen del pago (para auditoría determinista)
+    rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo', token, mesHoja || mes]);
 
     // ── Envío de correo (solo si ENVIAR_CORREOS = true y hay email) ───────
     if (ENVIAR_CORREOS) {
@@ -1076,14 +1077,17 @@ function doPost(e) {
 
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
-          var rDept_  = String(recibosCache[j][1]).toUpperCase();
-          var rPer_   = periodoAMes(recibosCache[j][3]);
-          var rMonto_ = Number(recibosCache[j][5]).toFixed(2);
-          var rEst_   = String(recibosCache[j][7]).trim().toLowerCase();
-          // Bloquear si mismo depto + periodo + monto — sin importar si está cancelado
-          if (rDept_ === dept && rPer_ === periodoRecibo && rMonto_ === Number(monto).toFixed(2)) {
+          var rDept_   = String(recibosCache[j][1]).toUpperCase();
+          var rMonto_  = Number(recibosCache[j][5]).toFixed(2);
+          var rEst_    = String(recibosCache[j][7]).trim().toLowerCase();
+          var rMesHoja = String(recibosCache[j][9] || '').trim(); // col J: hoja origen
+          // Matching primario: dept + mesHoja + monto (determinista, no depende del concepto)
+          // Matching secundario (recibos antiguos sin col J): dept + periodo + monto
+          var matchPrimario   = rMesHoja && rDept_ === dept && rMesHoja === mes && rMonto_ === Number(monto).toFixed(2);
+          var matchSecundario = !rMesHoja && rDept_ === dept && periodoAMes(recibosCache[j][3]) === periodoRecibo && rMonto_ === Number(monto).toFixed(2);
+          if (matchPrimario || matchSecundario) {
             isDup = true;
-            Logger.log('SKIP ' + dept + ' ' + periodoRecibo + ' $' + monto + ' estado=' + rEst_);
+            Logger.log('SKIP ' + dept + ' mesHoja=' + mes + ' $' + monto + ' estado=' + rEst_);
             break;
           }
         }
@@ -1098,7 +1102,8 @@ function doPost(e) {
             fechaStr = Utilities.formatDate(new Date((fecha-25569)*86400*1000), 'America/Mexico_City', 'dd/MM/yyyy');
           } else { fechaStr = String(fecha); }
         } catch(ex) { fechaStr = String(fecha); }
-        var result = generarRecibo(dept, nombre, periodoRecibo, fechaStr, monto, concepto);
+        // mesHoja = sheet de origen (para auditoría), periodoRecibo = label en el PDF
+        var result = generarRecibo(dept, nombre, periodoRecibo, fechaStr, monto, concepto, mes);
         if (result.ok) {
           generados++;
           // Refrescar cache para que duplicados dentro del mismo mes también se detecten
@@ -1138,7 +1143,8 @@ function doPost(e) {
           periodo: periodoAMes(rd[k][3]),
           monto:   Number(rd[k][5]),
           estado:  String(rd[k][7] || '').trim().toLowerCase(),
-          link:    String(rd[k][6] || '')
+          link:    String(rd[k][6] || ''),
+          mesHoja: String(rd[k][9] || '').trim()
         });
       }
 
@@ -1168,13 +1174,18 @@ function doPost(e) {
         if (!info2) continue;
         var periodoRecibo2 = extractPeriodoRecibo(nombre2, mes);
         // Buscar recibo coincidente
+        // Matching primario: dept + mesHoja (col J) + monto  → determinista
+        // Matching secundario: dept + periodoRecibo + monto  → legacy (recibos sin col J)
         var recibo2 = null;
         for (var r = 0; r < recibos.length; r++) {
-          if (recibos[r].dept === info2.dept &&
-              recibos[r].periodo === periodoRecibo2 &&
-              Math.abs(recibos[r].monto - Number(monto2)) < 0.05) {
-            recibo2 = recibos[r]; break;
-          }
+          var rMH2 = recibos[r].mesHoja;
+          var matchP2 = rMH2 && recibos[r].dept === info2.dept &&
+                        rMH2 === mes &&
+                        Math.abs(recibos[r].monto - Number(monto2)) < 0.05;
+          var matchS2 = !rMH2 && recibos[r].dept === info2.dept &&
+                        recibos[r].periodo === periodoRecibo2 &&
+                        Math.abs(recibos[r].monto - Number(monto2)) < 0.05;
+          if (matchP2 || matchS2) { recibo2 = recibos[r]; break; }
         }
         // Formatear fecha
         var fRaw = rows[i][0], fechaStr2 = '';
