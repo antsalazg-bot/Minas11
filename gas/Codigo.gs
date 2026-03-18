@@ -1045,9 +1045,16 @@ function doPost(e) {
 
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
-          if (String(recibosCache[j][1]).toUpperCase() === dept &&
-              periodoAMes(recibosCache[j][3]) === periodoRecibo &&
-              Number(recibosCache[j][5]).toFixed(2) === Number(monto).toFixed(2)) { isDup = true; break; }
+          var rDept_  = String(recibosCache[j][1]).toUpperCase();
+          var rPer_   = periodoAMes(recibosCache[j][3]);
+          var rMonto_ = Number(recibosCache[j][5]).toFixed(2);
+          var rEst_   = String(recibosCache[j][7]).trim().toLowerCase();
+          // Bloquear si mismo depto + periodo + monto — sin importar si está cancelado
+          if (rDept_ === dept && rPer_ === periodoRecibo && rMonto_ === Number(monto).toFixed(2)) {
+            isDup = true;
+            Logger.log('SKIP ' + dept + ' ' + periodoRecibo + ' $' + monto + ' estado=' + rEst_);
+            break;
+          }
         }
         if (isDup) { omitidos++; continue; }
         var nombre = getNombrePropietario(dept);
@@ -1063,6 +1070,8 @@ function doPost(e) {
         var result = generarRecibo(dept, nombre, periodoRecibo, fechaStr, monto, concepto);
         if (result.ok) {
           generados++;
+          // Refrescar cache para que duplicados dentro del mismo mes también se detecten
+          recibosCache = rs ? rs.getDataRange().getValues() : [];
         } else {
           errores++;
           // Cuota de Google Docs agotada — no tiene caso seguir, retornar de inmediato
