@@ -1004,6 +1004,13 @@ function doPost(e) {
         if (!monto || isNaN(monto) || Number(monto) <= 0) continue;
         // Saltar filas sin ningún tipo de identificador
         if (!idConc && !rows[i][8] && !nombreFila) continue;
+        // Saltar filas donde col G sea un marcador de anulación, no un ID de concepto válido
+        // Ej: "cancelado", "devuelto", "anulado", "reverso" → no generan recibo
+        if (idConc && !/^(CM|CE|OI|CV)-/i.test(idConc)) {
+          var idLow = idConc.toLowerCase();
+          if (idLow === 'cancelado' || idLow === 'devuelto' || idLow === 'anulado' ||
+              idLow === 'reverso' || idLow === 'void' || idLow === 'n/a') continue;
+        }
 
         // ── Detección de depto con misma lógica de 3 capas que shared.js ────
         var info = getConceptoYDepto(idConc);
