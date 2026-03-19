@@ -821,6 +821,9 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--cream);color:v
   <div class="modal-sheet">
     <button class="modal-close" onclick="cerrarScanCam()">✕</button>
     <h3>📷 Escanear código del paquete</h3>
+    <!-- Video para BarcodeDetector nativo (Chrome/iOS 17+) -->
+    <video id="scanCamVideo" autoplay muted playsinline style="width:100%;border-radius:8px;display:none"></video>
+    <!-- Div para html5-qrcode fallback -->
     <div id="scanCamReader"></div>
     <p class="scan-cam-hint">Apunta la cámara al código de barras o QR del paquete</p>
     <button class="btn-secondary" style="width:100%;margin-top:10px" onclick="cerrarScanCam()">Cancelar</button>
@@ -1977,48 +1980,62 @@ function cerrarCamara(){
 // ════════════════════════════════════════════════
 let _scanCam = null;
 let _scanCamRunning = false;
+let _scanCamStream = null;
+let _scanCamInterval = null;
 
 async function abrirScanCam(){
   openModal('modalScanCam');
-  const readerEl = document.getElementById('scanCamReader');
-  readerEl.innerHTML = '';
+  document.getElementById('scanCamReader').innerHTML = '';
+  // BarcodeDetector nativo (Chrome Android, iOS 17+) es mucho mejor con Code 128
+  if('BarcodeDetector' in window){
+    await _startNativeScanner();
+  } else {
+    await _startHtml5QrcodeScanner();
+  }
+}
+
+async function _startNativeScanner(){
+  const videoEl = document.getElementById('scanCamVideo');
+  document.getElementById('scanCamReader').style.display = 'none';
+  videoEl.style.display = 'block';
   try {
-    if(typeof Html5Qrcode === 'undefined'){
-      cerrarScanCam();
-      // Fallback: abrir file input con cámara
-      const fi = document.createElement('input');
-      fi.type='file'; fi.accept='image/*'; fi.capture='environment';
-      fi.onchange = e => {
-        const f = e.target.files[0];
-        if(!f) return;
-        const r2 = new FileReader();
-        r2.onload = async ev => {
-          try {
-            const hq = new Html5Qrcode('_tmp');
-            const res = await hq.scanFile(f, true);
-            _setTracking(res);
-          } catch(err){ showToast('No se pudo leer el código','err'); }
-        };
-        r2.readAsDataURL(f);
-      };
-      fi.click();
-      return;
-    }
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width:{ ideal:1920 }, height:{ ideal:1080 } }
+    });
+    videoEl.srcObject = stream;
+    _scanCamStream = stream;
+    await videoEl.play();
+    const supported = await BarcodeDetector.getSupportedFormats();
+    const wanted = ['code_128','code_39','ean_13','ean_8','upc_a','qr_code','pdf417','data_matrix','itf','aztec'];
+    const detector = new BarcodeDetector({ formats: wanted.filter(f => supported.includes(f)) });
+    _scanCamInterval = setInterval(async () => {
+      if(!_scanCamStream) return;
+      try {
+        const codes = await detector.detect(videoEl);
+        if(codes.length > 0){ _setTracking(codes[0].rawValue); }
+      } catch(e){}
+    }, 150);
+  } catch(err){
+    cerrarScanCam();
+    showToast('Cámara no disponible: ' + err, 'err');
+  }
+}
+
+async function _startHtml5QrcodeScanner(){
+  document.getElementById('scanCamVideo').style.display = 'none';
+  document.getElementById('scanCamReader').style.display = 'block';
+  if(typeof Html5Qrcode === 'undefined'){ showToast('Librería no disponible','err'); return; }
+  try {
     _scanCam = new Html5Qrcode('scanCamReader');
     _scanCamRunning = true;
     await _scanCam.start(
       { facingMode: 'environment' },
       { fps: 10, qrbox: { width: 380, height: 220 }, formatsToSupport: [
-        Html5QrcodeSupportedFormats.CODE_128,
-        Html5QrcodeSupportedFormats.CODE_39,
-        Html5QrcodeSupportedFormats.EAN_13,
-        Html5QrcodeSupportedFormats.EAN_8,
-        Html5QrcodeSupportedFormats.UPC_A,
-        Html5QrcodeSupportedFormats.ITF,
-        Html5QrcodeSupportedFormats.QR_CODE,
-        Html5QrcodeSupportedFormats.PDF_417,
-        Html5QrcodeSupportedFormats.DATA_MATRIX,
-        Html5QrcodeSupportedFormats.AZTEC,
+        Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,   Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,    Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.QR_CODE,  Html5QrcodeSupportedFormats.PDF_417,
+        Html5QrcodeSupportedFormats.DATA_MATRIX, Html5QrcodeSupportedFormats.AZTEC,
       ]},
       (decoded) => { _setTracking(decoded); }
     );
@@ -2039,9 +2056,15 @@ function _setTracking(decoded){
 }
 
 function cerrarScanCam(){
+  // Parar escáner nativo
+  if(_scanCamInterval){ clearInterval(_scanCamInterval); _scanCamInterval = null; }
+  if(_scanCamStream){ _scanCamStream.getTracks().forEach(t => t.stop()); _scanCamStream = null; }
+  const v = document.getElementById('scanCamVideo');
+  if(v){ v.srcObject = null; v.style.display = 'none'; }
+  // Parar html5-qrcode
   if(_scanCam && _scanCamRunning){
     _scanCamRunning = false;
-    _scanCam.stop().catch(()=>{}).finally(()=>{ _scanCam=null; });
+    _scanCam.stop().catch(()=>{}).finally(()=>{ _scanCam = null; });
   }
   closeModal('modalScanCam');
 }
