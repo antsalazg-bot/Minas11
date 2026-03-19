@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 //  VERSIÓN — actualizar con cada deploy
 // ═══════════════════════════════════════════════
-var GAS_VERSION = '2026-03-18-v11';
+var GAS_VERSION = '2026-03-18-v12';
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
@@ -524,13 +524,13 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
         if (cDept !== deptUp || cMonto !== montoFijo) continue;
         var cMesHoja = String(cacheCheck[ci][9] || '').trim();
         var cPeriodo = cacheCheck[ci][3];
-        // mesHoja exacto
-        var matchP = cMesHoja && cMesHoja === hojaOrigen;
-        // periodo como string o Date
+        // matchP: col J (mesHoja) tiene valor y coincide con hojaOrigen → match exacto
+        // matchS: col J vacío (recibo antiguo sin mesHoja) → fallback a periodo string
+        var matchP = cMesHoja !== '' && cMesHoja === hojaOrigen;
         var periodoStr = (cPeriodo instanceof Date)
           ? periodoAMes(cPeriodo)
           : String(cPeriodo || '').trim();
-        var matchS = periodoStr === mes || periodoStr === hojaOrigen;
+        var matchS = cMesHoja === '' && periodoStr === hojaOrigen;
         if (matchP || matchS) {
           // Registrar en índice para próximas veces
           idx[recKey] = String(cacheCheck[ci][0]);
@@ -1393,14 +1393,15 @@ function doPost(e) {
           var grMH    = String(grRd[gi][9] || '').trim();
           var grPr    = grRd[gi][3];
           var grPrStr = (grPr instanceof Date) ? periodoAMes(grPr) : String(grPr||'').trim();
-          var matchMH = grMH === grHoja;
-          var matchPH = grPrStr === grHoja;
-          var matchPM = grPrStr === String(data.mes||'').trim();
+          // matchMH: col J (mesHoja) tiene valor y coincide con grHoja → match exacto
+          // matchPH: col J vacío (recibo antiguo sin mesHoja) → fallback a periodo string
+          var matchMH = grMH !== '' && grMH === grHoja;
+          var matchPH = grMH === '' && grPrStr === grHoja;
           grNearMiss.push({
             fi: gi, folio: String(grRd[gi][0]), grMH: grMH, grPrStr: grPrStr,
-            matchMH: matchMH, matchPH: matchPH, matchPM: matchPM
+            matchMH: matchMH, matchPH: matchPH
           });
-          if (matchMH || matchPH || matchPM) {
+          if (matchMH || matchPH) {
             // Registrar en índice y devolver DUP
             grIdx[grKey] = String(grRd[gi][0]);
             grSp.setProperty('RECIBOS_IDX', JSON.stringify(grIdx));
