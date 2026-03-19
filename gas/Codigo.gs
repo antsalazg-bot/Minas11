@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 //  VERSIÓN — actualizar con cada deploy
 // ═══════════════════════════════════════════════
-var GAS_VERSION = '2026-03-18-v13';
+var GAS_VERSION = '2026-03-18-v14';
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
@@ -1377,29 +1377,25 @@ function doPost(e) {
       grDebug.idxKeys   = Object.keys(grIdx).length;
       grDebug.idxHasKey = !!grIdx[grKey];
       if (grIdx[grKey]) {
-        // Validar que el folio en el índice realmente corresponde a este mesHoja
-        // (puede ser una entrada obsoleta/incorrecta de una versión anterior)
+        // Solo limpiar la entrada si el recibo fue CANCELADO (permite regenerar tras cancelación)
+        // No intentar validar mesHoja — col J puede tener formatos distintos en recibos anteriores
         var idxFolio = grIdx[grKey];
-        var idxValid = false;
+        var idxCancelado = false;
         var grRsChk = ss.getSheetByName('Recibos');
         if (grRsChk) {
           var grRdChk = grRsChk.getDataRange().getValues();
           for (var gc = 1; gc < grRdChk.length; gc++) {
             if (String(grRdChk[gc][0]).trim() !== idxFolio) continue;
-            if (String(grRdChk[gc][7]||'').trim().toLowerCase() === 'cancelado') continue;
-            var chkMH = String(grRdChk[gc][9]||'').trim();
-            // El folio es válido solo si su mesHoja coincide exactamente con grHoja
-            if (chkMH === grHoja) { idxValid = true; }
+            idxCancelado = (String(grRdChk[gc][7]||'').trim().toLowerCase() === 'cancelado');
             break;
           }
         }
-        if (idxValid) {
+        if (!idxCancelado) {
           grDebug.idxValidated = true;
           return json({ok:false, error:'DUP', folio:idxFolio, _debug:grDebug});
         } else {
-          // Entrada obsoleta o incorrecta — limpiar y continuar con la generación
-          grDebug.idxStale = true;
-          grDebug.idxStaleFolio = idxFolio;
+          // Recibo cancelado → limpiar entrada del índice y permitir regenerar
+          grDebug.idxWasCancelled = true;
           delete grIdx[grKey];
           grSp.setProperty('RECIBOS_IDX', JSON.stringify(grIdx));
         }
@@ -1444,6 +1440,21 @@ function doPost(e) {
       var grResult = generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto, data.mesHoja || data.mes);
       grResult._debug = grDebug;
       return json(grResult);
+    }
+
+    // ── ELIMINAR CLAVE ESPECÍFICA DEL ÍNDICE ─────────────────────────────────
+    if (data.accion === 'limpiar-clave-idx') {
+      if (!hasPermiso(currentUser, 'generar-recibos-mes')) return json({ok:false, error:'No autorizado'});
+      var claveTarget = String(data.clave || '').trim();
+      if (!claveTarget) return json({ok:false, error:'Se requiere el parámetro clave'});
+      var spCl = PropertiesService.getScriptProperties();
+      var idxCl = {};
+      try { idxCl = JSON.parse(spCl.getProperty('RECIBOS_IDX') || '{}'); } catch(e){}
+      if (!idxCl[claveTarget]) return json({ok:false, error:'Clave no encontrada en índice', clave:claveTarget, totalKeys:Object.keys(idxCl).length});
+      var folioEliminado = idxCl[claveTarget];
+      delete idxCl[claveTarget];
+      spCl.setProperty('RECIBOS_IDX', JSON.stringify(idxCl));
+      return json({ok:true, msg:'Clave eliminada del índice', clave:claveTarget, folioEliminado:folioEliminado, keysRestantes:Object.keys(idxCl).length});
     }
 
     // ── ÍNDICE DE RECIBOS (reconstruir / limpiar) ────────────────────────────

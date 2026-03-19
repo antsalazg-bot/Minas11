@@ -654,6 +654,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
               <button onclick="verContadorFolio()" style="font-size:.78rem;padding:4px 12px;border:1px solid #ccc;background:#f5f5f0;border-radius:4px;cursor:pointer;">🔄 Consultar</button>
               <button onclick="resetContadorFolio()" style="font-size:.78rem;padding:4px 12px;border:1.5px solid #c00;color:#c00;background:#fff;border-radius:4px;cursor:pointer;font-weight:600;">⚠ Resetear a 0</button>
               <button onclick="rebuildIndex()" style="font-size:.78rem;padding:4px 12px;border:1px solid #555;color:#333;background:#f5f5f0;border-radius:4px;cursor:pointer;">🔧 Reconstruir índice</button>
+              <button onclick="limpiarClaveIdx()" style="font-size:.78rem;padding:4px 12px;border:1px solid #b07000;color:#7a4d00;background:#fffbf0;border-radius:4px;cursor:pointer;">🗑 Limpiar clave índice</button>
             </div>
           </div>
 
@@ -1439,6 +1440,19 @@ async function rebuildIndex(){
     const d = await res.json();
     if(d.ok) toast('✓ Índice reconstruido: ' + d.keys + ' entradas');
     else toast('Error: ' + d.error);
+  }catch(e){ toast('Error de conexión'); }
+}
+
+async function limpiarClaveIdx(){
+  const clave = prompt('Ingresa la clave exacta a eliminar del índice.\nFormato: DEPT|mesHoja|monto\nEjemplo: 501|Enero 2025|361.00');
+  if(!clave || !clave.trim()) return;
+  if(!confirm('¿Eliminar la clave "' + clave.trim() + '" del índice?\nEsto permitirá regenerar ese recibo específico.')) return;
+  try{
+    const res = await fetch(SCRIPT_URL,{method:'POST',
+      body:JSON.stringify({accion:'limpiar-clave-idx', clave:clave.trim(), token:SESSION_TOKEN})});
+    const d = await res.json();
+    if(d.ok) toast('✓ Clave eliminada. Folio que tenía: ' + d.folioEliminado + ' · Claves restantes: ' + d.keysRestantes);
+    else toast('Error: ' + (d.error||'desconocido') + (d.clave ? ' ('+d.clave+')' : ''));
   }catch(e){ toast('Error de conexión'); }
 }
 
