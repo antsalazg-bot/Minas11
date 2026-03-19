@@ -492,37 +492,53 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     // Asegurar encabezado columna Token
     if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
 
-    // ── Guardia anti-duplicado con Lock (único punto de verdad) ─────────────
+    // ── Guardia anti-duplicado (3 capas) ─────────────────────────────────────
     var lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      var hojaOrigen  = String(mesHoja || mes).trim();
-      var montoFijo   = Number(monto).toFixed(2);
-      var deptUp      = String(dept).trim().toUpperCase();
-      var cacheCheck  = rs.getDataRange().getValues();
-      Logger.log('ANTDUP CHECK dept=%s monto=%s hoja=%s mes=%s filas=%s',
-                 deptUp, montoFijo, hojaOrigen, mes, cacheCheck.length - 1);
+      var hojaOrigen = String(mesHoja || mes).trim();
+      var montoFijo  = Number(monto).toFixed(2);
+      var deptUp     = String(dept).trim().toUpperCase();
+      var recKey     = deptUp + '|' + hojaOrigen + '|' + montoFijo;
+
+      // CAPA 1: Índice en Script Properties (más rápido y confiable)
+      var sp2        = PropertiesService.getScriptProperties();
+      var idxRaw     = sp2.getProperty('RECIBOS_IDX') || '{}';
+      var idx        = {};
+      try { idx = JSON.parse(idxRaw); } catch(pe) { idx = {}; }
+      if (idx[recKey]) {
+        lock.releaseLock();
+        return {ok:false, error:'DUP', folio: idx[recKey],
+                msg: 'Ya existe recibo (índice) para ' + dept + ' en ' + hojaOrigen};
+      }
+
+      // CAPA 2: Escaneo de la hoja Recibos
+      var cacheCheck = rs.getDataRange().getValues();
       for (var ci = 1; ci < cacheCheck.length; ci++) {
-        var cDept    = String(cacheCheck[ci][1]).trim().toUpperCase();
-        var cMonto   = Number(cacheCheck[ci][5]).toFixed(2);
+        var cDept  = String(cacheCheck[ci][1]).trim().toUpperCase();
+        var cMonto = Number(cacheCheck[ci][5]).toFixed(2);
         if (cDept !== deptUp || cMonto !== montoFijo) continue;
         var cMesHoja = String(cacheCheck[ci][9] || '').trim();
-        var cPeriodo = String(cacheCheck[ci][3] || '').trim();
+        var cPeriodo = cacheCheck[ci][3];
+        // mesHoja exacto
         var matchP = cMesHoja && cMesHoja === hojaOrigen;
-        var matchS = periodoAMes(cPeriodo) === mes;
-        Logger.log('  candidato fila=%s cDept=%s cMonto=%s cMesHoja=[%s] cPeriodo=[%s] matchP=%s matchS=%s',
-                   ci, cDept, cMonto, cMesHoja, cPeriodo, matchP, matchS);
+        // periodo como string o Date
+        var periodoStr = (cPeriodo instanceof Date)
+          ? periodoAMes(cPeriodo)
+          : String(cPeriodo || '').trim();
+        var matchS = periodoStr === mes || periodoStr === hojaOrigen;
         if (matchP || matchS) {
+          // Registrar en índice para próximas veces
+          idx[recKey] = String(cacheCheck[ci][0]);
+          sp2.setProperty('RECIBOS_IDX', JSON.stringify(idx));
           lock.releaseLock();
-          Logger.log('  → DUP detectado folio=%s', String(cacheCheck[ci][0]));
           return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
-                  msg: 'Ya existe recibo para ' + dept + ' en ' + hojaOrigen};
+                  msg: 'Ya existe recibo (hoja) para ' + dept + ' en ' + hojaOrigen};
         }
       }
-      Logger.log('  → Sin dup, generando recibo nuevo');
-      // ── pasa la guardia: continuar generando ─────────────────────────────
+      // ── Pasa la guardia → continuar generando ────────────────────────────
     } catch(lockErr) {
-      return {ok:false, error:'Lock timeout: ' + lockErr.message};
+      return {ok:false, error:'Lock error: ' + lockErr.message};
     }
 
     // Usar el año del PERIODO del recibo, no el año actual de impresión
@@ -770,7 +786,21 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     var link = pdfFile.getUrl();
     // Col J = MesHoja: hoja de origen del pago (para auditoría determinista)
     rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo', token, mesHoja || mes]);
-    SpreadsheetApp.flush(); // forzar escritura antes de liberar el lock
+    SpreadsheetApp.flush();
+
+    // Registrar en índice Script Properties para detección garantizada
+    try {
+      var sp3   = PropertiesService.getScriptProperties();
+      var idx3r = sp3.getProperty('RECIBOS_IDX') || '{}';
+      var idx3  = {};
+      try { idx3 = JSON.parse(idx3r); } catch(e3) { idx3 = {}; }
+      var rKey3 = String(dept).trim().toUpperCase() + '|' +
+                  String(mesHoja || mes).trim() + '|' +
+                  Number(monto).toFixed(2);
+      idx3[rKey3] = folio;
+      sp3.setProperty('RECIBOS_IDX', JSON.stringify(idx3));
+    } catch(idxErr) { /* no bloquear si el índice falla */ }
+
     lock.releaseLock();
 
     // ── Envío de correo (solo si ENVIAR_CORREOS = true y hay email) ───────
@@ -1326,6 +1356,34 @@ function doPost(e) {
 
     if (data.accion === 'generar-recibo')
       return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto, data.mesHoja || data.mes));
+
+    // ── ÍNDICE DE RECIBOS (reconstruir / limpiar) ────────────────────────────
+    if (data.accion === 'rebuild-index') {
+      if (!hasPermiso(currentUser, 'generar-recibos-mes')) return json({ok:false, error:'No autorizado'});
+      var sp4 = PropertiesService.getScriptProperties();
+      var rs4 = ss.getSheetByName('Recibos');
+      if (!rs4) {
+        sp4.setProperty('RECIBOS_IDX', '{}');
+        return json({ok:true, keys:0, msg:'Hoja Recibos no existe, índice limpiado'});
+      }
+      var rd4 = rs4.getDataRange().getValues();
+      var idx4 = {};
+      for (var ri4 = 1; ri4 < rd4.length; ri4++) {
+        var rFolio4  = String(rd4[ri4][0] || '').trim();
+        var rDept4   = String(rd4[ri4][1] || '').trim().toUpperCase();
+        var rMonto4  = Number(rd4[ri4][5]).toFixed(2);
+        var rMesH4   = String(rd4[ri4][9] || '').trim();
+        var rPer4    = rd4[ri4][3];
+        var rEst4    = String(rd4[ri4][7] || '').trim().toLowerCase();
+        if (!rFolio4 || rEst4 === 'cancelado') continue;
+        var hoja4 = rMesH4 || ((rPer4 instanceof Date) ? periodoAMes(rPer4) : String(rPer4 || '').trim());
+        if (rDept4 && hoja4 && rMonto4) {
+          idx4[rDept4 + '|' + hoja4 + '|' + rMonto4] = rFolio4;
+        }
+      }
+      sp4.setProperty('RECIBOS_IDX', JSON.stringify(idx4));
+      return json({ok:true, keys: Object.keys(idx4).length, msg:'Índice reconstruido con ' + Object.keys(idx4).length + ' entradas'});
+    }
 
     // ── GESTIÓN DEL CONTADOR DE FOLIOS ───────────────────────────────────────
     if (data.accion === 'folio-contador') {
