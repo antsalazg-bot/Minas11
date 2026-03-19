@@ -1326,7 +1326,22 @@ function doPost(e) {
         return r.periodo === mes && r.estado !== 'cancelado';
       });
 
+      // ── Duplicados: recibos de este mes sin pago correspondiente ──────────
+      var foliosUsados = {};
+      for (var pi = 0; pi < pagos.length; pi++) {
+        if (pagos[pi].folio) foliosUsados[pagos[pi].folio] = true;
+      }
+      var duplicados = [];
+      for (var ri = 0; ri < recibos.length; ri++) {
+        var rec = recibos[ri];
+        if (rec.estado === 'cancelado') continue;
+        var esDeMes = (rec.mesHoja && rec.mesHoja === mes) || (!rec.mesHoja && rec.periodo === mes);
+        if (!esDeMes) continue;
+        if (!foliosUsados[rec.folio]) duplicados.push(rec);
+      }
+
       return json({ok: true, mes: mes, pagos: pagos, recibosDelPeriodo: recibosDelPeriodo,
+                   duplicados: duplicados,
                    _debug: {totalRecibosEnHoja: recibos.length, totalPagos: pagos.length}});
     }
 

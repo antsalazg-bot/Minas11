@@ -1249,7 +1249,8 @@ async function auditarRecibos(){
 }
 
 function renderAuditResult(data){
-  const pagos = data.pagos || [];
+  const pagos      = data.pagos || [];
+  const duplicados = data.duplicados || [];
   const result = document.getElementById('audit-result');
   const activos   = pagos.filter(p=>p.reciboEstado==='activo');
   const cancelados= pagos.filter(p=>p.reciboEstado==='cancelado');
@@ -1268,12 +1269,13 @@ function renderAuditResult(data){
   result.style.display='block';
   result.innerHTML=`
     <div style="font-size:.72rem;color:rgba(24,18,10,.4);margin-bottom:.6rem;padding:.3rem .5rem;background:#f5f5f0;border-radius:4px;">
-      🔎 Recibos en hoja: <strong>${dbg.totalRecibosEnHoja ?? '?'}</strong> · Pagos en mes: <strong>${dbg.totalPagos ?? pagos.length}</strong>
+      🔎 Recibos en hoja: <strong>${dbg.totalRecibosEnHoja ?? '?'}</strong> · Pagos en mes: <strong>${dbg.totalPagos ?? pagos.length}</strong>${duplicados.length>0?` · <span style="color:#b85c00;font-weight:700;">⚠ ${duplicados.length} duplicado(s)</span>`:''}
     </div>
-    <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">
+    <div class="kpi-row" style="grid-template-columns:repeat(5,1fr);margin-bottom:1rem">
       <div class="kcard g"><div class="klbl">Con recibo activo</div><div class="kval">${activos.length}</div><div class="ksub">de ${pagos.length} pagos</div></div>
       <div class="kcard r"><div class="klbl">Sin recibo</div><div class="kval">${sinRecibo.length}</div><div class="ksub">${sinRecibo.length>0?'Pendientes':'Todo bien'}</div></div>
       <div class="kcard o"><div class="klbl">Cancelados</div><div class="kval">${cancelados.length}</div><div class="ksub">${cancelados.length>0?'Regenerar':'—'}</div></div>
+      <div class="kcard" style="border-color:${duplicados.length>0?'#b85c00':'#ccc'}"><div class="klbl">Duplicados</div><div class="kval" style="color:${duplicados.length>0?'#b85c00':'inherit'}">${duplicados.length}</div><div class="ksub">${duplicados.length>0?'Cancelar extras':'Sin duplicados'}</div></div>
       <div class="kcard b"><div class="klbl">Adelantos</div><div class="kval">${adelantos.length}</div><div class="ksub">Otro periodo</div></div>
     </div>
 
@@ -1308,8 +1310,32 @@ function renderAuditResult(data){
       </table>
     </div>
 
+    ${duplicados.length>0?`
+    <div class="stitle" style="margin-top:1.5rem">
+      <h2 style="color:#b85c00">⚠ Recibos duplicados (${duplicados.length})</h2>
+      <span class="tag" style="background:#fff3e0;color:#b85c00">Sin pago correspondiente en el mes — cancelar</span>
+    </div>
+    <div class="panel" style="overflow-x:auto;border-color:#f0c070">
+      <table style="min-width:500px">
+        <thead><tr>
+          <th>Folio</th><th>Depto</th><th>Propietario</th>
+          <th style="text-align:right">Monto</th><th>Periodo</th><th style="width:90px">Acción</th>
+        </tr></thead>
+        <tbody>
+          ${duplicados.map(r=>`<tr style="background:#fffbf0">
+            <td style="font-family:monospace;font-size:.75rem">${r.folio}</td>
+            <td style="font-weight:700;font-size:.85rem">${r.dept}</td>
+            <td style="font-size:.78rem;color:rgba(24,18,10,.55)">${r.nombre||'—'}</td>
+            <td style="text-align:right;font-family:'Fraunces',serif;font-size:.88rem">${fmt(r.monto)}</td>
+            <td style="font-size:.75rem">${r.periodo||'—'}</td>
+            <td><button onclick="cancelarFolioDup('${r.folio}')" style="font-size:.7rem;padding:3px 8px;border:1px solid #b85c00;color:#b85c00;background:#fff;border-radius:4px;cursor:pointer;">Cancelar</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`:''}
+
     ${(data.recibosDelPeriodo||[]).length>0?`
-    <div class="stitle"><h2>Recibos activos para ${data.mes}</h2><span class="tag">${(data.recibosDelPeriodo||[]).length} total (incluye adelantos de otros meses)</span></div>
+    <div class="stitle" style="margin-top:1.5rem"><h2>Recibos activos para ${data.mes}</h2><span class="tag">${(data.recibosDelPeriodo||[]).length} total (incluye adelantos de otros meses)</span></div>
     <div class="panel" style="overflow-x:auto">
       <table style="min-width:440px">
         <thead><tr>
@@ -1327,6 +1353,17 @@ function renderAuditResult(data){
       </table>
     </div>`:''}
   `;
+}
+
+async function cancelarFolioDup(folio){
+  if(!confirm('¿Cancelar el recibo duplicado ' + folio + '? Esta acción no se puede deshacer.')) return;
+  try{
+    const res = await fetch(SCRIPT_URL,{method:'POST',
+      body:JSON.stringify({accion:'cancelar-recibo',folio,token:SESSION_TOKEN})});
+    const d = await res.json();
+    if(d.ok){ toast('Recibo ' + folio + ' cancelado'); auditarRecibos(); }
+    else toast('Error: ' + (d.error||'desconocido'));
+  }catch(e){ toast('Error de conexión'); }
 }
 
 function sv(name,btn){
