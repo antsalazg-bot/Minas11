@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 //  VERSIÓN — actualizar con cada deploy
 // ═══════════════════════════════════════════════
-var GAS_VERSION = '2026-03-18-v16';
+var GAS_VERSION = '2026-03-18-v17';
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
@@ -1353,6 +1353,10 @@ function doPost(e) {
         if (pagos[pi].folio) foliosUsados[pagos[pi].folio] = true;
       }
       var duplicados = recibosDelPeriodo.filter(function(rec) {
+        // Excluir recibos de ADELANTO generados desde otro sheet
+        // (col J ≠ mes auditado → pago fue registrado en otro mes, no es huérfano)
+        var rMH = String(rec.mesHoja || '').trim();
+        if (rMH && rMH !== mes) return false;
         return !foliosUsados[rec.folio];
       });
 
