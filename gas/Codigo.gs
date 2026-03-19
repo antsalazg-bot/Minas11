@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 //  VERSIÓN — actualizar con cada deploy
 // ═══════════════════════════════════════════════
-var GAS_VERSION = '2026-03-18-v14';
+var GAS_VERSION = '2026-03-18-v15';
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
@@ -522,7 +522,8 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
         var cDept  = String(cacheCheck[ci][1]).trim().toUpperCase();
         var cMonto = Number(cacheCheck[ci][5]).toFixed(2);
         if (cDept !== deptUp || cMonto !== montoFijo) continue;
-        var cMesHoja = String(cacheCheck[ci][9] || '').trim();
+        var cMesHojaRaw = cacheCheck[ci][9];
+        var cMesHoja = (cMesHojaRaw instanceof Date) ? periodoAMes(cMesHojaRaw) : String(cMesHojaRaw || '').trim();
         var cPeriodo = cacheCheck[ci][3];
         // matchP: col J (mesHoja) tiene valor y coincide con hojaOrigen → match exacto
         // matchS: col J vacío (recibo antiguo sin mesHoja) → fallback a periodo string
@@ -1413,7 +1414,8 @@ function doPost(e) {
           if (rowDept !== grDept) continue;
           if (rowMonto !== grMonto) continue;
           // Dept y monto coinciden — revisar periodo
-          var grMH    = String(grRd[gi][9] || '').trim();
+          var grMHRaw = grRd[gi][9];
+          var grMH    = (grMHRaw instanceof Date) ? periodoAMes(grMHRaw) : String(grMHRaw || '').trim();
           var grPr    = grRd[gi][3];
           var grPrStr = (grPr instanceof Date) ? periodoAMes(grPr) : String(grPr||'').trim();
           // matchMH: col J (mesHoja) tiene valor y coincide con grHoja → match exacto
@@ -1472,7 +1474,8 @@ function doPost(e) {
         var rFolio4  = String(rd4[ri4][0] || '').trim();
         var rDept4   = String(rd4[ri4][1] || '').trim().toUpperCase();
         var rMonto4  = Number(rd4[ri4][5]).toFixed(2);
-        var rMesH4   = String(rd4[ri4][9] || '').trim();
+        var rMesH4Raw = rd4[ri4][9];
+        var rMesH4   = (rMesH4Raw instanceof Date) ? periodoAMes(rMesH4Raw) : String(rMesH4Raw || '').trim();
         var rPer4    = rd4[ri4][3];
         var rEst4    = String(rd4[ri4][7] || '').trim().toLowerCase();
         if (!rFolio4 || rEst4 === 'cancelado') continue;
