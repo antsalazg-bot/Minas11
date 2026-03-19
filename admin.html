@@ -615,6 +615,22 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
       <div id="view-generar-recibos" class="view">
         <div class="content fade-in">
           <div class="page-hdr"><h1>Generar Recibos</h1><p>Genera comprobantes de pago para un mes completo</p></div>
+
+          <!-- Barra de progreso fija (visible al hacer scroll) -->
+          <div id="gr-progress-bar" style="display:none;position:sticky;top:0;z-index:50;background:#fff;border-bottom:2px solid #e0e0e0;padding:.6rem 1rem;margin-bottom:1rem;border-radius:0;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.4rem;">
+              <span id="gr-progress-label" style="font-size:.82rem;font-weight:600;">Generando…</span>
+              <button onclick="window._cancelarRecibos=true;this.textContent='⏳ Cancelando…';this.disabled=true;"
+                style="font-size:.78rem;padding:4px 14px;border:1.5px solid #c00;color:#c00;background:#fff;border-radius:4px;cursor:pointer;font-weight:600;">
+                ✕ Detener
+              </button>
+            </div>
+            <div style="background:#e8e8e8;border-radius:4px;height:8px;overflow:hidden;">
+              <div id="gr-progress-fill" style="background:var(--accent,#1a6b30);width:0%;height:100%;transition:width .3s;"></div>
+            </div>
+            <div id="gr-progress-sub" style="margin-top:.3rem;font-size:.72rem;color:rgba(24,18,10,.5);">—</div>
+          </div>
+
           <div class="panel panel-pad" style="max-width:100%">
             <div class="form-grid">
               <div class="form-group">
@@ -627,6 +643,18 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
             </div>
             <div id="gr-result" style="margin-top:1.2rem;display:none;"></div>
           </div>
+
+          <!-- Contador de folios -->
+          <div class="panel panel-pad" style="max-width:100%;margin-top:1rem">
+            <div class="stitle" style="margin-bottom:.8rem"><h2>Contador de Folios</h2></div>
+            <p style="font-size:.78rem;color:rgba(24,18,10,.5);margin-bottom:.8rem;">El contador persiste aunque borres la hoja Recibos. Resetéalo a 0 para que el próximo folio sea REC-AÑO-0001.</p>
+            <div style="display:flex;align-items:center;gap:.8rem;flex-wrap:wrap;">
+              <div style="font-size:.82rem;">Último folio generado: <strong id="folio-actual">—</strong></div>
+              <button onclick="verContadorFolio()" style="font-size:.78rem;padding:4px 12px;border:1px solid #ccc;background:#f5f5f0;border-radius:4px;cursor:pointer;">🔄 Consultar</button>
+              <button onclick="resetContadorFolio()" style="font-size:.78rem;padding:4px 12px;border:1.5px solid #c00;color:#c00;background:#fff;border-radius:4px;cursor:pointer;font-weight:600;">⚠ Resetear a 0</button>
+            </div>
+          </div>
+
           <div class="panel panel-pad" style="max-width:100%;margin-top:1rem">
             <p style="font-size:.78rem;color:rgba(24,18,10,.45);line-height:1.7">
               <strong>¿Cómo funciona?</strong><br>
@@ -1109,28 +1137,23 @@ async function generarRecibosDelMes(){
     btn.disabled = false; btn.textContent = '🧾 Generar Recibos'; return;
   }
 
-  // ── PASO 2: generar uno por uno con barra de progreso + botón Cancelar ───
+  // ── PASO 2: generar uno por uno con barra fija + botón Detener ──────────
   let generados = 0, errores = 0, cancelado = false;
   const errList = [];
+  const progBar   = document.getElementById('gr-progress-bar');
+  const progLabel = document.getElementById('gr-progress-label');
+  const progFill  = document.getElementById('gr-progress-fill');
+  const progSub   = document.getElementById('gr-progress-sub');
+
+  progBar.style.display = 'block';
+  progBar.scrollIntoView({behavior:'smooth', block:'start'});
 
   function renderProgress(actual){
-    const total  = pagos.length;
-    const pct    = Math.round((actual / total) * 100);
-    result.innerHTML = `
-      <div style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:1rem;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
-          <span style="font-size:.82rem;font-weight:600;">
-            Generando ${actual} de ${total} — Depto ${pagos[actual-1]?.dept || '…'}
-          </span>
-          <button onclick="window._cancelarRecibos=true" style="font-size:.72rem;padding:2px 8px;border:1px solid var(--red,#c00);color:var(--red,#c00);background:#fff;border-radius:4px;cursor:pointer;">✕ Cancelar</button>
-        </div>
-        <div style="background:#e8e8e8;border-radius:4px;height:8px;overflow:hidden;">
-          <div style="background:var(--accent,#1a6b30);width:${pct}%;height:100%;transition:width .3s;"></div>
-        </div>
-        <div style="margin-top:.4rem;font-size:.75rem;color:rgba(24,18,10,.5);">
-          ✅ ${generados} generados · ⏭️ ${omitidosInicial} omitidos · ❌ ${errores} errores
-        </div>
-      </div>`;
+    const total = pagos.length;
+    const pct   = Math.round((actual / total) * 100);
+    progLabel.textContent = `Generando ${actual} de ${total} — Depto ${pagos[actual-1]?.dept || '…'}`;
+    progFill.style.width  = pct + '%';
+    progSub.textContent   = `✅ ${generados} generados · ⏭️ ${omitidosInicial} omitidos · ❌ ${errores} errores`;
   }
 
   window._cancelarRecibos = false;
@@ -1165,6 +1188,7 @@ async function generarRecibosDelMes(){
     }
   }
   window._cancelarRecibos = false;
+  progBar.style.display = 'none';
 
   // ── RESULTADO FINAL ──────────────────────────────────────────────────────
   const errHtml = errList.length
@@ -1353,6 +1377,33 @@ function renderAuditResult(data){
       </table>
     </div>`:''}
   `;
+}
+
+async function verContadorFolio(){
+  try{
+    const res = await fetch(SCRIPT_URL,{method:'POST',
+      body:JSON.stringify({accion:'folio-contador', token:SESSION_TOKEN})});
+    const d = await res.json();
+    if(d.ok) document.getElementById('folio-actual').textContent = d.ultimo_folio_num + ' (próximo: ' + (d.ultimo_folio_num+1) + ')';
+    else toast('Error: ' + d.error);
+  }catch(e){ toast('Error de conexión'); }
+}
+
+async function resetContadorFolio(){
+  const val = prompt('¿A qué número resetear el contador?\n0 = el próximo folio será 0001\nDeja en blanco para cancelar.', '0');
+  if(val === null || val === '') return;
+  const num = parseInt(val, 10);
+  if(isNaN(num) || num < 0){ toast('Número inválido'); return; }
+  if(!confirm('¿Resetear contador de folios a ' + num + '? El próximo folio generado será ' + (num+1) + '.')) return;
+  try{
+    const res = await fetch(SCRIPT_URL,{method:'POST',
+      body:JSON.stringify({accion:'folio-contador', reset:num, token:SESSION_TOKEN})});
+    const d = await res.json();
+    if(d.ok){
+      document.getElementById('folio-actual').textContent = d.ultimo_folio_num + ' (próximo: ' + (d.ultimo_folio_num+1) + ')';
+      toast('Contador reseteado a ' + d.ultimo_folio_num);
+    } else toast('Error: ' + d.error);
+  }catch(e){ toast('Error de conexión'); }
 }
 
 async function cancelarFolioDup(folio){
