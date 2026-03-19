@@ -2,7 +2,7 @@
 // SERVICE WORKER — Caseta Minas 11
 // Desarrollado por Antonio Salazar
 // ════════════════════════════════════════════════════════════════
-const CACHE = 'caseta-v1';
+const CACHE = 'caseta-v2';
 const ASSETS = [
   '/Minas11/caseta.html',
   '/Minas11/manifest-caseta.json',
