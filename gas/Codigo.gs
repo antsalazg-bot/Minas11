@@ -492,26 +492,33 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     // Asegurar encabezado columna Token
     if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
 
-    // ── Guardia anti-duplicado (protege sin importar quién llame esta función) ──
-    var hojaOrigen = mesHoja || mes; // col J: hoja de origen para matching
-    var montoFijo  = Number(monto).toFixed(2);
-    var deptUp     = String(dept).toUpperCase();
-    var cacheCheck = rs.getDataRange().getValues();
-    for (var ci = 1; ci < cacheCheck.length; ci++) {
-      var cDept    = String(cacheCheck[ci][1]).toUpperCase();
-      var cMonto   = Number(cacheCheck[ci][5]).toFixed(2);
-      var cMesHoja = String(cacheCheck[ci][9] || '').trim();
-      var cPeriodo = String(cacheCheck[ci][3] || '').trim();
-      // Primario: dept + mesHoja + monto
-      if (cMesHoja && cDept === deptUp && cMesHoja === hojaOrigen && cMonto === montoFijo) {
-        return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
-                msg: 'Ya existe recibo para ' + dept + ' en ' + hojaOrigen};
+    // ── Guardia anti-duplicado con Lock (protege contra cualquier vía de entrada) ──
+    var lock = LockService.getScriptLock();
+    lock.waitLock(30000); // espera hasta 30s para obtener el lock
+    try {
+      var hojaOrigen  = String(mesHoja || mes).trim();
+      var montoFijo   = Number(monto).toFixed(2);
+      var deptUp      = String(dept).trim().toUpperCase();
+      var cacheCheck  = rs.getDataRange().getValues();
+      for (var ci = 1; ci < cacheCheck.length; ci++) {
+        var cDept    = String(cacheCheck[ci][1]).trim().toUpperCase();
+        var cMonto   = Number(cacheCheck[ci][5]).toFixed(2);
+        if (cDept !== deptUp || cMonto !== montoFijo) continue;
+        var cMesHoja = String(cacheCheck[ci][9] || '').trim();
+        var cPeriodo = String(cacheCheck[ci][3] || '').trim();
+        // Primario: dept + mesHoja + monto
+        var matchP = cMesHoja && cMesHoja === hojaOrigen;
+        // Secundario: dept + periodo + monto (legado o adelantos)
+        var matchS = periodoAMes(cPeriodo) === mes;
+        if (matchP || matchS) {
+          lock.releaseLock();
+          return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
+                  msg: 'Ya existe recibo para ' + dept + ' en ' + hojaOrigen};
+        }
       }
-      // Secundario (legado sin col J): dept + periodo + monto
-      if (!cMesHoja && cDept === deptUp && periodoAMes(cPeriodo) === mes && cMonto === montoFijo) {
-        return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
-                msg: 'Ya existe recibo (legado) para ' + dept + ' en ' + mes};
-      }
+      // ── pasa la guardia: continuar generando ─────────────────────────────
+    } catch(lockErr) {
+      return {ok:false, error:'Lock timeout: ' + lockErr.message};
     }
 
     // Usar el año del PERIODO del recibo, no el año actual de impresión
@@ -759,6 +766,8 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     var link = pdfFile.getUrl();
     // Col J = MesHoja: hoja de origen del pago (para auditoría determinista)
     rs.appendRow([folio, dept, nombre, mes, fechaPago, monto, link, 'activo', token, mesHoja || mes]);
+    SpreadsheetApp.flush(); // forzar escritura antes de liberar el lock
+    lock.releaseLock();
 
     // ── Envío de correo (solo si ENVIAR_CORREOS = true y hay email) ───────
     if (ENVIAR_CORREOS) {
@@ -1078,14 +1087,22 @@ function doPost(e) {
         var dept = info.dept;
         var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
         var periodoRecibo = extractPeriodoRecibo(nombreFila, mes);
+        var deptNorm   = String(dept).trim().toUpperCase();
+        var montoNorm  = Number(monto).toFixed(2);
         var isDup = false;
         for (var j = 1; j < recibosCache.length; j++) {
-          var rDept_   = String(recibosCache[j][1]).toUpperCase();
+          var rDept_   = String(recibosCache[j][1]).trim().toUpperCase();
           var rMonto_  = Number(recibosCache[j][5]).toFixed(2);
           var rMesHoja = String(recibosCache[j][9] || '').trim();
-          var matchP = rMesHoja && rDept_ === dept && rMesHoja === mes && rMonto_ === Number(monto).toFixed(2);
-          var matchS = !rMesHoja && rDept_ === dept && periodoAMes(recibosCache[j][3]) === periodoRecibo && rMonto_ === Number(monto).toFixed(2);
-          if (matchP || matchS) { isDup = true; break; }
+          var rPeriodo = String(recibosCache[j][3] || '').trim();
+          if (rDept_ !== deptNorm || rMonto_ !== montoNorm) continue; // descarta diferente depto o monto
+          // Primario: mesHoja exacto
+          var matchP = rMesHoja && rMesHoja === mes;
+          // Secundario: sin mesHoja, cotejar por periodo
+          var matchS = !rMesHoja && periodoAMes(rPeriodo) === periodoRecibo;
+          // Terciario (catch-all): mismo periodo aunque tenga mesHoja diferente
+          var matchC = periodoAMes(rPeriodo) === periodoRecibo;
+          if (matchP || matchS || matchC) { isDup = true; break; }
         }
         var fecha = rows[i][0];
         var fechaStr = '';

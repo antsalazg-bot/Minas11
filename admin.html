@@ -1109,8 +1109,8 @@ async function generarRecibosDelMes(){
     btn.disabled = false; btn.textContent = '🧾 Generar Recibos'; return;
   }
 
-  // ── PASO 2: generar uno por uno con barra de progreso ───────────────────
-  let generados = 0, errores = 0;
+  // ── PASO 2: generar uno por uno con barra de progreso + botón Cancelar ───
+  let generados = 0, errores = 0, cancelado = false;
   const errList = [];
 
   function renderProgress(actual){
@@ -1118,19 +1118,24 @@ async function generarRecibosDelMes(){
     const pct    = Math.round((actual / total) * 100);
     result.innerHTML = `
       <div style="background:#fff;border:1px solid #e0e0e0;border-radius:6px;padding:1rem;">
-        <div style="font-size:.82rem;font-weight:600;margin-bottom:.5rem;">
-          Generando recibo ${actual} de ${total} — Depto ${pagos[actual-1]?.dept || '…'}
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+          <span style="font-size:.82rem;font-weight:600;">
+            Generando ${actual} de ${total} — Depto ${pagos[actual-1]?.dept || '…'}
+          </span>
+          <button onclick="window._cancelarRecibos=true" style="font-size:.72rem;padding:2px 8px;border:1px solid var(--red,#c00);color:var(--red,#c00);background:#fff;border-radius:4px;cursor:pointer;">✕ Cancelar</button>
         </div>
         <div style="background:#e8e8e8;border-radius:4px;height:8px;overflow:hidden;">
           <div style="background:var(--accent,#1a6b30);width:${pct}%;height:100%;transition:width .3s;"></div>
         </div>
         <div style="margin-top:.4rem;font-size:.75rem;color:rgba(24,18,10,.5);">
-          ✅ ${generados} generados · ❌ ${errores} errores
+          ✅ ${generados} generados · ⏭️ ${omitidosInicial} omitidos · ❌ ${errores} errores
         </div>
       </div>`;
   }
 
+  window._cancelarRecibos = false;
   for(let i = 0; i < pagos.length; i++){
+    if(window._cancelarRecibos){ cancelado = true; break; }
     const p = pagos[i];
     renderProgress(i + 1);
     btn.textContent = `⏳ ${i+1}/${pagos.length}`;
@@ -1159,23 +1164,29 @@ async function generarRecibosDelMes(){
       errList.push(`Depto ${p.dept}: ${e2.message}`);
     }
   }
+  window._cancelarRecibos = false;
 
   // ── RESULTADO FINAL ──────────────────────────────────────────────────────
   const errHtml = errList.length
     ? `<details style="margin-top:.5rem;font-size:.75rem;"><summary style="cursor:pointer;color:var(--red);">${errores} error(es) — ver detalle</summary>
         <ul style="margin:.3rem 0 0 1rem;color:var(--red);">${errList.map(e=>`<li>${e}</li>`).join('')}</ul></details>`
     : '';
+  const titulo  = cancelado ? '⚠️ Proceso cancelado' : '✓ Proceso completado';
+  const bgColor = cancelado ? '#fff8e1' : '#f0faf0';
+  const bdColor = cancelado ? '#f0c040' : '#cce8cc';
+  const titColor= cancelado ? '#7a5800' : '#1a6b30';
   result.innerHTML = `
-    <div style="background:#f0faf0;border:1px solid #cce8cc;border-radius:4px;padding:1rem;">
-      <div style="font-weight:700;color:#1a6b30;margin-bottom:.5rem;">✓ Proceso completado</div>
+    <div style="background:${bgColor};border:1px solid ${bdColor};border-radius:4px;padding:1rem;">
+      <div style="font-weight:700;color:${titColor};margin-bottom:.5rem;">${titulo}</div>
       <div style="font-size:.82rem;line-height:1.8;color:rgba(24,18,10,.7);">
         <div>✅ Generados: <strong>${generados}</strong></div>
-        <div>⏭️ Ya existían: <strong>${omitidosInicial}</strong></div>
+        <div>⏭️ Ya existían / duplicados: <strong>${omitidosInicial}</strong></div>
         <div>❌ Errores: <strong>${errores}</strong></div>
+        ${cancelado ? `<div style="color:#7a5800;">Quedaron pendientes: <strong>${pagos.length - generados - errores}</strong></div>` : ''}
       </div>
       ${errHtml}
     </div>`;
-  toast(generados + ' recibos generados');
+  toast(cancelado ? 'Cancelado — ' + generados + ' generados' : generados + ' recibos generados');
   btn.disabled = false;
   btn.textContent = '🧾 Generar Recibos';
 }
