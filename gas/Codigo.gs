@@ -1354,8 +1354,38 @@ function doPost(e) {
                    _debug: {totalRecibosEnHoja: recibos.length, totalPagos: pagos.length}});
     }
 
-    if (data.accion === 'generar-recibo')
+    if (data.accion === 'generar-recibo') {
+      if (!hasPermiso(currentUser, 'generar-recibo')) return json({ok:false, error:'No autorizado'});
+      // ── Chequeo anti-dup directo en el handler (antes de llamar generarRecibo) ──
+      var grDept  = String(data.dept  || '').trim().toUpperCase();
+      var grHoja  = String(data.mesHoja || data.mes || '').trim();
+      var grMonto = Number(data.monto).toFixed(2);
+      var grKey   = grDept + '|' + grHoja + '|' + grMonto;
+      // Capa 1: índice Script Properties
+      var grSp  = PropertiesService.getScriptProperties();
+      var grIdx = {};
+      try { grIdx = JSON.parse(grSp.getProperty('RECIBOS_IDX') || '{}'); } catch(e){}
+      if (grIdx[grKey]) return json({ok:false, error:'DUP', folio:grIdx[grKey]});
+      // Capa 2: leer hoja Recibos directamente
+      var grRs = ss.getSheetByName('Recibos');
+      if (grRs) {
+        var grRd = grRs.getDataRange().getValues();
+        for (var gi = 1; gi < grRd.length; gi++) {
+          if (String(grRd[gi][1]).trim().toUpperCase() !== grDept) continue;
+          if (Number(grRd[gi][5]).toFixed(2) !== grMonto) continue;
+          var grMH = String(grRd[gi][9] || '').trim();
+          var grPr = grRd[gi][3];
+          var grPrStr = (grPr instanceof Date) ? periodoAMes(grPr) : String(grPr||'').trim();
+          if (grMH === grHoja || grPrStr === grHoja || grPrStr === data.mes) {
+            // Registrar en índice y devolver DUP
+            grIdx[grKey] = String(grRd[gi][0]);
+            grSp.setProperty('RECIBOS_IDX', JSON.stringify(grIdx));
+            return json({ok:false, error:'DUP', folio:String(grRd[gi][0])});
+          }
+        }
+      }
       return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto, data.mesHoja || data.mes));
+    }
 
     // ── ÍNDICE DE RECIBOS (reconstruir / limpiar) ────────────────────────────
     if (data.accion === 'rebuild-index') {
