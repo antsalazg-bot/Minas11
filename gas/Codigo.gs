@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 //  VERSIÓN — actualizar con cada deploy
 // ═══════════════════════════════════════════════
-var GAS_VERSION = '2026-03-18-v12';
+var GAS_VERSION = '2026-03-18-v13';
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
@@ -1376,7 +1376,34 @@ function doPost(e) {
       try { grIdx = JSON.parse(grSp.getProperty('RECIBOS_IDX') || '{}'); } catch(e){}
       grDebug.idxKeys   = Object.keys(grIdx).length;
       grDebug.idxHasKey = !!grIdx[grKey];
-      if (grIdx[grKey]) return json({ok:false, error:'DUP', folio:grIdx[grKey], _debug:grDebug});
+      if (grIdx[grKey]) {
+        // Validar que el folio en el índice realmente corresponde a este mesHoja
+        // (puede ser una entrada obsoleta/incorrecta de una versión anterior)
+        var idxFolio = grIdx[grKey];
+        var idxValid = false;
+        var grRsChk = ss.getSheetByName('Recibos');
+        if (grRsChk) {
+          var grRdChk = grRsChk.getDataRange().getValues();
+          for (var gc = 1; gc < grRdChk.length; gc++) {
+            if (String(grRdChk[gc][0]).trim() !== idxFolio) continue;
+            if (String(grRdChk[gc][7]||'').trim().toLowerCase() === 'cancelado') continue;
+            var chkMH = String(grRdChk[gc][9]||'').trim();
+            // El folio es válido solo si su mesHoja coincide exactamente con grHoja
+            if (chkMH === grHoja) { idxValid = true; }
+            break;
+          }
+        }
+        if (idxValid) {
+          grDebug.idxValidated = true;
+          return json({ok:false, error:'DUP', folio:idxFolio, _debug:grDebug});
+        } else {
+          // Entrada obsoleta o incorrecta — limpiar y continuar con la generación
+          grDebug.idxStale = true;
+          grDebug.idxStaleFolio = idxFolio;
+          delete grIdx[grKey];
+          grSp.setProperty('RECIBOS_IDX', JSON.stringify(grIdx));
+        }
+      }
       // Capa 2: leer hoja Recibos directamente
       var grRs = ss.getSheetByName('Recibos');
       var grNearMiss = [];
