@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════
 //  VERSIÓN — actualizar con cada deploy
 // ═══════════════════════════════════════════════
-var GAS_VERSION = '2026-03-18-v15';
+var GAS_VERSION = '2026-03-18-v16';
 // ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
@@ -500,10 +500,12 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     var lock = LockService.getScriptLock();
     lock.waitLock(30000);
     try {
-      var hojaOrigen = String(mesHoja || mes).trim();
-      var montoFijo  = Number(monto).toFixed(2);
-      var deptUp     = String(dept).trim().toUpperCase();
-      var recKey     = deptUp + '|' + hojaOrigen + '|' + montoFijo;
+      var hojaOrigen  = String(mesHoja || mes).trim();
+      var periodoOrig = String(mes).trim();
+      var montoFijo   = Number(monto).toFixed(2);
+      var deptUp      = String(dept).trim().toUpperCase();
+      // Clave de 4 partes: dept|mesHoja|periodoRecibo|monto
+      var recKey      = deptUp + '|' + hojaOrigen + '|' + periodoOrig + '|' + montoFijo;
 
       // CAPA 1: Índice en Script Properties (más rápido y confiable)
       var sp2        = PropertiesService.getScriptProperties();
@@ -524,15 +526,13 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
         if (cDept !== deptUp || cMonto !== montoFijo) continue;
         var cMesHojaRaw = cacheCheck[ci][9];
         var cMesHoja = (cMesHojaRaw instanceof Date) ? periodoAMes(cMesHojaRaw) : String(cMesHojaRaw || '').trim();
-        var cPeriodo = cacheCheck[ci][3];
-        // matchP: col J (mesHoja) tiene valor y coincide con hojaOrigen → match exacto
-        // matchS: col J vacío (recibo antiguo sin mesHoja) → fallback a periodo string
-        var matchP = cMesHoja !== '' && cMesHoja === hojaOrigen;
-        var periodoStr = (cPeriodo instanceof Date)
-          ? periodoAMes(cPeriodo)
-          : String(cPeriodo || '').trim();
-        var matchS = cMesHoja === '' && periodoStr === hojaOrigen;
-        if (matchP || matchS) {
+        var cPeriodoRaw = cacheCheck[ci][3];
+        var periodoStr = (cPeriodoRaw instanceof Date) ? periodoAMes(cPeriodoRaw) : String(cPeriodoRaw || '').trim();
+        // matchP: col J coincide con mesHoja (o col D si col J vacío)
+        var matchP = (cMesHoja !== '' && cMesHoja === hojaOrigen) || (cMesHoja === '' && periodoStr === hojaOrigen);
+        // matchPer: col D coincide con periodoRecibo
+        var matchPer = (periodoStr === periodoOrig);
+        if (matchP && matchPer) {
           // Registrar en índice para próximas veces
           idx[recKey] = String(cacheCheck[ci][0]);
           sp2.setProperty('RECIBOS_IDX', JSON.stringify(idx));
@@ -799,8 +799,10 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
       var idx3r = sp3.getProperty('RECIBOS_IDX') || '{}';
       var idx3  = {};
       try { idx3 = JSON.parse(idx3r); } catch(e3) { idx3 = {}; }
+      // Clave de 4 partes: dept|mesHoja|periodoRecibo|monto
       var rKey3 = String(dept).trim().toUpperCase() + '|' +
                   String(mesHoja || mes).trim() + '|' +
+                  String(mes).trim() + '|' +
                   Number(monto).toFixed(2);
       idx3[rKey3] = folio;
       sp3.setProperty('RECIBOS_IDX', JSON.stringify(idx3));
@@ -1362,13 +1364,15 @@ function doPost(e) {
     if (data.accion === 'generar-recibo') {
       if (!hasPermiso(currentUser, 'generar-recibo')) return json({ok:false, error:'No autorizado'});
       // ── Chequeo anti-dup directo en el handler (antes de llamar generarRecibo) ──
-      var grDept  = String(data.dept  || '').trim().toUpperCase();
-      var grHoja  = String(data.mesHoja || data.mes || '').trim();
-      var grMonto = Number(data.monto).toFixed(2);
-      var grKey   = grDept + '|' + grHoja + '|' + grMonto;
+      var grDept    = String(data.dept     || '').trim().toUpperCase();
+      var grHoja    = String(data.mesHoja  || data.mes || '').trim(); // nombre del sheet
+      var grPeriodo = String(data.mes      || '').trim();              // periodo del PDF
+      var grMonto   = Number(data.monto).toFixed(2);
+      // Clave de 4 partes: dept|mesHoja|periodoRecibo|monto — única por pago
+      var grKey     = grDept + '|' + grHoja + '|' + grPeriodo + '|' + grMonto;
       var grDebug = {
         version: GAS_VERSION,
-        grDept: grDept, grHoja: grHoja, grMonto: grMonto, grKey: grKey,
+        grDept: grDept, grHoja: grHoja, grPeriodo: grPeriodo, grMonto: grMonto, grKey: grKey,
         rawMesHoja: data.mesHoja, rawMes: data.mes, rawMonto: data.monto
       };
       // Capa 1: índice Script Properties
@@ -1417,16 +1421,18 @@ function doPost(e) {
           var grMHRaw = grRd[gi][9];
           var grMH    = (grMHRaw instanceof Date) ? periodoAMes(grMHRaw) : String(grMHRaw || '').trim();
           var grPr    = grRd[gi][3];
-          var grPrStr = (grPr instanceof Date) ? periodoAMes(grPr) : String(grPr||'').trim();
-          // matchMH: col J (mesHoja) tiene valor y coincide con grHoja → match exacto
-          // matchPH: col J vacío (recibo antiguo sin mesHoja) → fallback a periodo string
-          var matchMH = grMH !== '' && grMH === grHoja;
-          var matchPH = grMH === '' && grPrStr === grHoja;
+          var grPrStr = (grPr instanceof Date) ? periodoAMes(grPr) : String(grPr || '').trim();
+          // matchMH: col J coincide con mesHoja del sheet de origen
+          //   - si col J tiene valor: comparación directa
+          //   - si col J vacío (recibo antiguo): comparar col D contra mesHoja
+          var matchMH  = (grMH !== '' && grMH === grHoja) || (grMH === '' && grPrStr === grHoja);
+          // matchPer: col D (periodo del PDF) coincide con el periodoRecibo entrante
+          var matchPer = (grPrStr === grPeriodo);
           grNearMiss.push({
             fi: gi, folio: String(grRd[gi][0]), grMH: grMH, grPrStr: grPrStr,
-            matchMH: matchMH, matchPH: matchPH
+            matchMH: matchMH, matchPer: matchPer
           });
-          if (matchMH || matchPH) {
+          if (matchMH && matchPer) {
             // Registrar en índice y devolver DUP
             grIdx[grKey] = String(grRd[gi][0]);
             grSp.setProperty('RECIBOS_IDX', JSON.stringify(grIdx));
@@ -1476,12 +1482,15 @@ function doPost(e) {
         var rMonto4  = Number(rd4[ri4][5]).toFixed(2);
         var rMesH4Raw = rd4[ri4][9];
         var rMesH4   = (rMesH4Raw instanceof Date) ? periodoAMes(rMesH4Raw) : String(rMesH4Raw || '').trim();
-        var rPer4    = rd4[ri4][3];
+        var rPer4Raw = rd4[ri4][3];
+        var rPer4    = (rPer4Raw instanceof Date) ? periodoAMes(rPer4Raw) : String(rPer4Raw || '').trim();
         var rEst4    = String(rd4[ri4][7] || '').trim().toLowerCase();
         if (!rFolio4 || rEst4 === 'cancelado') continue;
-        var hoja4 = rMesH4 || ((rPer4 instanceof Date) ? periodoAMes(rPer4) : String(rPer4 || '').trim());
-        if (rDept4 && hoja4 && rMonto4) {
-          idx4[rDept4 + '|' + hoja4 + '|' + rMonto4] = rFolio4;
+        // hoja4: col J si tiene valor, si no col D como fallback
+        var hoja4 = rMesH4 || rPer4;
+        // Clave de 4 partes: dept|mesHoja|periodoRecibo|monto
+        if (rDept4 && hoja4 && rPer4 && rMonto4) {
+          idx4[rDept4 + '|' + hoja4 + '|' + rPer4 + '|' + rMonto4] = rFolio4;
         }
       }
       sp4.setProperty('RECIBOS_IDX', JSON.stringify(idx4));
