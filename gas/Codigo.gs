@@ -492,30 +492,34 @@ function generarRecibo(dept, nombre, mes, fechaPago, monto, concepto, mesHoja) {
     // Asegurar encabezado columna Token
     if (!rs.getRange(1, 9).getValue()) rs.getRange(1, 9).setValue('Token');
 
-    // ── Guardia anti-duplicado con Lock (protege contra cualquier vía de entrada) ──
+    // ── Guardia anti-duplicado con Lock (único punto de verdad) ─────────────
     var lock = LockService.getScriptLock();
-    lock.waitLock(30000); // espera hasta 30s para obtener el lock
+    lock.waitLock(30000);
     try {
       var hojaOrigen  = String(mesHoja || mes).trim();
       var montoFijo   = Number(monto).toFixed(2);
       var deptUp      = String(dept).trim().toUpperCase();
       var cacheCheck  = rs.getDataRange().getValues();
+      Logger.log('ANTDUP CHECK dept=%s monto=%s hoja=%s mes=%s filas=%s',
+                 deptUp, montoFijo, hojaOrigen, mes, cacheCheck.length - 1);
       for (var ci = 1; ci < cacheCheck.length; ci++) {
         var cDept    = String(cacheCheck[ci][1]).trim().toUpperCase();
         var cMonto   = Number(cacheCheck[ci][5]).toFixed(2);
         if (cDept !== deptUp || cMonto !== montoFijo) continue;
         var cMesHoja = String(cacheCheck[ci][9] || '').trim();
         var cPeriodo = String(cacheCheck[ci][3] || '').trim();
-        // Primario: dept + mesHoja + monto
         var matchP = cMesHoja && cMesHoja === hojaOrigen;
-        // Secundario: dept + periodo + monto (legado o adelantos)
         var matchS = periodoAMes(cPeriodo) === mes;
+        Logger.log('  candidato fila=%s cDept=%s cMonto=%s cMesHoja=[%s] cPeriodo=[%s] matchP=%s matchS=%s',
+                   ci, cDept, cMonto, cMesHoja, cPeriodo, matchP, matchS);
         if (matchP || matchS) {
           lock.releaseLock();
+          Logger.log('  → DUP detectado folio=%s', String(cacheCheck[ci][0]));
           return {ok:false, error:'DUP', folio: String(cacheCheck[ci][0]),
                   msg: 'Ya existe recibo para ' + dept + ' en ' + hojaOrigen};
         }
       }
+      Logger.log('  → Sin dup, generando recibo nuevo');
       // ── pasa la guardia: continuar generando ─────────────────────────────
     } catch(lockErr) {
       return {ok:false, error:'Lock timeout: ' + lockErr.message};
@@ -1052,7 +1056,7 @@ function doPost(e) {
       newSh.getRange(1, 1, filas.length, filas[0].length).setValues(filas);
       return json({ok:true, filas:filas.length});
     }
-    // ── LISTAR PAGOS PENDIENTES (sin generar, para modo secuencial) ──────────
+    // ── LISTAR PAGOS (sin chequeo de dup — generarRecibo() es el único guardián) ──
     if (data.accion === 'listar-pagos-mes') {
       if (!hasPermiso(currentUser, 'listar-pagos-mes')) return json({ok:false, error:'No autorizado'});
       var mes = String(data.mes || '').trim();
@@ -1060,8 +1064,6 @@ function doPost(e) {
       var sheet = ss.getSheetByName(mes);
       if (!sheet) return json({ok: false, error: 'Hoja no encontrada: ' + mes});
       var rows = sheet.getDataRange().getValues();
-      var rs = ss.getSheetByName('Recibos');
-      var recibosCache = rs ? rs.getDataRange().getValues() : [];
       var pendientes = [];
       for (var i = 1; i < rows.length; i++) {
         var monto = rows[i][3];
@@ -1087,23 +1089,6 @@ function doPost(e) {
         var dept = info.dept;
         var concepto = (info.concepto || idConc || 'Pago') + ' · Depto ' + dept;
         var periodoRecibo = extractPeriodoRecibo(nombreFila, mes);
-        var deptNorm   = String(dept).trim().toUpperCase();
-        var montoNorm  = Number(monto).toFixed(2);
-        var isDup = false;
-        for (var j = 1; j < recibosCache.length; j++) {
-          var rDept_   = String(recibosCache[j][1]).trim().toUpperCase();
-          var rMonto_  = Number(recibosCache[j][5]).toFixed(2);
-          var rMesHoja = String(recibosCache[j][9] || '').trim();
-          var rPeriodo = String(recibosCache[j][3] || '').trim();
-          if (rDept_ !== deptNorm || rMonto_ !== montoNorm) continue; // descarta diferente depto o monto
-          // Primario: mesHoja exacto
-          var matchP = rMesHoja && rMesHoja === mes;
-          // Secundario: sin mesHoja, cotejar por periodo
-          var matchS = !rMesHoja && periodoAMes(rPeriodo) === periodoRecibo;
-          // Terciario (catch-all): mismo periodo aunque tenga mesHoja diferente
-          var matchC = periodoAMes(rPeriodo) === periodoRecibo;
-          if (matchP || matchS || matchC) { isDup = true; break; }
-        }
         var fecha = rows[i][0];
         var fechaStr = '';
         try {
@@ -1113,12 +1098,10 @@ function doPost(e) {
             fechaStr = Utilities.formatDate(new Date((fecha-25569)*86400*1000), 'America/Mexico_City', 'dd/MM/yyyy');
           } else { fechaStr = String(fecha); }
         } catch(ex) { fechaStr = String(fecha); }
-        var nombre = getNombrePropietario(dept);
         pendientes.push({
-          dept: dept, nombre: nombre, mes: mes, mesHoja: mes,
+          dept: dept, nombre: getNombrePropietario(dept), mes: mes, mesHoja: mes,
           periodoRecibo: periodoRecibo, fechaPago: fechaStr,
-          monto: Number(monto), concepto: concepto,
-          isDup: isDup, fila: i + 1
+          monto: Number(monto), concepto: concepto, isDup: false, fila: i + 1
         });
       }
       return json({ok: true, mes: mes, total: pendientes.length, pendientes: pendientes});
