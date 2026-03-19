@@ -2007,8 +2007,8 @@ async function abrirScanCam(){
     _scanCam = new Html5Qrcode('scanCamReader');
     _scanCamRunning = true;
     await _scanCam.start(
-      { facingMode: 'environment' },
-      { fps: 15, qrbox: { width: 400, height: 150 }, formatsToSupport: [
+      { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      { fps: 10, qrbox: { width: 380, height: 220 }, formatsToSupport: [
         Html5QrcodeSupportedFormats.CODE_128,
         Html5QrcodeSupportedFormats.CODE_39,
         Html5QrcodeSupportedFormats.EAN_13,
