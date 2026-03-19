@@ -615,6 +615,7 @@ table.em-table tbody td{padding:.65rem .9rem;vertical-align:middle;}
       <div id="view-generar-recibos" class="view">
         <div class="content fade-in">
           <div class="page-hdr"><h1>Generar Recibos</h1><p>Genera comprobantes de pago para un mes completo</p></div>
+          <div style="font-size:.7rem;color:rgba(24,18,10,.35);margin-bottom:.25rem;" id="gas-version-lbl">GAS: —</div>
 
           <!-- Barra de progreso fija (visible al hacer scroll) -->
           <div id="gr-progress-bar" style="display:none;position:sticky;top:0;z-index:50;background:#fff;border-bottom:2px solid #e0e0e0;padding:.6rem 1rem;margin-bottom:1rem;border-radius:0;">
@@ -1180,9 +1181,32 @@ async function generarRecibosDelMes(){
       });
       if(!r2.ok) throw new Error('HTTP ' + r2.status);
       const d2 = await r2.json();
-      if(d2.ok) { generados++; }
-      else if(d2.error === 'DUP') { omitidosInicial++; } // ya existía, no es error
-      else { errores++; errList.push(`Depto ${p.dept}: ${d2.error||'error desconocido'}`); }
+      // Mostrar versión GAS en consola la primera vez
+      if(d2._debug?.version && !window._gasVersionLogged){
+        window._gasVersionLogged = true;
+        console.log('[GAS version]', d2._debug.version);
+        // Mostrar también en la UI de forma discreta
+        const vEl = document.getElementById('gas-version-lbl');
+        if(vEl) vEl.textContent = 'GAS: ' + d2._debug.version;
+      }
+      if(d2.ok) {
+        generados++;
+        if(d2._debug) console.log(`[GEN OK] Depto ${p.dept} key=${d2._debug.grKey} folio=${d2.folio}`);
+      }
+      else if(d2.error === 'DUP') {
+        omitidosInicial++;
+        if(d2._debug) console.log(`[DUP] Depto ${p.dept} key=${d2._debug.grKey} folio=${d2.folio} layer=${d2._debug.idxHasKey?'IDX':'SHEET'}`);
+      }
+      else {
+        errores++;
+        let dbgStr = '';
+        if(d2._debug){
+          const db = d2._debug;
+          dbgStr = ` [key=${db.grKey} idx=${db.idxKeys}k idxHit=${db.idxHasKey} rows=${db.sheetRows} cols=${db.sheetCols} nearMiss=${db.nearMiss?.length||0}]`;
+          if(db.nearMiss?.length) dbgStr += ' | ' + db.nearMiss.map(n=>`fi${n.fi}:MH="${n.grMH}" Pr="${n.grPrStr}" mH=${n.matchMH} pH=${n.matchPH} pM=${n.matchPM}`).join('; ');
+        }
+        errList.push(`Depto ${p.dept}: ${d2.error||'error desconocido'}${dbgStr}`);
+      }
     } catch(e2) {
       errores++;
       errList.push(`Depto ${p.dept}: ${e2.message}`);

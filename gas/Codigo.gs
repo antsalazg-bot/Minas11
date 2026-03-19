@@ -1,4 +1,8 @@
 // ═══════════════════════════════════════════════
+//  VERSIÓN — actualizar con cada deploy
+// ═══════════════════════════════════════════════
+var GAS_VERSION = '2026-03-18-v11';
+// ═══════════════════════════════════════════════
 //  CONFIGURACIÓN — Solo editar aquí
 // ═══════════════════════════════════════════════
 var ADMIN_USER = 'admin';
@@ -1361,30 +1365,57 @@ function doPost(e) {
       var grHoja  = String(data.mesHoja || data.mes || '').trim();
       var grMonto = Number(data.monto).toFixed(2);
       var grKey   = grDept + '|' + grHoja + '|' + grMonto;
+      var grDebug = {
+        version: GAS_VERSION,
+        grDept: grDept, grHoja: grHoja, grMonto: grMonto, grKey: grKey,
+        rawMesHoja: data.mesHoja, rawMes: data.mes, rawMonto: data.monto
+      };
       // Capa 1: índice Script Properties
       var grSp  = PropertiesService.getScriptProperties();
       var grIdx = {};
       try { grIdx = JSON.parse(grSp.getProperty('RECIBOS_IDX') || '{}'); } catch(e){}
-      if (grIdx[grKey]) return json({ok:false, error:'DUP', folio:grIdx[grKey]});
+      grDebug.idxKeys   = Object.keys(grIdx).length;
+      grDebug.idxHasKey = !!grIdx[grKey];
+      if (grIdx[grKey]) return json({ok:false, error:'DUP', folio:grIdx[grKey], _debug:grDebug});
       // Capa 2: leer hoja Recibos directamente
       var grRs = ss.getSheetByName('Recibos');
+      var grNearMiss = [];
       if (grRs) {
         var grRd = grRs.getDataRange().getValues();
+        grDebug.sheetRows = grRd.length - 1; // excluir encabezado
+        grDebug.sheetCols = grRd[0] ? grRd[0].length : 0;
         for (var gi = 1; gi < grRd.length; gi++) {
-          if (String(grRd[gi][1]).trim().toUpperCase() !== grDept) continue;
-          if (Number(grRd[gi][5]).toFixed(2) !== grMonto) continue;
-          var grMH = String(grRd[gi][9] || '').trim();
-          var grPr = grRd[gi][3];
+          var rowDept  = String(grRd[gi][1] || '').trim().toUpperCase();
+          var rowMonto = Number(grRd[gi][5]).toFixed(2);
+          if (rowDept !== grDept) continue;
+          if (rowMonto !== grMonto) continue;
+          // Dept y monto coinciden — revisar periodo
+          var grMH    = String(grRd[gi][9] || '').trim();
+          var grPr    = grRd[gi][3];
           var grPrStr = (grPr instanceof Date) ? periodoAMes(grPr) : String(grPr||'').trim();
-          if (grMH === grHoja || grPrStr === grHoja || grPrStr === data.mes) {
+          var matchMH = grMH === grHoja;
+          var matchPH = grPrStr === grHoja;
+          var matchPM = grPrStr === String(data.mes||'').trim();
+          grNearMiss.push({
+            fi: gi, folio: String(grRd[gi][0]), grMH: grMH, grPrStr: grPrStr,
+            matchMH: matchMH, matchPH: matchPH, matchPM: matchPM
+          });
+          if (matchMH || matchPH || matchPM) {
             // Registrar en índice y devolver DUP
             grIdx[grKey] = String(grRd[gi][0]);
             grSp.setProperty('RECIBOS_IDX', JSON.stringify(grIdx));
-            return json({ok:false, error:'DUP', folio:String(grRd[gi][0])});
+            grDebug.dupFoundInSheet = true;
+            grDebug.nearMiss = grNearMiss;
+            return json({ok:false, error:'DUP', folio:String(grRd[gi][0]), _debug:grDebug});
           }
         }
+      } else {
+        grDebug.sheetRows = -1; // hoja no existe
       }
-      return json(generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto, data.mesHoja || data.mes));
+      grDebug.nearMiss = grNearMiss; // filas con mismo dept+monto pero periodo distinto
+      var grResult = generarRecibo(data.dept, data.nombre, data.mes, data.fechaPago, data.monto, data.concepto, data.mesHoja || data.mes);
+      grResult._debug = grDebug;
+      return json(grResult);
     }
 
     // ── ÍNDICE DE RECIBOS (reconstruir / limpiar) ────────────────────────────
