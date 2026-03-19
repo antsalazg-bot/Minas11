@@ -1284,15 +1284,19 @@ function doPost(e) {
         // Matching primario: dept + mesHoja (col J) + monto  → determinista
         // Matching secundario: dept + periodoRecibo + monto  → legacy (recibos sin col J)
         var recibo2 = null;
+        var deptNorm2 = String(info2.dept).trim().toUpperCase();
+        var montoNum2 = Number(monto2);
         for (var r = 0; r < recibos.length; r++) {
-          var rMH2 = recibos[r].mesHoja;
-          var matchP2 = rMH2 && recibos[r].dept === info2.dept &&
-                        rMH2 === mes &&
-                        Math.abs(recibos[r].monto - Number(monto2)) < 0.05;
-          var matchS2 = !rMH2 && recibos[r].dept === info2.dept &&
-                        recibos[r].periodo === periodoRecibo2 &&
-                        Math.abs(recibos[r].monto - Number(monto2)) < 0.05;
-          if (matchP2 || matchS2) { recibo2 = recibos[r]; break; }
+          if (String(recibos[r].dept).trim().toUpperCase() !== deptNorm2) continue;
+          if (Math.abs(recibos[r].monto - montoNum2) >= 0.05) continue;
+          var rMH2 = String(recibos[r].mesHoja || '').trim();
+          // Primario: dept + mesHoja + monto
+          var matchP2 = rMH2 && rMH2 === mes;
+          // Secundario: dept + periodo + monto (legacy sin col J)
+          var matchS2 = !rMH2 && recibos[r].periodo === periodoRecibo2;
+          // Terciario catch-all: mismo periodo aunque tenga mesHoja
+          var matchC2 = recibos[r].periodo === periodoRecibo2;
+          if (matchP2 || matchS2 || matchC2) { recibo2 = recibos[r]; break; }
         }
         // Formatear fecha
         var fRaw = rows[i][0], fechaStr2 = '';
@@ -1322,7 +1326,8 @@ function doPost(e) {
         return r.periodo === mes && r.estado !== 'cancelado';
       });
 
-      return json({ok: true, mes: mes, pagos: pagos, recibosDelPeriodo: recibosDelPeriodo});
+      return json({ok: true, mes: mes, pagos: pagos, recibosDelPeriodo: recibosDelPeriodo,
+                   _debug: {totalRecibosEnHoja: recibos.length, totalPagos: pagos.length}});
     }
 
     if (data.accion === 'generar-recibo')

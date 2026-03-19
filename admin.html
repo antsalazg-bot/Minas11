@@ -1264,8 +1264,12 @@ function renderAuditResult(data){
     return `<span style="background:#fef2f2;color:#8b1a1a;padding:.2rem .5rem;border-radius:2px;font-size:.65rem;font-weight:700;letter-spacing:.06em">✗ SIN RECIBO</span>`;
   };
 
+  const dbg = data._debug || {};
   result.style.display='block';
   result.innerHTML=`
+    <div style="font-size:.72rem;color:rgba(24,18,10,.4);margin-bottom:.6rem;padding:.3rem .5rem;background:#f5f5f0;border-radius:4px;">
+      🔎 Recibos en hoja: <strong>${dbg.totalRecibosEnHoja ?? '?'}</strong> · Pagos en mes: <strong>${dbg.totalPagos ?? pagos.length}</strong>
+    </div>
     <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);margin-bottom:1rem">
       <div class="kcard g"><div class="klbl">Con recibo activo</div><div class="kval">${activos.length}</div><div class="ksub">de ${pagos.length} pagos</div></div>
       <div class="kcard r"><div class="klbl">Sin recibo</div><div class="kval">${sinRecibo.length}</div><div class="ksub">${sinRecibo.length>0?'Pendientes':'Todo bien'}</div></div>
