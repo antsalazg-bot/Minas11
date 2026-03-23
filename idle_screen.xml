@@ -1,6 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<IdleScreen>
-    <Background>
-        <Image>https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.jpg</Image>
-    </Background>
-</IdleScreen>
+<Screens>
+  <Screen model="GRP2601,GRP2602" width="132" height="48">
+
+    <IdleScreen>
+      <ShowStatusLine>true</ShowStatusLine>
+      <DisplayElement>
+        <DisplayBitmap isflash="false">
+          <Bitmap>Qk3+AwAAAAAAAD4AAAAoAAAAhAAAADAAAAABAAEAAAAAAMADAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD/////////////////////8AAAAP/////////////////////wAAAA//////////gB//////////AAAAD/////////4AB/////////8AAAAP/////////HnT/////////wAAAA/////////5+fH/////////AAAAD/////////P5/P////////8AAAAP////////8/n8/////////wAAAA/////////3+f7/////////AAAAD/////////f5/n////////8AAAAP////////5/n+f////////wAAAA/////////n+f5/////////AAAAD////////+f5/3////////8AAAAP////////5+D+f////////wAAAA/////////vgB5/////////AAAAD////////+cZh3////////8AAAAP////////7GZjf////////wAAAA/////////J7Xk/////////AAAAD////////9HQuJ////////8AAAAP////////GNihn////////wAAAA////////Q8ABPE////////AAAAD///////8P5yx+D///////8AAAAP///////z/w8P+P///////wAAAA////////H+AAf4////////AAAAD///////+PAdgfH///////8AAAAP///////8AM+wA////////wAAAA////////4DnzwH////////AAAAD////////+fPnn////////8AAAAP////////958+f////////wAAAA/////////nj55/////////AAAAD////////+ffnn////////8AAAAP////////948+f////////wAAAA/////////nn55/////////AAAAD////////+fPHn////////8AAAAP////////55++f////////wAAAA/////////nzxx/////////AAAAD/////////GflP////////8AAAAP////////8A8A/////////wAAAA/////////8H5P/////////AAAAD//////////PH/////////8AAAAP/////////8Y//////////wAAAA//////////wD//////////AAAAD//////////w//////////8AAAAP/////////////////////wAAAA//////////////////////AAAAD/////////////////////8AAAAP/////////////////////wAAAA//////////////////////AAAAA=</Bitmap>
+          <X>0</X>
+          <Y>0</Y>
+        </DisplayBitmap>
+      </DisplayElement>
+      <SoftKeys>
+        <SoftKey>
+          <Action><SwitchSCR/></Action>
+          <displayCondition><conditionType>SubScreen</conditionType></displayCondition>
+        </SoftKey>
+        <SoftKey>
+          <Action><Calls/></Action>
+          <displayCondition></displayCondition>
+        </SoftKey>
+        <SoftKey>
+          <Action><PhoneBook/></Action>
+          <displayCondition></displayCondition>
+        </SoftKey>
+        <SoftKey>
+          <Action><MissedCalls/></Action>
+          <displayCondition><conditionType>missCall</conditionType></displayCondition>
+        </SoftKey>
+      </SoftKeys>
+    </IdleScreen>
+
+    <IdleScreen>
+    </IdleScreen>
+
+    <IdleScreen>
+    </IdleScreen>
+
+    <IdleScreen>
+    </IdleScreen>
+
+  </Screen>
+</Screens>
