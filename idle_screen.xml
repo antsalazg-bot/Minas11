@@ -6,37 +6,30 @@
       <ShowStatusLine>true</ShowStatusLine>
       <DisplayElement>
 
-        <!-- HORA -->
-        <DisplayString font="time_14" width="48" height="12" halign="left" color="Black" bgcolor="White">
+        <!-- HORA (fila 1 izquierda) -->
+        <DisplayString font="time_14" width="52" height="12" halign="left" color="Black" bgcolor="White">
           <X>0</X>
           <Y>0</Y>
           <DisplayStr>$T</DisplayStr>
         </DisplayString>
 
-        <!-- FECHA -->
-        <DisplayString font="unifont" width="46" height="11" halign="right" color="Black" bgcolor="White">
-          <X>50</X>
+        <!-- FECHA (fila 1 derecha) -->
+        <DisplayString font="unifont" width="44" height="11" halign="left" color="Black" bgcolor="White">
+          <X>54</X>
           <Y>1</Y>
           <DisplayStr>$Y/$o/$B</DisplayStr>
         </DisplayString>
 
-        <!-- NOMBRE -->
+        <!-- NOMBRE (fila 2) -->
         <DisplayString font="unifont" width="96" height="11" halign="left" color="Black" bgcolor="White">
           <X>0</X>
           <Y>13</Y>
-          <DisplayStr>$p</DisplayStr>
+          <DisplayStr>$p  Ext:$1</DisplayStr>
         </DisplayString>
 
-        <!-- EXTENSION -->
-        <DisplayString font="unifont" width="96" height="11" halign="left" color="Black" bgcolor="White">
-          <X>0</X>
-          <Y>24</Y>
-          <DisplayStr>Ext: $1</DisplayStr>
-        </DisplayString>
-
-        <!-- MANO DE FATIMA (derecha, colores corregidos) -->
+        <!-- MANO DE FATIMA (derecha, 30x24px) -->
         <DisplayBitmap isflash="false">
-          <Bitmap>Qk3OAAAAAAAAAD4AAAAoAAAAHgAAACQAAAABAAEAAAAAAJAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD////8/wAB/P8AAfz/AAH8/wAB/P8AAfz+AQH8+AOAfPABADzAAAAMwAAADMIAAAzOAADM3gAA7P+EB/z/hAf8/4QH/P+EB/z/hAf8/4QH/P+EB/z/hAf8/4QH/P+EB/z/hAf8/8xP/P/8f/z//H/8//x//P/8f/z//v/8/////P////z////8/////P////w=</Bitmap>
+          <Bitmap>Qk2eAAAAAAAAAD4AAAAoAAAAHgAAABgAAAABAAEAAAAAAGAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD////8/wAB/P8AAfz/AAH8/wEB/P8AAfzwAAA88AAAPPAAADzwxAw88MQMPPDEDDzwxAw8/8QP/P/ED/z/xA/8/8QP/P/ED/z/xA/8//x//P/8f/z//H/8//x//P////w=</Bitmap>
           <X>100</X>
           <Y>0</Y>
         </DisplayBitmap>
