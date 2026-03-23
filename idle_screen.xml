@@ -1,3 +1,4 @@
-<screensaver>
-  <image path="https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.jpg" />
-</screensaver>
+<?xml version="1.0" encoding="UTF-8"?>
+<IdleScreen>
+    <item type="image" url="https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.jpg" x="0" y="0" />
+</IdleScreen>
