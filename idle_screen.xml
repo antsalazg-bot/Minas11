@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<screensaver>
-  <image path="https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.jpg" />
-</screensaver>
+<IdleScreen>
+    <Background>
+        <Image>https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.jpg</Image>
+    </Background>
+</IdleScreen>
