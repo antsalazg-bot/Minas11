@@ -5,11 +5,42 @@
     <IdleScreen>
       <ShowStatusLine>true</ShowStatusLine>
       <DisplayElement>
-        <DisplayBitmap isflash="false">
-          <Bitmap>Qk3+AwAAAAAAAD4AAAAoAAAAhAAAADAAAAABAAEAAAAAAMADAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD/////////////////////8AAAAP/////////////////////wAAAA//////////gB//////////AAAAD/////////4AB/////////8AAAAP/////////HnT/////////wAAAA/////////5+fH/////////AAAAD/////////P5/P////////8AAAAP////////8/n8/////////wAAAA/////////3+f7/////////AAAAD/////////f5/n////////8AAAAP////////5/n+f////////wAAAA/////////n+f5/////////AAAAD////////+f5/3////////8AAAAP////////5+D+f////////wAAAA/////////vgB5/////////AAAAD////////+cZh3////////8AAAAP////////7GZjf////////wAAAA/////////J7Xk/////////AAAAD////////9HQuJ////////8AAAAP////////GNihn////////wAAAA////////Q8ABPE////////AAAAD///////8P5yx+D///////8AAAAP///////z/w8P+P///////wAAAA////////H+AAf4////////AAAAD///////+PAdgfH///////8AAAAP///////8AM+wA////////wAAAA////////4DnzwH////////AAAAD////////+fPnn////////8AAAAP////////958+f////////wAAAA/////////nj55/////////AAAAD////////+ffnn////////8AAAAP////////948+f////////wAAAA/////////nn55/////////AAAAD////////+fPHn////////8AAAAP////////55++f////////wAAAA/////////nzxx/////////AAAAD/////////GflP////////8AAAAP////////8A8A/////////wAAAA/////////8H5P/////////AAAAD//////////PH/////////8AAAAP/////////8Y//////////wAAAA//////////wD//////////AAAAD//////////w//////////8AAAAP/////////////////////wAAAA//////////////////////AAAAD/////////////////////8AAAAP/////////////////////wAAAA//////////////////////AAAAA=</Bitmap>
+
+        <!-- HORA izquierda -->
+        <DisplayString font="time_14" width="50" height="13" halign="left" color="Black" bgcolor="White">
           <X>0</X>
           <Y>0</Y>
+          <DisplayStr>$T</DisplayStr>
+        </DisplayString>
+
+        <!-- FECHA misma fila, a la derecha de la hora -->
+        <DisplayString font="unifont" width="44" height="13" halign="right" color="Black" bgcolor="White">
+          <X>50</X>
+          <Y>2</Y>
+          <DisplayStr>$Y/$o/$B</DisplayStr>
+        </DisplayString>
+
+        <!-- NOMBRE DE CUENTA -->
+        <DisplayString font="unifont" width="93" height="11" halign="left" color="Black" bgcolor="White">
+          <X>0</X>
+          <Y>14</Y>
+          <DisplayStr>$p</DisplayStr>
+        </DisplayString>
+
+        <!-- EXTENSION -->
+        <DisplayString font="unifont" width="93" height="11" halign="left" color="Black" bgcolor="White">
+          <X>0</X>
+          <Y>25</Y>
+          <DisplayStr>Ext: $1</DisplayStr>
+        </DisplayString>
+
+        <!-- MANO DE FATIMA (derecha, 32x36px) -->
+        <DisplayBitmap isflash="false">
+          <Bitmap>Qk3OAAAAAAAAAD4AAAAoAAAAIAAAACQAAAABAAEAAAAAAJAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wAAAAAAAD/+AAA//gAAP/4AAD/+AAB+PgAA/d8AA///wAf//+AHf//gBn//YAR//yAAH/wAAB/8AAAf/AAAH/wAAB/8AAAf/AAAH/wAAB/8AAAf/AAAH/wAAA3YAAABwAAAAcAAAAHAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</Bitmap>
+          <X>97</X>
+          <Y>0</Y>
         </DisplayBitmap>
+
       </DisplayElement>
       <SoftKeys>
         <SoftKey>
@@ -31,14 +62,9 @@
       </SoftKeys>
     </IdleScreen>
 
-    <IdleScreen>
-    </IdleScreen>
-
-    <IdleScreen>
-    </IdleScreen>
-
-    <IdleScreen>
-    </IdleScreen>
+    <IdleScreen></IdleScreen>
+    <IdleScreen></IdleScreen>
+    <IdleScreen></IdleScreen>
 
   </Screen>
 </Screens>
