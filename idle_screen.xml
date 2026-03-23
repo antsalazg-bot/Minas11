@@ -6,38 +6,38 @@
       <ShowStatusLine>true</ShowStatusLine>
       <DisplayElement>
 
-        <!-- HORA izquierda -->
-        <DisplayString font="time_14" width="50" height="13" halign="left" color="Black" bgcolor="White">
+        <!-- HORA -->
+        <DisplayString font="time_14" width="48" height="12" halign="left" color="Black" bgcolor="White">
           <X>0</X>
           <Y>0</Y>
           <DisplayStr>$T</DisplayStr>
         </DisplayString>
 
-        <!-- FECHA misma fila, a la derecha de la hora -->
-        <DisplayString font="unifont" width="44" height="13" halign="right" color="Black" bgcolor="White">
+        <!-- FECHA -->
+        <DisplayString font="unifont" width="46" height="11" halign="right" color="Black" bgcolor="White">
           <X>50</X>
-          <Y>2</Y>
+          <Y>1</Y>
           <DisplayStr>$Y/$o/$B</DisplayStr>
         </DisplayString>
 
-        <!-- NOMBRE DE CUENTA -->
-        <DisplayString font="unifont" width="93" height="11" halign="left" color="Black" bgcolor="White">
+        <!-- NOMBRE -->
+        <DisplayString font="unifont" width="96" height="11" halign="left" color="Black" bgcolor="White">
           <X>0</X>
-          <Y>14</Y>
+          <Y>13</Y>
           <DisplayStr>$p</DisplayStr>
         </DisplayString>
 
         <!-- EXTENSION -->
-        <DisplayString font="unifont" width="93" height="11" halign="left" color="Black" bgcolor="White">
+        <DisplayString font="unifont" width="96" height="11" halign="left" color="Black" bgcolor="White">
           <X>0</X>
-          <Y>25</Y>
+          <Y>24</Y>
           <DisplayStr>Ext: $1</DisplayStr>
         </DisplayString>
 
-        <!-- MANO DE FATIMA (derecha, 32x36px) -->
+        <!-- MANO DE FATIMA (derecha, colores corregidos) -->
         <DisplayBitmap isflash="false">
-          <Bitmap>Qk3OAAAAAAAAAD4AAAAoAAAAIAAAACQAAAABAAEAAAAAAJAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wAAAAAAAD/+AAA//gAAP/4AAD/+AAB+PgAA/d8AA///wAf//+AHf//gBn//YAR//yAAH/wAAB/8AAAf/AAAH/wAAB/8AAAf/AAAH/wAAB/8AAAf/AAAH/wAAA3YAAABwAAAAcAAAAHAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=</Bitmap>
-          <X>97</X>
+          <Bitmap>Qk3OAAAAAAAAAD4AAAAoAAAAHgAAACQAAAABAAEAAAAAAJAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD////8/wAB/P8AAfz/AAH8/wAB/P8AAfz+AQH8+AOAfPABADzAAAAMwAAADMIAAAzOAADM3gAA7P+EB/z/hAf8/4QH/P+EB/z/hAf8/4QH/P+EB/z/hAf8/4QH/P+EB/z/hAf8/8xP/P/8f/z//H/8//x//P/8f/z//v/8/////P////z////8/////P////w=</Bitmap>
+          <X>100</X>
           <Y>0</Y>
         </DisplayBitmap>
 
