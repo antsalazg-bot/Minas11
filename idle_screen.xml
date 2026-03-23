@@ -6,39 +6,40 @@
       <ShowStatusLine>true</ShowStatusLine>
       <DisplayElement>
 
-        <!-- HORA (fila 1 izquierda) -->
+        <!-- HORA (fila 1, bajo el status bar) -->
         <DisplayString font="time_14" width="52" height="12" halign="left" color="Black" bgcolor="White">
           <X>0</X>
-          <Y>0</Y>
+          <Y>12</Y>
           <DisplayStr>$T</DisplayStr>
         </DisplayString>
 
-        <!-- FECHA (fila 1 derecha) -->
+        <!-- FECHA (fila 1, derecha) -->
         <DisplayString font="unifont" width="44" height="11" halign="left" color="Black" bgcolor="White">
           <X>54</X>
-          <Y>1</Y>
+          <Y>13</Y>
           <DisplayStr>$Y/$o/$B</DisplayStr>
         </DisplayString>
 
-        <!-- NOMBRE (fila 2) -->
+        <!-- NOMBRE + EXTENSION (fila 2) -->
         <DisplayString font="unifont" width="96" height="11" halign="left" color="Black" bgcolor="White">
           <X>0</X>
-          <Y>13</Y>
-          <DisplayStr>$p  Ext:$1</DisplayStr>
+          <Y>25</Y>
+          <DisplayStr>$p  $1</DisplayStr>
         </DisplayString>
 
-        <!-- MANO DE FATIMA (derecha, 30x24px) -->
+        <!-- MANO DE FATIMA (derecha) -->
         <DisplayBitmap isflash="false">
           <Bitmap>Qk2eAAAAAAAAAD4AAAAoAAAAHgAAABgAAAABAAEAAAAAAGAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD////8/wAB/P8AAfz/AAH8/wEB/P8AAfzwAAA88AAAPPAAADzwxAw88MQMPPDEDDzwxAw8/8QP/P/ED/z/xA/8/8QP/P/ED/z/xA/8//x//P/8f/z//H/8//x//P////w=</Bitmap>
           <X>100</X>
-          <Y>0</Y>
+          <Y>12</Y>
         </DisplayBitmap>
 
       </DisplayElement>
       <SoftKeys>
+        <!-- Settings (primer botón, igual que el default del teléfono) -->
         <SoftKey>
-          <Action><SwitchSCR/></Action>
-          <displayCondition><conditionType>SubScreen</conditionType></displayCondition>
+          <Action><Settings/></Action>
+          <displayCondition></displayCondition>
         </SoftKey>
         <SoftKey>
           <Action><Calls/></Action>
