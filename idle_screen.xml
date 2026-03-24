@@ -10,24 +10,6 @@
           <Y>0</Y>
         </DisplayBitmap>
       </DisplayElement>
-      <SoftKeys>
-        <SoftKey>
-          <Action><Calls/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-        <SoftKey>
-          <Action><PhoneBook/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-        <SoftKey>
-          <Action><MissedCalls/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-        <SoftKey>
-          <Action><Messages/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-      </SoftKeys>
     </IdleScreen>
   </Screen>
 </Screens>
