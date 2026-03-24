@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Screen>
+  <IdleScreen>
+    <ShowStatusLine>true</ShowStatusLine>
+    <DisplayBitmap>
+      <Bitmap>Qk2+AgAAAAAAAD4AAAAoAAAAhAAAACAAAAABAAEAAAAAAIACAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD/////////wAAf////////8AAAAP////////8AAAf////////wAAAA/////////gAAA/////////AAAAD////////8AAAB////////8AAAAP////////gAAAD////////wAAAA////////8AAAAH////////AAAAD////////wANgAf///////8AAAAP////////ABjAB////////wAAAA////////8ADYAH////////AAAAD////////wAAAAf///////8AAAAP///////+AAAAA////////wAAAA////////xAAAAR////////AAAAD///////+GAAADD///////8AAAAP///////4cAAAcP///////wAAAA////////B4AADwf///////AAAAD///////4HgAAPA///////8AAAAP///////A+DBg+B///////wAAAA///////4H4MGD8D///////AAAAD///////h/gwYP8P//////8AAAAP//////+P+DBg/4///////wAAAA///////x/4MGD/x///////AAAAD//////+D/gwYP+D//////8AAAAP//////4P+DBg/4P//////wAAAA///////g/4MGD/g///////AAAAD///////H/gwYP/H//////8AAAAP////////+DBg/////////wAAAA/////////4MGD/////////AAAAD/////////gwYP////////8AAAAP////////+DBg/////////wAAAA/////////4MGD/////////AAAAD/////////gwYP////////8AAAAP////////+DBg/////////wAAAA</Bitmap>
+      <X>0</X>
+      <Y>0</Y>
+    </DisplayBitmap>
+    <SoftKeys>
+      <SoftKey>
+        <Action>Dial</Action>
+        <Label>Dial</Label>
+      </SoftKey>
+      <SoftKey>
+        <Action>Calls</Action>
+        <Label>Calls</Label>
+      </SoftKey>
+      <SoftKey>
+        <Action>PhoneBook</Action>
+        <Label>Book</Label>
+      </SoftKey>
+      <SoftKey>
+        <Action>MissedCalls</Action>
+        <Label>Missed</Label>
+      </SoftKey>
+    </SoftKeys>
+  </IdleScreen>
+</Screen>
