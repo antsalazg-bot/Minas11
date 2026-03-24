@@ -1,64 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Screens>
-  <Screen model="GRP2601,GRP2602" width="132" height="48">
-
-    <IdleScreen>
-      <ShowStatusLine>true</ShowStatusLine>
-      <DisplayElement>
-
-        <!-- HORA (fila 1, bajo el status bar) -->
-        <DisplayString font="time_14" width="52" height="12" halign="left" color="Black" bgcolor="White">
-          <X>0</X>
-          <Y>12</Y>
-          <DisplayStr>$T</DisplayStr>
-        </DisplayString>
-
-        <!-- FECHA (fila 1, derecha) -->
-        <DisplayString font="unifont" width="44" height="11" halign="left" color="Black" bgcolor="White">
-          <X>54</X>
-          <Y>13</Y>
-          <DisplayStr>$Y/$o/$B</DisplayStr>
-        </DisplayString>
-
-        <!-- NOMBRE + EXTENSION (fila 2) -->
-        <DisplayString font="unifont" width="96" height="11" halign="left" color="Black" bgcolor="White">
-          <X>0</X>
-          <Y>25</Y>
-          <DisplayStr>$p  $1</DisplayStr>
-        </DisplayString>
-
-        <!-- MANO DE FATIMA (derecha) -->
-        <DisplayBitmap isflash="false">
-          <Bitmap>Qk2eAAAAAAAAAD4AAAAoAAAAHgAAABgAAAABAAEAAAAAAGAAAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wD////8/wAB/P8AAfz/AAH8/wEB/P8AAfzwAAA88AAAPPAAADzwxAw88MQMPPDEDDzwxAw8/8QP/P/ED/z/xA/8/8QP/P/ED/z/xA/8//x//P/8f/z//H/8//x//P////w=</Bitmap>
-          <X>100</X>
-          <Y>12</Y>
-        </DisplayBitmap>
-
-      </DisplayElement>
-      <SoftKeys>
-        <!-- Settings (primer botón, igual que el default del teléfono) -->
-        <SoftKey>
-          <Action><Settings/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-        <SoftKey>
-          <Action><Calls/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-        <SoftKey>
-          <Action><PhoneBook/></Action>
-          <displayCondition></displayCondition>
-        </SoftKey>
-        <SoftKey>
-          <Action><MissedCalls/></Action>
-          <displayCondition><conditionType>missCall</conditionType></displayCondition>
-        </SoftKey>
-      </SoftKeys>
-    </IdleScreen>
-
-    <IdleScreen></IdleScreen>
-    <IdleScreen></IdleScreen>
-    <IdleScreen></IdleScreen>
-
-  </Screen>
-</Screens>
+<IdleScreen>
+  <Background>
+    <BMP>
+      <X>0</X>
+      <Y>0</Y>
+      <URL>https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.bmp</URL>
+    </BMP>
+  </Background>
+  <ShowStatusLine>true</ShowStatusLine>
+  <SoftKey>
+    <Action><Calls/></Action>
+    <Label></Label>
+  </SoftKey>
+  <SoftKey>
+    <Action><PhoneBook/></Action>
+    <Label></Label>
+  </SoftKey>
+  <SoftKey>
+    <Action><MissedCalls/></Action>
+    <Label></Label>
+  </SoftKey>
+  <SoftKey>
+    <Action><Messages/></Action>
+    <Label></Label>
+  </SoftKey>
+</IdleScreen>
