@@ -1,27 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<IdleScreen>
-  <Background>
-    <BMP>
-      <X>0</X>
-      <Y>0</Y>
-      <URL>https://raw.githubusercontent.com/antsalazg-bot/Minas11/main/hamsa.bmp</URL>
-    </BMP>
-  </Background>
-  <ShowStatusLine>true</ShowStatusLine>
-  <SoftKey>
-    <Action><Calls/></Action>
-    <Label></Label>
-  </SoftKey>
-  <SoftKey>
-    <Action><PhoneBook/></Action>
-    <Label></Label>
-  </SoftKey>
-  <SoftKey>
-    <Action><MissedCalls/></Action>
-    <Label></Label>
-  </SoftKey>
-  <SoftKey>
-    <Action><Messages/></Action>
-    <Label></Label>
-  </SoftKey>
-</IdleScreen>
+<Screens>
+  <Screen model="GRP2601,GRP2602" width="132" height="48">
+    <IdleScreen>
+      <ShowStatusLine>true</ShowStatusLine>
+      <DisplayElement>
+        <DisplayBitmap isflash="false">
+          <Bitmap>Qk2+AgAAAAAAAD4AAAAoAAAAhAAAACAAAAABAAEAAAAAAIACAADEDgAAxA4AAAIAAAACAAAAAAAAAP///wAAAAAAAAAAP//gAAAAAAAAAAAAAAAAAAAAAAD///gAAAAAAAAAAAAAAAAAAAAAAf///AAAAAAAAAAAAAAAAAAAAAAD///+AAAAAAAAAAAAAAAAAAAAAAf///8AAAAAAAAAAAAAAAAAAAAAD////4AAAAAAAAAAAAAAAAAAAAAP/yf/gAAAAAAAAAAAAAAAAAAAAA/+c/+AAAAAAAAAAAAAAAAAAAAAD/8n/4AAAAAAAAAAAAAAAAAAAAAP////gAAAAAAAAAAAAAAAAAAAAB/////AAAAAAAAAAAAAAAAAAAAAO////uAAAAAAAAAAAAAAAAAAAAB5///88AAAAAAAAAAAAAAAAAAAAHj///jwAAAAAAAAAAAAAAAAAAAA+H//8PgAAAAAAAAAAAAAAAAAAAH4f//w/AAAAAAAAAAAAAAAAAAAA/B8+fB+AAAAAAAAAAAAAAAAAAAH4Hz58D8AAAAAAAAAAAAAAAAAAAeAfPnwDwAAAAAAAAAAAAAAAAAABwB8+fAHAAAAAAAAAAAAAAAAAAAOAHz58AOAAAAAAAAAAAAAAAAAAB8AfPnwB8AAAAAAAAAAAAAAAAAAHwB8+fAHwAAAAAAAAAAAAAAAAAAfAHz58AfAAAAAAAAAAAAAAAAAAA4AfPnwA4AAAAAAAAAAAAAAAAAAAAB8+fAAAAAAAAAAAAAAAAAAAAAAAHz58AAAAAAAAAAAAAAAAAAAAAAAfPnwAAAAAAAAAAAAAAAAAAAAAAB8+fAAAAAAAAAAAAAAAAAAAAAAAHz58AAAAAAAAAAAAAAAAAAAAAAAfPnwAAAAAAAAAAAAAAAAAAAAAAB8+fAAAAAAAAAAAAAA</Bitmap>
+          <X>0</X>
+          <Y>0</Y>
+        </DisplayBitmap>
+      </DisplayElement>
+      <SoftKeys>
+        <SoftKey>
+          <Action><Calls/></Action>
+          <displayCondition></displayCondition>
+        </SoftKey>
+        <SoftKey>
+          <Action><PhoneBook/></Action>
+          <displayCondition></displayCondition>
+        </SoftKey>
+        <SoftKey>
+          <Action><MissedCalls/></Action>
+          <displayCondition></displayCondition>
+        </SoftKey>
+        <SoftKey>
+          <Action><Messages/></Action>
+          <displayCondition></displayCondition>
+        </SoftKey>
+      </SoftKeys>
+    </IdleScreen>
+  </Screen>
+</Screens>
