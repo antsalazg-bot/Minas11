@@ -1,34 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Screen>
-  <IdleScreen>
-    <ShowStatusLine>true</ShowStatusLine>
-    <DisplayString font="f10" halign="Center">
-      <DisplayStr>$N</DisplayStr>
-      <X>66</X>
-      <Y>10</Y>
-    </DisplayString>
-    <DisplayString font="f8" halign="Center">
-      <DisplayStr>$T $W $D $M</DisplayStr>
-      <X>66</X>
-      <Y>22</Y>
-    </DisplayString>
-    <SoftKeys>
-      <SoftKey>
-        <Action>Dial</Action>
-        <Label>Dial</Label>
-      </SoftKey>
-      <SoftKey>
-        <Action>Calls</Action>
-        <Label>Calls</Label>
-      </SoftKey>
-      <SoftKey>
-        <Action>PhoneBook</Action>
-        <Label>Book</Label>
-      </SoftKey>
-      <SoftKey>
-        <Action>MissedCalls</Action>
-        <Label>Missed</Label>
-      </SoftKey>
-    </SoftKeys>
-  </IdleScreen>
-</Screen>
+<Screens>
+  <Screen model="GRP2601,GRP2602" width="132" height="48">
+    <IdleScreen>
+      <ShowStatusLine>true</ShowStatusLine>
+      <DisplayString font="f10" halign="Center">
+        <DisplayStr>$N</DisplayStr>
+        <X>66</X>
+        <Y>10</Y>
+      </DisplayString>
+      <DisplayString font="f8" halign="Center">
+        <DisplayStr>$T  $W $D $M</DisplayStr>
+        <X>66</X>
+        <Y>22</Y>
+      </DisplayString>
+    </IdleScreen>
+  </Screen>
+</Screens>
