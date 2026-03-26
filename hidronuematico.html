@@ -5,479 +5,342 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sistema Hidroneumático – Bypass</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow:wght@400;600;700;900&display=swap');
-
-  :root {
-    --bg: #ffffff;
-    --panel: #f4f6f9;
-    --border: #ccd0da;
-    --blue: #0d6eac;
-    --black-pipe: #444d5e;
-    --copper: #b87333;
-    --green: #2ecc71;
-    --red: #e74c3c;
-    --yellow: #f39c12;
-    --text: #1e2535;
-    --dim: #4a5568;
-    --active-bg: #dbeeff;
-  }
-
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Barlow', sans-serif;
-    min-height: 100vh;
-    padding: 20px;
-  }
-
-  h1 {
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 1.6rem;
-    color: var(--blue);
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-bottom: 4px;
-  }
-
-  .subtitle { font-size: 1.0rem; color: var(--dim); margin-bottom: 20px; font-family: 'Share Tech Mono', monospace; }
-
-
-  .author {
-    font-size: 0.95rem;
-    color: var(--dim);
-    margin-top: -10px;
-    margin-bottom: 20px;
-    font-family: 'Share Tech Mono', monospace;
-    letter-spacing: 1px;
-    opacity: 0.7;
-  }
-  .mode-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-
-  .mode-btn {
-    padding: 9px 16px;
-    border: 1px solid var(--border);
-    background: var(--panel);
-    color: var(--dim);
-    font-family: 'Barlow', sans-serif;
-    font-weight: 700;
-    font-size: 1.0rem;
-    cursor: pointer;
-    border-radius: 4px;
-    transition: all 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-
-  .mode-btn.active {
-    background: var(--active-bg);
-    border-color: var(--blue);
-    color: #0d3a5a;
-  }
-
-  .mode-btn:hover:not(.active) { border-color: #444; color: var(--text); }
-
-  .mode-label {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-left: 3px solid var(--blue);
-    padding: 12px 16px;
-    margin-bottom: 20px;
-    border-radius: 4px;
-  }
-
-  .mode-label h2 { font-size: 1.3rem; font-weight: 700; color: #1e2535; margin-bottom: 4px; }
-  .mode-label p { font-size: 1.0rem; color: var(--text); line-height: 1.5; }
-
-  /* DIAGRAM */
-  .diagram-wrap {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 20px;
-    margin-bottom: 20px;
-    overflow-x: auto;
-  }
-
-  svg {
-    display: block;
-    margin: 0 auto;
-    max-width: 100%;
-  }
-
-  /* Pipe animations */
-  .flow-active { stroke-dasharray: 12 6; animation: flowAnim 0.8s linear infinite; }
-  .flow-inactive { opacity: 0.25; }
-  @keyframes flowAnim { to { stroke-dashoffset: -18; } }
-
-  /* VALVE TABLE */
-  .valve-table {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .valve-table table { width: 100%; border-collapse: collapse; }
-
-  .valve-table thead { background: #e8edf4; }
-  .valve-table th {
-    padding: 10px 14px;
-    text-align: left;
-    font-size: 0.9rem;
-    font-family: 'Share Tech Mono', monospace;
-    color: var(--dim);
-    letter-spacing: 1.5px;
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .valve-table td {
-    padding: 10px 14px;
-    font-size: 1.0rem;
-    border-bottom: 1px solid #dde2ec;
-  }
-
-  .valve-table tr:last-child td { border-bottom: none; }
-  .valve-table tr:hover td { background: #edf4ff; }
-
-  .valve-name { font-family: 'Share Tech Mono', monospace; font-size: 1.0rem; color: var(--blue); }
-  .status-open { color: var(--green); font-weight: 700; }
-  .status-closed { color: var(--red); font-weight: 700; }
-
-  .dot {
-    display: inline-block;
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    margin-right: 6px;
-    vertical-align: middle;
-  }
-  .dot-open { background: var(--green); box-shadow: 0 0 6px var(--green); }
-  .dot-closed { background: var(--red); box-shadow: 0 0 6px var(--red); }
-
-  /* ── PULSE HINT ── */
-  @keyframes pulse-ring {
-    0%   { box-shadow: 0 0 0 0 rgba(13,110,172,0.55); }
-    70%  { box-shadow: 0 0 0 10px rgba(13,110,172,0); }
-    100% { box-shadow: 0 0 0 0 rgba(13,110,172,0); }
-  }
-  .pulse-hint {
-    animation: pulse-ring 1.4s ease-out infinite;
-    position: relative;
-  }
-  .pulse-hint::after {
-    content: "👆 toca para ver";
-    position: absolute;
-    bottom: -26px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-size: 0.72rem;
-    color: #0d6eac;
-    white-space: nowrap;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    pointer-events: none;
-  }
-  .mode-tabs { padding-bottom: 32px; } /* space for the label */
+  :root { --blue:#0d6eac; --green:#1a8a3a; --red:#cc2200; --orange:#d4600a; --dim:#4a5568; --panel:#f4f6f9; --border:#ccd0da; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:#fff; color:#1e2535; font-family:Arial,sans-serif; padding:24px; }
+  h1 { font-family:monospace; font-size:1.7rem; color:var(--blue); letter-spacing:2px; text-transform:uppercase; margin-bottom:3px; }
+  .subtitle { font-size:1.05rem; color:var(--dim); font-family:monospace; }
+  .author   { font-size:1.0rem; color:var(--dim); font-family:monospace; opacity:.75; margin-top:2px; margin-bottom:22px; }
+  .mode-tabs { display:flex; gap:10px; margin-bottom:32px; flex-wrap:wrap; padding-bottom:28px; }
+  .mode-btn { padding:10px 20px; border:1.5px solid var(--border); background:var(--panel); color:var(--dim);
+    font-family:Arial,sans-serif; font-weight:700; font-size:1.1rem; cursor:pointer; border-radius:5px;
+    transition:all .2s; text-transform:uppercase; letter-spacing:1px; }
+  .mode-btn.active { background:#dbeeff; border-color:var(--blue); color:#0d3a5a; }
+  .mode-btn:hover:not(.active) { border-color:#888; color:#1e2535; }
+  @keyframes pulse-ring { 0%{box-shadow:0 0 0 0 rgba(13,110,172,.55)} 70%{box-shadow:0 0 0 10px rgba(13,110,172,0)} 100%{box-shadow:0 0 0 0 rgba(13,110,172,0)} }
+  .pulse-hint { animation:pulse-ring 1.4s ease-out infinite; position:relative; }
+  .pulse-hint::after { content:"👆 toca para ver"; position:absolute; bottom:-24px; left:50%;
+    transform:translateX(-50%); font-size:.9rem; color:var(--blue); white-space:nowrap; font-weight:600; pointer-events:none; }
+  .mode-label { background:var(--panel); border:1px solid var(--border); border-left:4px solid var(--blue);
+    padding:13px 18px; margin-bottom:20px; border-radius:5px; }
+  .mode-label h2 { font-size:1.3rem; font-weight:700; margin-bottom:5px; }
+  .mode-label p  { font-size:1.1rem; color:var(--dim); line-height:1.55; }
+  .diagram-wrap { background:var(--panel); border:1px solid var(--border); border-radius:7px; padding:20px; margin-bottom:20px; overflow-x:auto; }
+  svg { display:block; margin:0 auto; max-width:100%; }
+  .flow-active   { stroke-dasharray:14 6; animation:dash .7s linear infinite; }
+  .flow-inactive { opacity:.35; stroke:#b0bec5 !important; stroke-dasharray:none !important; animation:none !important; }
+  @keyframes dash { to { stroke-dashoffset:-20; } }
+  .vtable { background:var(--panel); border:1px solid var(--border); border-radius:7px; overflow:hidden; }
+  .vtable table { width:100%; border-collapse:collapse; }
+  .vtable thead { background:#e8edf4; }
+  .vtable th { padding:9px 14px; text-align:left; font-size:.95rem; font-family:monospace; color:#3a5070; letter-spacing:1.5px; text-transform:uppercase; border-bottom:1px solid var(--border); }
+  .vtable td { padding:9px 14px; font-size:1.1rem; border-bottom:1px solid #dde2ec; }
+  .vtable tr:last-child td { border-bottom:none; }
+  .vtable tr:hover td { background:#edf4ff; }
+  .vn { font-family:monospace; font-size:1.1rem; color:var(--blue); font-weight:bold; }
+  .so { color:var(--green); font-weight:700; }
+  .sc { color:var(--red);   font-weight:700; }
+  .dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .do { background:var(--green); } .dc { background:var(--red); }
 </style>
 </head>
 <body>
-
 <h1>Sistema Hidroneumático</h1>
 <div class="subtitle">// DIAGRAMA DE BYPASS — POSICIÓN DE VÁLVULAS</div>
 <div class="author">// Documento realizado por Antonio Salazar</div>
 
 <div class="mode-tabs">
-  <button class="mode-btn active pulse-hint" onclick="setMode(0)">MODO 1 — Individual</button>
-  <button class="mode-btn pulse-hint" onclick="setMode(1)">MODO 2 — Potable → Ambos</button>
-  <button class="mode-btn pulse-hint" onclick="setMode(2)">MODO 3 — Pluvial → Ambos</button>
+  <button class="mode-btn active pulse-hint" onclick="setMode(0)">MODO 1 — Independiente</button>
+  <button class="mode-btn pulse-hint"        onclick="setMode(1)">MODO 2 — Potable surte ambos</button>
+  <button class="mode-btn pulse-hint"        onclick="setMode(2)">MODO 3 — Pluvial surte ambos</button>
 </div>
 
 <div class="mode-label">
-  <h2 id="modeTitle">MODO 1 – Operación Individual</h2>
-  <p id="modeDesc">Cada cuarto de bombas opera de forma independiente. CB Pluvial alimenta únicamente WC. CB Potable alimenta únicamente regaderas y departamentos.</p>
+  <h2 id="modeTitle"></h2>
+  <p  id="modeDesc"></p>
 </div>
 
 <div class="diagram-wrap">
-<svg id="diagram" viewBox="0 0 700 380" width="700" height="380" xmlns="http://www.w3.org/2000/svg">
+<svg id="diagram" viewBox="0 0 880 340" width="880" height="340" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+    <path d="M20 0L0 0 0 20" fill="none" stroke="#e0e6ee" stroke-width=".5"/>
+  </pattern>
+</defs>
+<rect width="880" height="340" fill="#f8fafc" rx="6"/>
+<rect width="880" height="340" fill="url(#grid)" rx="6" opacity=".6"/>
 
-  <!-- BACKGROUND GRID -->
-  <defs>
-    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#dde3ec" stroke-width="0.5"/>
-    </pattern>
-  </defs>
-  <rect width="700" height="380" fill="#f8fafc" rx="4"/>
-  <rect width="700" height="380" fill="url(#grid)" rx="4" opacity="0.6"/>
+<!-- ═══════════════════════════════════
+     IZQUIERDA: CUARTO POTABLE  x=18..418
+═══════════════════════════════════ -->
+<rect x="18" y="20" width="400" height="280" rx="8" fill="#eef4fb" stroke="#8dafcc" stroke-width="1.5" stroke-dasharray="6 3"/>
+<text x="218" y="314" text-anchor="middle" font-family="monospace" font-size="14" fill="#3a5070" letter-spacing="1">CUARTO DE BOMBAS POTABLE</text>
 
-  <!-- ===== CISTERNAS ===== -->
-  <!-- Cisterna Pluvial -->
-  <rect x="20" y="60" width="90" height="60" rx="4" fill="#eaf0f8" stroke="#8da4c0" stroke-width="1.5"/>
-  <text x="65" y="84" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1">CISTERNA</text>
-  <text x="65" y="97" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1">PLUVIAL</text>
-  <text x="65" y="111" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="8">◱ WC</text>
+<!-- Cisterna Potable (izq arriba) -->
+<rect x="40" y="36" width="110" height="58" rx="5" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="95" y="55"  text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070" letter-spacing="1">CISTERNA</text>
+<text x="95" y="71"  text-anchor="middle" font-family="monospace" font-size="13" fill="#0d6eac" font-weight="bold">POTABLE</text>
+<line x1="50" y1="83" x2="140" y2="83" stroke="#6a9fc0" stroke-width="1" opacity=".5"/>
 
-  <!-- Cisterna Potable -->
-  <rect x="590" y="60" width="90" height="60" rx="4" fill="#eaf0f8" stroke="#8da4c0" stroke-width="1.5"/>
-  <text x="635" y="84" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1">CISTERNA</text>
-  <text x="635" y="97" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1">POTABLE</text>
-  <text x="635" y="111" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="8">◱ Reg/Dpto</text>
+<!-- Cisterna → dist line -->
+<line id="pc-pot" x1="95" y1="94" x2="95" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- ===== BOMBAS ===== -->
-  <!-- Bomba Pluvial -->
-  <ellipse cx="110" cy="200" rx="28" ry="22" fill="#eaf0f8" stroke="#8da4c0" stroke-width="1.5"/>
-  <text x="110" y="196" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="8">CB</text>
-  <text x="110" y="208" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="8">PLU</text>
+<!-- 3 Bombas Potable -->
+<circle cx="85"  cy="175" r="24" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="85"  y="171" text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070">B-1</text>
+<text x="85"  y="184" text-anchor="middle" font-family="monospace" font-size="11" fill="#0d6eac">POT</text>
+<circle cx="138" cy="175" r="24" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="138" y="171" text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070">B-2</text>
+<text x="138" y="184" text-anchor="middle" font-family="monospace" font-size="11" fill="#0d6eac">POT</text>
+<circle cx="191" cy="175" r="24" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="191" y="171" text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070">B-3</text>
+<text x="191" y="184" text-anchor="middle" font-family="monospace" font-size="11" fill="#0d6eac">POT</text>
 
-  <!-- Bomba Potable -->
-  <ellipse cx="590" cy="200" rx="28" ry="22" fill="#eaf0f8" stroke="#8da4c0" stroke-width="1.5"/>
-  <text x="590" y="196" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="8">CB</text>
-  <text x="590" y="208" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="8">POT</text>
+<!-- Hidroneumático Potable -->
+<ellipse cx="248" cy="167" rx="18" ry="25" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<rect x="230" y="167" width="36" height="18" fill="#dceaf7" stroke="none"/>
+<ellipse cx="248" cy="185" rx="18" ry="8" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="248" y="179" text-anchor="middle" font-family="monospace" font-size="10" fill="#3a5070">HN-POT</text>
+<text x="165" y="213" text-anchor="middle" font-family="monospace" font-size="11" fill="#5a7090">3 bombas + hidroneumático</text>
 
-  <!-- ===== SERVICIOS ===== -->
-  <!-- Servicio WC -->
-  <rect x="20" y="290" width="90" height="50" rx="4" fill="#eaf0f8" stroke="#8da4c0" stroke-width="1.5"/>
-  <text x="65" y="311" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="9">SERVICIO</text>
-  <text x="65" y="325" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="9">WC</text>
+<!-- Pumps → VP2 horizontal -->
+<line id="pp-pot" x1="95" y1="230" x2="255" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Servicio Potable -->
-  <rect x="590" y="290" width="90" height="50" rx="4" fill="#eaf0f8" stroke="#8da4c0" stroke-width="1.5"/>
-  <text x="635" y="307" text-anchor="middle" fill="#3a5070" font-family="Share Tech Mono,monospace" font-size="9">SERVICIO</text>
-  <text x="635" y="319" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="9">REG/DPTO</text>
+<!-- VP2 valve at x=268 -->
+<g id="valve-VP2">
+  <rect x="255" y="219" width="26" height="17" rx="3" fill="#fff" stroke="#1a8a3a" stroke-width="2.5"/>
+  <line id="vp2-stem" x1="268" y1="209" x2="268" y2="219" stroke="#1a8a3a" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+<text x="268" y="207" text-anchor="middle" font-family="monospace" font-size="12" fill="#1a8a3a" font-weight="bold">VP2</text>
+<text x="268" y="253" text-anchor="middle" font-family="monospace" font-size="10" fill="#5a7090">evita retorno</text>
 
-  <!-- ===== TANQUES HIDRONEUMÁTICOS ===== -->
-  <!-- Tanque Pluvial -->
-  <ellipse cx="175" cy="285" rx="22" ry="32" fill="#eaf0f8" stroke="#7a96b4" stroke-width="1.5"/>
-  <text x="175" y="281" text-anchor="middle" fill="#445060" font-family="Share Tech Mono,monospace" font-size="7">TANK</text>
-  <text x="175" y="292" text-anchor="middle" fill="#445060" font-family="Share Tech Mono,monospace" font-size="7">PLU</text>
+<!-- VP2 → node -->
+<line id="pn-pot" x1="281" y1="230" x2="310" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Tanque Potable -->
-  <ellipse cx="525" cy="285" rx="22" ry="32" fill="#eaf0f8" stroke="#7a96b4" stroke-width="1.5"/>
-  <text x="525" y="281" text-anchor="middle" fill="#445060" font-family="Share Tech Mono,monospace" font-size="7">TANK</text>
-  <text x="525" y="292" text-anchor="middle" fill="#445060" font-family="Share Tech Mono,monospace" font-size="7">POT</text>
+<!-- Node potable x=310 -->
+<circle cx="310" cy="230" r="7" fill="#0d6eac"/>
 
-  <!-- ===== PIPES – PLUVIAL SIDE ===== -->
-  <!-- Cisterna → Bomba (vertical) -->
-  <line id="p-cis-pluvial" x1="65" y1="120" x2="65" y2="185" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line x1="65" y1="185" x2="82" y2="185" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line x1="82" y1="185" x2="82" y2="200" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
+<!-- Service UP to REG/DPTO (always on) -->
+<line id="ps-pot" x1="310" y1="36" x2="310" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- Bomba → Main horizontal pluvial line -->
-  <line id="p-out-pluvial" x1="138" y1="200" x2="270" y2="200" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
+<!-- REG/DPTO box -->
+<rect x="232" y="20" width="156" height="30" rx="4" fill="#fff" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="310" y="32" text-anchor="middle" font-family="monospace" font-size="11" fill="#3a5070">SALIDA POTABLE</text>
+<text x="310" y="47" text-anchor="middle" font-family="monospace" font-size="12" fill="#0d6eac" font-weight="bold">REG / FREGADERO / DPTO</text>
 
-  <!-- Pluvial down to tank + service -->
-  <line id="p-down-pluvial" x1="175" y1="200" x2="175" y2="253" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line id="p-service-pluvial" x1="65" y1="253" x2="175" y2="253" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line x1="65" y1="253" x2="65" y2="290" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
+<!-- Node → VBR horizontal -->
+<line id="pb-pot" x1="310" y1="230" x2="415" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round" opacity=".35"/>
 
-  <!-- ===== PIPES – POTABLE SIDE ===== -->
-  <!-- Cisterna → Bomba (vertical) -->
-  <line id="p-cis-potable" x1="635" y1="120" x2="635" y2="185" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line x1="635" y1="185" x2="618" y2="185" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line x1="618" y1="185" x2="618" y2="200" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
+<!-- VBR valve at x=375 -->
+<g id="valve-VBR">
+  <rect x="362" y="219" width="26" height="17" rx="3" fill="#fff" stroke="#cc2200" stroke-width="2.5"/>
+  <line id="vbr-stem" x1="375" y1="209" x2="375" y2="219" stroke="#cc2200" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+<text x="375" y="207" text-anchor="middle" font-family="monospace" font-size="12" fill="#cc2200" font-weight="bold">VBR</text>
+<text x="375" y="253" text-anchor="middle" font-family="monospace" font-size="10" fill="#5a7090">V.bypass POT</text>
 
-  <!-- Bomba → Main horizontal potable line -->
-  <line id="p-out-potable" x1="430" y1="200" x2="562" y2="200" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
+<!-- ═══════════════════════════════════
+     BYPASS  x=415..465  y=230
+═══════════════════════════════════ -->
+<line id="p-bypass" x1="415" y1="230" x2="465" y2="230" stroke="#888" stroke-width="8" stroke-linecap="round" opacity=".35"/>
+<text x="440" y="218" text-anchor="middle" font-family="monospace" font-size="11" fill="#888" letter-spacing="1">BYPASS</text>
 
-  <!-- Potable down to tank + service -->
-  <line id="p-down-potable" x1="525" y1="200" x2="525" y2="253" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line id="p-service-potable" x1="525" y1="253" x2="635" y2="253" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
-  <line x1="635" y1="253" x2="635" y2="290" stroke="#3a9fd8" stroke-width="5" stroke-linecap="round"/>
+<!-- ═══════════════════════════════════
+     DERECHA: CUARTO PLUVIAL  x=462..862
+═══════════════════════════════════ -->
+<rect x="462" y="20" width="400" height="280" rx="8" fill="#eef4fb" stroke="#8dafcc" stroke-width="1.5" stroke-dasharray="6 3"/>
+<text x="662" y="314" text-anchor="middle" font-family="monospace" font-size="14" fill="#3a5070" letter-spacing="1">CUARTO DE BOMBAS PLUVIAL</text>
 
-  <!-- ===== BYPASS PIPE (negro) ===== -->
-  <line id="p-bypass" x1="270" y1="200" x2="430" y2="200" stroke="#8899aa" stroke-width="5" stroke-linecap="round"/>
+<!-- Cisterna Pluvial (der arriba) -->
+<rect x="730" y="36" width="110" height="58" rx="5" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="785" y="55"  text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070" letter-spacing="1">CISTERNA</text>
+<text x="785" y="71"  text-anchor="middle" font-family="monospace" font-size="13" fill="#0d6eac" font-weight="bold">PLUVIAL</text>
+<line x1="740" y1="83" x2="830" y2="83" stroke="#6a9fc0" stroke-width="1" opacity=".5"/>
 
-  <!-- ===== VÁLVULAS ===== -->
-  <!-- 
-    V1 = on pluvial main out (between pump and bypass junction), around x=220
-    V2 = on potable main out (between pump and bypass junction), around x=480
-    VB = bypass valve, center x=350
-  -->
+<!-- Cisterna → dist line -->
+<line id="pc-plu" x1="785" y1="94" x2="785" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- V1 – Pluvial isolation -->
-  <g id="valve-V1" transform="translate(220,200)">
-    <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#0f1117" stroke="#3a9fd8" stroke-width="1.5"/>
-    <!-- valve body (butterfly icon) -->
-    <line x1="-10" y1="0" x2="10" y2="0" stroke="#3a9fd8" stroke-width="2"/>
-    <line id="v1-stem" x1="0" y1="-8" x2="0" y2="8" stroke="#e74c3c" stroke-width="3" stroke-linecap="round"/>
-    <text x="0" y="26" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="9">V1</text>
-  </g>
+<!-- 2 Bombas Pluvial -->
+<circle cx="510" cy="175" r="24" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="510" y="171" text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070">B-1</text>
+<text x="510" y="184" text-anchor="middle" font-family="monospace" font-size="11" fill="#0d6eac">PLU</text>
+<circle cx="563" cy="175" r="24" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="563" y="171" text-anchor="middle" font-family="monospace" font-size="12" fill="#3a5070">B-2</text>
+<text x="563" y="184" text-anchor="middle" font-family="monospace" font-size="11" fill="#0d6eac">PLU</text>
 
-  <!-- V2 – Potable isolation -->
-  <g id="valve-V2" transform="translate(480,200)">
-    <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#0f1117" stroke="#3a9fd8" stroke-width="1.5"/>
-    <line x1="-10" y1="0" x2="10" y2="0" stroke="#3a9fd8" stroke-width="2"/>
-    <line id="v2-stem" x1="0" y1="-8" x2="0" y2="8" stroke="#e74c3c" stroke-width="3" stroke-linecap="round"/>
-    <text x="0" y="26" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="9">V2</text>
-  </g>
+<!-- Hidroneumático Pluvial -->
+<ellipse cx="620" cy="167" rx="18" ry="25" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<rect x="602" y="167" width="36" height="18" fill="#dceaf7" stroke="none"/>
+<ellipse cx="620" cy="185" rx="18" ry="8" fill="#dceaf7" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="620" y="179" text-anchor="middle" font-family="monospace" font-size="10" fill="#3a5070">HN-PLU</text>
+<text x="610" y="213" text-anchor="middle" font-family="monospace" font-size="11" fill="#5a7090">2 bombas + hidroneumático</text>
 
-  <!-- VB – Bypass valve -->
-  <g id="valve-VB" transform="translate(350,200)">
-    <rect x="-14" y="-14" width="28" height="28" rx="3" fill="#0f1117" stroke="#8899aa" stroke-width="1.5"/>
-    <line x1="-10" y1="0" x2="10" y2="0" stroke="#8899aa" stroke-width="2"/>
-    <line id="vb-stem" x1="0" y1="-8" x2="0" y2="8" stroke="#e74c3c" stroke-width="3" stroke-linecap="round"/>
-    <text x="0" y="26" text-anchor="middle" fill="#8899aa" font-family="Share Tech Mono,monospace" font-size="9">VB</text>
-  </g>
+<!-- VBP valve at x=505 -->
+<line id="pb-plu" x1="465" y1="230" x2="570" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round" opacity=".35"/>
+<g id="valve-VBP">
+  <rect x="492" y="219" width="26" height="17" rx="3" fill="#fff" stroke="#cc2200" stroke-width="2.5"/>
+  <line id="vbp-stem" x1="505" y1="209" x2="505" y2="219" stroke="#cc2200" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+<text x="505" y="207" text-anchor="middle" font-family="monospace" font-size="12" fill="#cc2200" font-weight="bold">VBP</text>
+<text x="505" y="253" text-anchor="middle" font-family="monospace" font-size="10" fill="#5a7090">V.bypass PLU</text>
 
-  <!-- ===== LABELS ===== -->
-  <text x="350" y="166" text-anchor="middle" fill="#556070" font-family="Share Tech Mono,monospace" font-size="9" letter-spacing="1">── BYPASS (tubería negra) ──</text>
-  <text x="110" y="240" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="8">CB Pluvial</text>
-  <text x="590" y="240" text-anchor="middle" fill="#0d6eac" font-family="Share Tech Mono,monospace" font-size="8">CB Potable</text>
+<!-- VBP → node pluvial -->
+<line id="pn-plu" x1="518" y1="230" x2="580" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
 
-  <!-- flow arrows (decorative direction hints) -->
-  <text x="160" y="196" fill="#556070" font-size="12" font-family="monospace">›</text>
-  <text x="540" y="196" fill="#556070" font-size="12" font-family="monospace">‹</text>
+<!-- Node pluvial x=580 -->
+<circle cx="580" cy="230" r="7" fill="#0d6eac"/>
 
+<!-- Service UP to WC (always on) -->
+<line id="ps-plu" x1="580" y1="36" x2="580" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
+
+<!-- WC box -->
+<rect x="512" y="20" width="136" height="30" rx="4" fill="#fff" stroke="#6a9fc0" stroke-width="1.5"/>
+<text x="580" y="32" text-anchor="middle" font-family="monospace" font-size="11" fill="#3a5070">SALIDA PLUVIAL</text>
+<text x="580" y="47" text-anchor="middle" font-family="monospace" font-size="14" fill="#0d6eac" font-weight="bold">◻ WC</text>
+
+<!-- Node → VP1 horizontal -->
+<line id="pn2-plu" x1="580" y1="230" x2="615" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
+
+<!-- VP1 valve at x=628 -->
+<g id="valve-VP1">
+  <rect x="615" y="219" width="26" height="17" rx="3" fill="#fff" stroke="#1a8a3a" stroke-width="2.5"/>
+  <line id="vp1-stem" x1="628" y1="209" x2="628" y2="219" stroke="#1a8a3a" stroke-width="2.5" stroke-linecap="round"/>
+</g>
+<text x="628" y="207" text-anchor="middle" font-family="monospace" font-size="12" fill="#1a8a3a" font-weight="bold">VP1</text>
+<text x="628" y="253" text-anchor="middle" font-family="monospace" font-size="10" fill="#5a7090">evita retorno</text>
+
+<!-- VP1 → Pumps horizontal -->
+<line id="pp-plu" x1="641" y1="230" x2="785" y2="230" stroke="#0d6eac" stroke-width="5" stroke-linecap="round"/>
+
+<!-- ══ LEGEND ══ -->
+<rect x="18" y="322" width="844" height="16" rx="3" fill="#f0f4f9" stroke="#ccd0da" stroke-width="1"/>
+<line x1="28"  y1="330" x2="58"  y2="330" stroke="#0d6eac" stroke-width="3" stroke-dasharray="8 4"/>
+<text x="63"  y="334" font-family="monospace" font-size="11" fill="#0d6eac">Flujo normal</text>
+<line x1="160" y1="330" x2="190" y2="330" stroke="#d4600a" stroke-width="3" stroke-dasharray="8 4"/>
+<text x="195" y="334" font-family="monospace" font-size="11" fill="#d4600a">Flujo bypass</text>
+<rect x="295" y="323" width="13" height="11" rx="2" fill="#fff" stroke="#1a8a3a" stroke-width="1.5"/>
+<text x="312" y="332" font-family="monospace" font-size="11" fill="#1a8a3a">Abierta</text>
+<rect x="375" y="323" width="13" height="11" rx="2" fill="#fff" stroke="#cc2200" stroke-width="1.5"/>
+<text x="392" y="332" font-family="monospace" font-size="11" fill="#cc2200">Cerrada</text>
+<text x="465" y="333" font-family="monospace" font-size="10" fill="#3a5070">VP1/VP2=evitan retorno  |  VBP/VBR=abren bypass</text>
 </svg>
 </div>
 
-<!-- VALVE STATUS TABLE -->
-<div class="valve-table">
-<table>
-  <thead>
-    <tr>
-      <th>Válvula</th>
-      <th>Ubicación</th>
-      <th>Estado</th>
-      <th>Nota</th>
-    </tr>
-  </thead>
-  <tbody id="valveRows"></tbody>
-</table>
+<div class="vtable">
+  <table>
+    <thead><tr>
+      <th>Válvula</th><th>Cuarto</th><th>Función</th><th>Estado</th><th>Nota operativa</th>
+    </tr></thead>
+    <tbody id="valveRows"></tbody>
+  </table>
 </div>
 
 <script>
+const B = "#0d6eac", O = "#d4600a";
+const ALL = ["pc-pot","pp-pot","pn-pot","ps-pot","pb-pot",
+             "p-bypass",
+             "pb-plu","pn-plu","ps-plu","pn2-plu","pp-plu","pc-plu"];
+
 const modes = [
   {
-    title: "MODO 1 – Operación Individual",
-    desc: "Cada cuarto de bombas opera de forma independiente. CB Pluvial alimenta únicamente WC. CB Potable alimenta únicamente regaderas y departamentos. El bypass está aislado.",
-    valves: {
-      V1: { open: true, note: "Paso normal al sistema pluvial" },
-      V2: { open: true, note: "Paso normal al sistema potable" },
-      VB: { open: false, note: "CERRADA — aísla el bypass" }
+    title: "MODO 1 – Operación Independiente (Normal)",
+    desc:  "VP2 abierta: CB Potable surte Reg/Dpto normalmente. VP1 abierta: CB Pluvial surte WC normalmente. VBR y VBP cerradas: bypass aislado. Ambos sistemas trabajan de forma completamente autónoma.",
+    valves:{
+      VP2:{open:true,  room:"Potable", fn:"Anti-retorno bombas", note:"Abierta — CB Potable en servicio normal"},
+      VBR:{open:false, room:"Potable", fn:"Válvula de Bypass",   note:"Cerrada — potable aislado del bypass"},
+      VBP:{open:false, room:"Pluvial", fn:"Válvula de Bypass",   note:"Cerrada — pluvial aislado del bypass"},
+      VP1:{open:true,  room:"Pluvial", fn:"Anti-retorno bombas", note:"Abierta — CB Pluvial en servicio normal"}
     },
-    flows: {
-      pluvial: true, potable: true, bypass: false
+    pipes:{
+      "pc-pot":{on:true, c:B},"pp-pot":{on:true, c:B},"pn-pot":{on:true, c:B},"ps-pot":{on:true, c:B},
+      "pb-pot":{on:false,c:"#aaa"},
+      "p-bypass":{on:false,c:"#aaa"},
+      "pb-plu":{on:false,c:"#aaa"},
+      "pn-plu":{on:true, c:B},"ps-plu":{on:true, c:B},"pn2-plu":{on:true, c:B},"pp-plu":{on:true, c:B},"pc-plu":{on:true, c:B}
     }
   },
   {
-    title: "MODO 2 – CB Potable alimenta AMBOS sistemas",
-    desc: "CB Pluvial en mantenimiento o fuera de servicio. CB Potable alimenta por bypass tanto a WC como a regaderas y departamentos. V1 cerrada para aislar el cuarto de pluvial.",
-    valves: {
-      V1: { open: false, note: "CERRADA — aísla CB Pluvial" },
-      V2: { open: true, note: "Abierta — CB Potable en servicio" },
-      VB: { open: true, note: "ABIERTA — activa el bypass" }
+    title: "MODO 2 – CB Potable surte ambos (CB Pluvial fuera de servicio)",
+    desc:  "CB Pluvial fuera de servicio. VP1 cerrada: evita que el agua regrese hacia las bombas pluvial. VBP abierta: el agua del bypass llega al nodo pluvial y surte WC. Bypass activo. VBR abierta: CB Potable manda flujo al bypass. VP2 abierta: CB Potable sigue surtiendo Reg/Dpto normalmente.",
+    valves:{
+      VP2:{open:true,  room:"Potable", fn:"Anti-retorno bombas", note:"ABIERTA — CB Potable surte Reg/Dpto normalmente"},
+      VBR:{open:true,  room:"Potable", fn:"Válvula de Bypass",   note:"ABIERTA — CB Potable manda flujo al bypass"},
+      VBP:{open:true,  room:"Pluvial", fn:"Válvula de Bypass",   note:"ABIERTA — flujo del bypass entra y surte WC"},
+      VP1:{open:false, room:"Pluvial", fn:"Anti-retorno bombas", note:"CERRADA — evita retorno hacia bombas pluvial"}
     },
-    flows: {
-      pluvial: false, potable: true, bypass: true
+    pipes:{
+      "pc-pot":{on:true, c:B},"pp-pot":{on:true, c:B},"pn-pot":{on:true, c:B},"ps-pot":{on:true, c:B},
+      "pb-pot":{on:true, c:O},
+      "p-bypass":{on:true, c:O},
+      "pb-plu":{on:true, c:O},
+      "pn-plu":{on:true, c:O},"ps-plu":{on:true, c:O},"pn2-plu":{on:false,c:"#aaa"},"pp-plu":{on:false,c:"#aaa"},"pc-plu":{on:false,c:"#aaa"}
     }
   },
   {
-    title: "MODO 3 – CB Pluvial alimenta AMBOS sistemas",
-    desc: "CB Potable en mantenimiento o fuera de servicio. CB Pluvial alimenta por bypass tanto a WC como a regaderas y departamentos. V2 cerrada para aislar el cuarto de potable.",
-    valves: {
-      V1: { open: true, note: "Abierta — CB Pluvial en servicio" },
-      V2: { open: false, note: "CERRADA — aísla CB Potable" },
-      VB: { open: true, note: "ABIERTA — activa el bypass" }
+    title: "MODO 3 – CB Pluvial surte ambos (CB Potable fuera de servicio)",
+    desc:  "CB Potable fuera de servicio. VP2 cerrada: evita que el agua regrese hacia las bombas potable. VBR abierta: el agua del bypass llega al nodo potable y surte Reg/Dpto. Bypass activo. VBP abierta: CB Pluvial manda flujo al bypass. VP1 abierta: CB Pluvial sigue surtiendo WC normalmente.",
+    valves:{
+      VP2:{open:false, room:"Potable", fn:"Anti-retorno bombas", note:"CERRADA — evita retorno hacia bombas potable"},
+      VBR:{open:true,  room:"Potable", fn:"Válvula de Bypass",   note:"ABIERTA — flujo del bypass entra y surte Reg/Dpto"},
+      VBP:{open:true,  room:"Pluvial", fn:"Válvula de Bypass",   note:"ABIERTA — CB Pluvial manda flujo al bypass"},
+      VP1:{open:true,  room:"Pluvial", fn:"Anti-retorno bombas", note:"ABIERTA — CB Pluvial surte WC normalmente"}
     },
-    flows: {
-      pluvial: true, potable: false, bypass: true
+    pipes:{
+      "pc-pot":{on:false,c:"#aaa"},"pp-pot":{on:false,c:"#aaa"},"pn-pot":{on:false,c:"#aaa"},"ps-pot":{on:true, c:O},
+      "pb-pot":{on:true, c:O},
+      "p-bypass":{on:true, c:O},
+      "pb-plu":{on:true, c:O},
+      "pn-plu":{on:true, c:O},"ps-plu":{on:true, c:B},"pn2-plu":{on:true, c:B},"pp-plu":{on:true, c:B},"pc-plu":{on:true, c:B}
     }
   }
 ];
 
-let currentMode = 0;
-
-function setMode(idx) {
-  currentMode = idx;
-  document.querySelectorAll('.mode-btn').forEach((b,i) => {
-    b.classList.toggle('active', i===idx);
-    b.classList.remove('pulse-hint'); // remove on first interaction
+let cur = 0;
+function setMode(i){
+  cur = i;
+  document.querySelectorAll('.mode-btn').forEach((b,j)=>{
+    b.classList.toggle('active', j===i);
+    b.classList.remove('pulse-hint');
   });
   render();
 }
-
-function render() {
-  const m = modes[currentMode];
+function render(){
+  const m = modes[cur];
   document.getElementById('modeTitle').textContent = m.title;
-  document.getElementById('modeDesc').textContent = m.desc;
-
-  // Update valve visuals
-  updateValve('V1', m.valves.V1.open);
-  updateValve('V2', m.valves.V2.open);
-  updateValve('VB', m.valves.VB.open);
-
-  // Update pipe flow classes
-  const pluvialPipes = ['p-cis-pluvial','p-out-pluvial','p-down-pluvial','p-service-pluvial'];
-  const potablePipes = ['p-cis-potable','p-out-potable','p-down-potable','p-service-potable'];
-  const bypassPipes = ['p-bypass'];
-
-  pluvialPipes.forEach(id => setPipeFlow(id, m.flows.pluvial, '#3a9fd8'));
-  potablePipes.forEach(id => setPipeFlow(id, m.flows.potable, '#3a9fd8'));
-  bypassPipes.forEach(id => setPipeFlow(id, m.flows.bypass, '#8899aa'));
-
-  // Update valve table
-  const tbody = document.getElementById('valveRows');
-  tbody.innerHTML = '';
-  const entries = [
-    { id: 'V1', loc: 'Salida CB Pluvial / entrada bypass', ...m.valves.V1 },
-    { id: 'VB', loc: 'Tubería negra de bypass (centro)', ...m.valves.VB },
-    { id: 'V2', loc: 'Salida CB Potable / entrada bypass', ...m.valves.V2 }
-  ];
-  entries.forEach(v => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><span class="valve-name">${v.id}</span></td>
-      <td style="font-size:1.0rem;color:#4a5568">${v.loc}</td>
-      <td>
-        <span class="dot ${v.open ? 'dot-open':'dot-closed'}"></span>
-        <span class="${v.open ? 'status-open':'status-closed'}">${v.open ? '● ABIERTA':'● CERRADA'}</span>
-      </td>
-      <td style="font-size:1.0rem;color:#5a6a80">${v.note}</td>
-    `;
-    tbody.appendChild(tr);
+  document.getElementById('modeDesc').textContent  = m.desc;
+  ALL.forEach(id=>{
+    const el=document.getElementById(id); if(!el) return;
+    const p=m.pipes[id];
+    if(p.on){
+      el.classList.add('flow-active'); el.classList.remove('flow-inactive');
+      el.setAttribute('stroke',p.c); el.setAttribute('opacity','1');
+    } else {
+      el.classList.remove('flow-active'); el.classList.add('flow-inactive');
+      el.setAttribute('stroke','#b0bec5'); el.setAttribute('opacity','0.4');
+    }
+  });
+  const smap={VP1:'vp1-stem',VP2:'vp2-stem',VBP:'vbp-stem',VBR:'vbr-stem'};
+  ['VP1','VP2','VBP','VBR'].forEach(id=>{
+    const open=m.valves[id].open, col=open?'#1a8a3a':'#cc2200';
+    const s=document.getElementById(smap[id]), g=document.getElementById('valve-'+id);
+    if(!g||!s) return;
+    g.querySelector('rect').setAttribute('stroke',col);
+    s.setAttribute('stroke',col);
+    if(open){ const mx=parseFloat(s.getAttribute('x2')), my=(parseFloat(s.getAttribute('y1'))+parseFloat(s.getAttribute('y2')))/2;
+      s.setAttribute('transform','rotate(90,'+mx+','+my+')'); }
+    else s.removeAttribute('transform');
+  });
+  const tb=document.getElementById('valveRows'); tb.innerHTML='';
+  ['VP2','VBR','VBP','VP1'].forEach(id=>{
+    const v=m.valves[id], tr=document.createElement('tr');
+    tr.innerHTML='<td><span class="vn">'+id+'</span></td>'+
+      '<td style="color:#4a5568">'+v.room+'</td>'+
+      '<td style="color:#4a5568;font-size:.95rem">'+v.fn+'</td>'+
+      '<td><span class="dot '+(v.open?'do':'dc')+'"></span><span class="'+(v.open?'so':'sc')+'">'+(v.open?'● ABIERTA':'● CERRADA')+'</span></td>'+
+      '<td style="color:#5a6a80;font-size:.95rem">'+v.note+'</td>';
+    tb.appendChild(tr);
   });
 }
-
-function updateValve(id, open) {
-  const stemId = id === 'V1' ? 'v1-stem' : id === 'V2' ? 'v2-stem' : 'vb-stem';
-  const stemEl = document.getElementById(stemId);
-  const groupEl = document.getElementById('valve-' + id);
-  const rectEl = groupEl.querySelector('rect');
-
-  if (open) {
-    stemEl.setAttribute('transform', 'rotate(90)');
-    stemEl.setAttribute('stroke', '#2ecc71');
-    rectEl.setAttribute('stroke', '#2ecc71');
-  } else {
-    stemEl.setAttribute('transform', '');
-    stemEl.setAttribute('stroke', '#e74c3c');
-    rectEl.setAttribute('stroke', '#e74c3c');
-  }
-}
-
-function setPipeFlow(id, active, color) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (active) {
-    el.classList.add('flow-active');
-    el.classList.remove('flow-inactive');
-    el.setAttribute('stroke', color);
-    el.setAttribute('opacity', '1');
-  } else {
-    el.classList.remove('flow-active');
-    el.classList.add('flow-inactive');
-    el.setAttribute('stroke', color);
-    el.setAttribute('opacity', '0.2');
-  }
-}
-
 render();
 </script>
 </body>
